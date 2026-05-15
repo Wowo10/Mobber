@@ -1,0 +1,8 @@
+extends Node
+
+const WORLD_SIZE_X = 4000
+const WORLD_SIZE_Y = 3000
+const PLAYER_SPEED = 300.0
+const PLAYER_START_RADIUS = 30.0
+const FOOD_RADIUS = 5.0
+const FOOD_COUNT = 200
