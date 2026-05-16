@@ -83,8 +83,7 @@ func _physics_process(delta: float) -> void:
 			$DashParticles.emitting = true
 
 	move_and_slide()
-	if multiplayer.multiplayer_peer is ENetMultiplayerPeer:
-		_rpc_sync_pos.rpc(position)
+	_rpc_sync_pos.rpc(position)
 	queue_redraw()
 
 	if _attack_cooldown > 0.0:

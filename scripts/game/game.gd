@@ -5,6 +5,7 @@ const PLAYER_SCENE = preload("res://scenes/entities/player.tscn")
 var _peer_to_arena: Dictionary = {}
 var _peer_to_player: Dictionary = {}
 var _networked: bool = false
+var _leaving: bool = false
 
 func _ready() -> void:
 	_networked = multiplayer.multiplayer_peer is ENetMultiplayerPeer
@@ -21,8 +22,6 @@ func _ready() -> void:
 	if multiplayer.is_server():
 		multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 		_peer_to_arena[1] = $Arena1
-		for i in Constants.MOB_COUNT:
-			$Arena1.spawn_mob()
 	else:
 		multiplayer.server_disconnected.connect(_on_server_disconnected)
 		_rpc_client_ready.rpc_id(1)
@@ -33,6 +32,8 @@ func _rpc_client_ready() -> void:
 		return
 	var id := multiplayer.get_remote_sender_id()
 	_peer_to_arena[id] = $Arena2
+	for i in Constants.MOB_COUNT:
+		$Arena1.spawn_mob()
 	for i in Constants.MOB_COUNT:
 		$Arena2.spawn_mob()
 	_spawn_player(1)
@@ -47,6 +48,12 @@ func _rpc_spawn_players(client_id: int) -> void:
 	_spawn_player(1)
 	_spawn_player(client_id)
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_EXIT_TREE and multiplayer.multiplayer_peer != null:
+		# Null peer before children exit tree so MultiplayerSynchronizers skip
+		# process_simplify_path — otherwise "Node not found: Game" is thrown.
+		multiplayer.multiplayer_peer = null
+
 func _on_server_disconnected() -> void:
 	_show_disconnect("Host disconnected. Returning to lobby...")
 
@@ -58,10 +65,25 @@ func _on_peer_disconnected(id: int) -> void:
 	_show_disconnect("Player disconnected. Returning to lobby...")
 
 func _show_disconnect(msg: String) -> void:
+	_leaving = true
+	for child in $PlayerContainer.get_children():
+		child.set_physics_process(false)
 	$DisconnectOverlay/MsgLabel.text = msg
 	$DisconnectOverlay.visible = true
 	await get_tree().create_timer(3.0).timeout
+	_leave_game()
+
+func _leave_game() -> void:
+	# Remove mobs synchronously so their MultiplayerSynchronizer _exit_tree
+	# runs while "Game" is still in the scene tree — prevents scene cache errors.
+	# Null peer first so MultiplayerSynchronizer._exit_tree skips path caching.
 	multiplayer.multiplayer_peer = null
+	for arena in [$Arena1, $Arena2]:
+		var mc: Node = arena.get_node_or_null("MobContainer")
+		if mc == null:
+			continue
+		for mob in mc.get_children():
+			mob.free()
 	get_tree().change_scene_to_file("res://scenes/ui/lobby.tscn")
 
 func _spawn_player(peer_id: int) -> void:
@@ -76,20 +98,14 @@ func _spawn_player(peer_id: int) -> void:
 	_peer_to_player[peer_id] = player
 
 func notify_mob_killed(arena: Node2D) -> void:
-	if not multiplayer.is_server():
+	if not multiplayer.is_server() or _leaving:
 		return
 	var opponent: Node2D = $Arena2 if arena == $Arena1 else $Arena1
 	opponent.spawn_mob()
 	opponent.spawn_mob()
-	# Dying mob not freed yet (-1 on killer); spawned mobs deferred (+2 on opponent).
-	var a1: int = $Arena1.get_mob_count()
-	var a2: int = $Arena2.get_mob_count()
-	if arena == $Arena1:
-		a1 -= 1
-		a2 += 2
-	else:
-		a2 -= 1
-		a1 += 2
+	# Dying mob not freed yet; subtract 1 from killer's arena count.
+	var a1: int = $Arena1.get_mob_count() - (1 if arena == $Arena1 else 0)
+	var a2: int = $Arena2.get_mob_count() - (1 if arena == $Arena2 else 0)
 	_update_hud_local(a1, a2)
 	if _networked:
 		_rpc_update_hud.rpc(a1, a2)
@@ -143,8 +159,8 @@ func _rpc_game_over(losing_arena_id: int) -> void:
 	$GameOverOverlay.visible = true
 
 func _on_return_pressed() -> void:
-	multiplayer.multiplayer_peer = null
-	get_tree().change_scene_to_file("res://scenes/ui/lobby.tscn")
+	_leaving = true
+	_leave_game()
 
 func _setup_skill_bar() -> void:
 	var bar := $HUD/SkillBar
@@ -160,7 +176,7 @@ func _setup_skill_bar() -> void:
 	bar.get_node("Skill3Slot").available = false
 
 func _process(_delta: float) -> void:
-	if _networked and not (multiplayer.multiplayer_peer is ENetMultiplayerPeer):
+	if _leaving:
 		return
 	var my_id: int = 1 if not _networked else multiplayer.get_unique_id()
 	var player = _peer_to_player.get(my_id)

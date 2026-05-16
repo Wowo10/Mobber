@@ -14,10 +14,16 @@ var _wander_timer := 0.0
 
 func _ready() -> void:
 	_pick_wander_dir()
-	# Only the server runs mob physics/AI
 	var networked: bool = multiplayer.multiplayer_peer is ENetMultiplayerPeer
 	if networked and not multiplayer.is_server():
 		set_physics_process(false)
+		return
+	if networked:
+		# Disable syncer for one frame so the MultiplayerSpawner's spawn packet
+		# reaches clients before the first unreliable sync/simplify_path packet.
+		$MultiplayerSynchronizer.process_mode = PROCESS_MODE_DISABLED
+		$MultiplayerSynchronizer.set_deferred(&"process_mode", PROCESS_MODE_INHERIT)
+
 
 func _process(_delta: float) -> void:
 	queue_redraw()
@@ -56,7 +62,8 @@ func die() -> void:
 	if networked and multiplayer.is_server():
 		var game := get_tree().root.get_node_or_null("Game")
 		if game and game.has_method("notify_mob_killed"):
-			game.notify_mob_killed(get_parent().get_parent())
+			var arena := get_parent().get_parent()
+			game.call_deferred("notify_mob_killed", arena)
 	queue_free()
 
 func _draw() -> void:
