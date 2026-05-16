@@ -9,6 +9,7 @@ var _last_facing := Vector2.RIGHT
 var _dashing := false
 var _dash_timer := 0.0
 var _dash_cooldown := 0.0
+var _attack_cooldown := 0.0
 
 func _ready() -> void:
 	# MultiplayerSpawner doesn't sync authority — derive it from node name "Player_N"
@@ -38,8 +39,8 @@ func _setup_particles() -> void:
 	p.color = Color(0.55, 0.50, 1.0, 0.75)
 
 func _setup_camera() -> void:
-	# Host is always peer 1 → Arena1 at x=0; client → Arena2 at x=4300
-	var arena_x: float = 0.0 if multiplayer.get_unique_id() == 1 else float(Constants.WORLD_SIZE_X + Constants.ARENA_GAP)
+	var arena_x: float = 0.0 if multiplayer.get_unique_id() == 1 \
+		else float(Constants.WORLD_SIZE_X + Constants.ARENA_GAP)
 	var cam := $Camera2D
 	cam.limit_left = int(arena_x)
 	cam.limit_right = int(arena_x + Constants.WORLD_SIZE_X)
@@ -82,12 +83,15 @@ func _physics_process(delta: float) -> void:
 			$DashParticles.emitting = true
 
 	move_and_slide()
-	# Broadcast position to all other peers
-	_rpc_sync_pos.rpc(position)
+	if multiplayer.multiplayer_peer is ENetMultiplayerPeer:
+		_rpc_sync_pos.rpc(position)
 	queue_redraw()
 
-	if Input.is_action_just_pressed("attack"):
+	if _attack_cooldown > 0.0:
+		_attack_cooldown -= delta
+	if Input.is_action_just_pressed("attack") and not $Sword.swinging:
 		$Sword.swing(_last_facing.angle())
+		_attack_cooldown = Constants.SWORD_SWING_DURATION
 
 @rpc("any_peer", "unreliable_ordered")
 func _rpc_sync_pos(pos: Vector2) -> void:

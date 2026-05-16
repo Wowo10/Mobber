@@ -1,6 +1,6 @@
 extends Area2D
 
-var _swinging := false
+var swinging := false
 
 func _ready() -> void:
 	monitoring = false
@@ -11,13 +11,14 @@ func _process(_delta: float) -> void:
 	queue_redraw()
 
 func set_facing(angle: float) -> void:
-	if not _swinging:
+	if not swinging:
 		rotation = angle
 
 func swing(facing_angle: float) -> void:
-	if _swinging:
+	if swinging:
 		return
-	_swinging = true
+		
+	swinging = true
 	monitoring = true
 	visible = true
 	var arc := deg_to_rad(Constants.SWORD_ARC_HALF)
@@ -28,7 +29,7 @@ func swing(facing_angle: float) -> void:
 
 func _end_swing() -> void:
 	monitoring = false
-	_swinging = false
+	swinging = false
 	visible = false
 
 func _on_body_entered(body: Node2D) -> void:

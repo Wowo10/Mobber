@@ -37,7 +37,7 @@ func spawn_mob() -> void:
 		randf_range(margin, Constants.WORLD_SIZE_X - margin),
 		randf_range(margin, Constants.WORLD_SIZE_Y - margin)
 	)
-	$MobContainer.add_child(mob, true)
+	$MobContainer.call_deferred("add_child", mob, true)
 
 func get_mob_count() -> int:
 	return $MobContainer.get_child_count()

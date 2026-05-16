@@ -8,6 +8,7 @@ var _networked: bool = false
 
 func _ready() -> void:
 	_networked = multiplayer.multiplayer_peer is ENetMultiplayerPeer
+	_setup_skill_bar()
 
 	if not _networked:
 		_peer_to_arena[1] = $Arena1
@@ -80,8 +81,19 @@ func notify_mob_killed(arena: Node2D) -> void:
 	var opponent: Node2D = $Arena2 if arena == $Arena1 else $Arena1
 	opponent.spawn_mob()
 	opponent.spawn_mob()
-	_push_hud_update()
-	_check_win()
+	# Dying mob not freed yet (-1 on killer); spawned mobs deferred (+2 on opponent).
+	var a1: int = $Arena1.get_mob_count()
+	var a2: int = $Arena2.get_mob_count()
+	if arena == $Arena1:
+		a1 -= 1
+		a2 += 2
+	else:
+		a2 -= 1
+		a1 += 2
+	_update_hud_local(a1, a2)
+	if _networked:
+		_rpc_update_hud.rpc(a1, a2)
+	_check_win(a1, a2)
 
 # --- HUD ---
 
@@ -104,12 +116,56 @@ func _rpc_update_hud(a1: int, a2: int) -> void:
 	_update_hud_local(a1, a2)
 
 # --- Win condition ---
-func _check_win() -> void:
-	if $Arena1.get_mob_count() >= 100:
+func _check_win(a1: int, a2: int) -> void:
+	if a1 >= 100:
+		_rpc_game_over(1)
 		_rpc_game_over.rpc(1)
-	elif $Arena2.get_mob_count() >= 100:
+	elif a2 >= 100:
+		_rpc_game_over(2)
 		_rpc_game_over.rpc(2)
 
 @rpc("authority", "reliable")
 func _rpc_game_over(losing_arena_id: int) -> void:
-	print("Arena %d loses! Game over." % losing_arena_id)
+	for child in $PlayerContainer.get_children():
+		child.set_physics_process(false)
+
+	var my_is_arena1 := (not _networked) or multiplayer.get_unique_id() == 1
+	var i_lost: bool = (losing_arena_id == 1 and my_is_arena1) or (losing_arena_id == 2 and not my_is_arena1)
+
+	var title := $GameOverOverlay/VBox/TitleLabel
+	if i_lost:
+		title.text = "YOU LOSE!"
+		title.add_theme_color_override("font_color", Color(0.9, 0.2, 0.2))
+	else:
+		title.text = "YOU WIN!"
+		title.add_theme_color_override("font_color", Color(0.2, 0.9, 0.3))
+
+	$GameOverOverlay.visible = true
+
+func _on_return_pressed() -> void:
+	multiplayer.multiplayer_peer = null
+	get_tree().change_scene_to_file("res://scenes/ui/lobby.tscn")
+
+func _setup_skill_bar() -> void:
+	var bar := $HUD/SkillBar
+	bar.get_node("AttackSlot").key_text = "SPC"
+	bar.get_node("AttackSlot").icon_color = Color(0.9, 0.65, 0.15)
+	bar.get_node("DashSlot").key_text = "SHF"
+	bar.get_node("DashSlot").icon_color = Color(0.25, 0.55, 1.0)
+	bar.get_node("Skill1Slot").key_text = "1"
+	bar.get_node("Skill1Slot").available = false
+	bar.get_node("Skill2Slot").key_text = "2"
+	bar.get_node("Skill2Slot").available = false
+	bar.get_node("Skill3Slot").key_text = "3"
+	bar.get_node("Skill3Slot").available = false
+
+func _process(_delta: float) -> void:
+	if _networked and not (multiplayer.multiplayer_peer is ENetMultiplayerPeer):
+		return
+	var my_id: int = 1 if not _networked else multiplayer.get_unique_id()
+	var player = _peer_to_player.get(my_id)
+	if player == null:
+		return
+	var bar := $HUD/SkillBar
+	bar.get_node("AttackSlot").set_cooldown(player._attack_cooldown, Constants.SWORD_SWING_DURATION)
+	bar.get_node("DashSlot").set_cooldown(player._dash_cooldown, Constants.PLAYER_DASH_COOLDOWN)
