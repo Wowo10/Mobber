@@ -11,6 +11,19 @@ var _dash_timer := 0.0
 var _dash_cooldown := 0.0
 
 func _ready() -> void:
+	# MultiplayerSpawner doesn't sync authority — derive it from node name "Player_N"
+	var parts := name.split("_")
+	if parts.size() == 2 and parts[0] == "Player":
+		set_multiplayer_authority(parts[1].to_int())
+
+	_setup_particles()
+	if not is_multiplayer_authority():
+		set_physics_process(false)
+		$Camera2D.enabled = false
+		return
+	_setup_camera()
+
+func _setup_particles() -> void:
 	var p := $DashParticles
 	p.amount = 24
 	p.lifetime = 0.35
@@ -24,8 +37,18 @@ func _ready() -> void:
 	p.scale_amount_max = 7.0
 	p.color = Color(0.55, 0.50, 1.0, 0.75)
 
-func _physics_process(delta):
-	var direction = Vector2.ZERO
+func _setup_camera() -> void:
+	# Host is always peer 1 → Arena1 at x=0; client → Arena2 at x=4300
+	var arena_x: float = 0.0 if multiplayer.get_unique_id() == 1 else float(Constants.WORLD_SIZE_X + Constants.ARENA_GAP)
+	var cam := $Camera2D
+	cam.limit_left = int(arena_x)
+	cam.limit_right = int(arena_x + Constants.WORLD_SIZE_X)
+	cam.limit_top = 0
+	cam.limit_bottom = int(Constants.WORLD_SIZE_Y)
+	cam.make_current()
+
+func _physics_process(delta: float) -> void:
+	var direction := Vector2.ZERO
 
 	if Input.is_action_pressed("move_left"):
 		direction.x -= 1
@@ -59,21 +82,28 @@ func _physics_process(delta):
 			$DashParticles.emitting = true
 
 	move_and_slide()
+	# Broadcast position to all other peers
+	_rpc_sync_pos.rpc(position)
 	queue_redraw()
 
 	if Input.is_action_just_pressed("attack"):
 		$Sword.swing(_last_facing.angle())
 
-func _draw():
+@rpc("any_peer", "unreliable_ordered")
+func _rpc_sync_pos(pos: Vector2) -> void:
+	if not is_multiplayer_authority():
+		position = pos
+		queue_redraw()
+
+func _draw() -> void:
 	draw_circle(Vector2.ZERO, radius, color)
 	if move_direction == Vector2.ZERO:
 		return
-
-	# Triangle tip sits just beyond the circle edge
-	var tip = move_direction * (radius + 14.0)
-	var perp = move_direction.rotated(PI / 2.0)
-	var base_center = move_direction * (radius + 2.0)
-	var p1 = tip
-	var p2 = base_center + perp * 7.0
-	var p3 = base_center - perp * 7.0
-	draw_colored_polygon(PackedVector2Array([p1, p2, p3]), Color.WHITE)
+	var tip: Vector2 = move_direction * (radius + 14.0)
+	var perp: Vector2 = move_direction.rotated(PI / 2.0)
+	var base_center: Vector2 = move_direction * (radius + 2.0)
+	draw_colored_polygon(PackedVector2Array([
+		tip,
+		base_center + perp * 7.0,
+		base_center - perp * 7.0
+	]), Color.WHITE)

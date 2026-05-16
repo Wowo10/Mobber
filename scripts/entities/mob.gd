@@ -14,6 +14,13 @@ var _wander_timer := 0.0
 
 func _ready() -> void:
 	_pick_wander_dir()
+	# Only the server runs mob physics/AI
+	var networked: bool = multiplayer.multiplayer_peer is ENetMultiplayerPeer
+	if networked and not multiplayer.is_server():
+		set_physics_process(false)
+
+func _process(_delta: float) -> void:
+	queue_redraw()
 
 func _physics_process(delta: float) -> void:
 	match state:
@@ -24,7 +31,6 @@ func _physics_process(delta: float) -> void:
 		State.CHASE:
 			pass  # future: _process_chase(delta, target)
 	move_and_slide()
-	queue_redraw()
 
 func _process_wander(delta: float) -> void:
 	_wander_timer -= delta
@@ -38,12 +44,19 @@ func _pick_wander_dir() -> void:
 	_wander_timer = Constants.MOB_WANDER_INTERVAL + randf_range(-0.5, 0.5)
 
 func take_damage(amount: float) -> void:
+	var networked: bool = multiplayer.multiplayer_peer is ENetMultiplayerPeer
+	if networked and not multiplayer.is_server():
+		return
 	health = max(0.0, health - amount)
-	queue_redraw()
 	if health <= 0.0:
 		die()
 
 func die() -> void:
+	var networked: bool = multiplayer.multiplayer_peer is ENetMultiplayerPeer
+	if networked and multiplayer.is_server():
+		var game := get_tree().root.get_node_or_null("Game")
+		if game and game.has_method("notify_mob_killed"):
+			game.notify_mob_killed(get_parent().get_parent())
 	queue_free()
 
 func _draw() -> void:
