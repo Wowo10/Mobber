@@ -1,9 +1,13 @@
-[gd_scene load_steps=3 format=3 uid="uid://lhp5crgd3o0w"]
+[gd_scene load_steps=5 format=3 uid="uid://lhp5crgd3o0w"]
 
 [ext_resource type="Script" uid="uid://cc81omjvsnbyd" path="res://scripts/entities/player.gd" id="1_ucweq"]
+[ext_resource type="Script" uid="uid://csword1gd0001" path="res://scripts/entities/sword.gd" id="2_sword"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_08t41"]
 radius = 30.0
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_sword"]
+size = Vector2(45, 8)
 
 [node name="Player" type="CharacterBody2D"]
 script = ExtResource("1_ucweq")
@@ -12,3 +16,13 @@ script = ExtResource("1_ucweq")
 shape = SubResource("CircleShape2D_08t41")
 
 [node name="Camera2D" type="Camera2D" parent="."]
+
+[node name="DashParticles" type="CPUParticles2D" parent="."]
+emitting = false
+
+[node name="Sword" type="Area2D" parent="."]
+script = ExtResource("2_sword")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Sword"]
+position = Vector2(52.5, 0)
+shape = SubResource("RectangleShape2D_sword")

@@ -36,4 +36,4 @@ shape = SubResource("WorldBoundaryShape2D_kelw5")
 [node name="MobContainer" type="Node2D" parent="."]
 
 [node name="Player" parent="." instance=ExtResource("2_7h61r")]
-position = Vector2(377, 206)
+position = Vector2(2000, 1500)
