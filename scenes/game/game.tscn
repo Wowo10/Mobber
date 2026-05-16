@@ -33,5 +33,7 @@ shape = SubResource("WorldBoundaryShape2D_0sr1o")
 [node name="RightWall" type="CollisionShape2D" parent="StaticBody2D"]
 shape = SubResource("WorldBoundaryShape2D_kelw5")
 
+[node name="MobContainer" type="Node2D" parent="."]
+
 [node name="Player" parent="." instance=ExtResource("2_7h61r")]
 position = Vector2(377, 206)

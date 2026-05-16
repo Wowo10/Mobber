@@ -6,3 +6,9 @@ const PLAYER_SPEED = 300.0
 const PLAYER_START_RADIUS = 30.0
 const FOOD_RADIUS = 5.0
 const FOOD_COUNT = 200
+
+const MOB_RADIUS = 15.0
+const MOB_SPEED = 120.0
+const MOB_MAX_HEALTH = 30.0
+const MOB_WANDER_INTERVAL = 2.0
+const MOB_COUNT = 5

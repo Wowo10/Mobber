@@ -1,16 +1,13 @@
 extends Node2D
 
 const GRID_SIZE = 100
+const MOB_SCENE = preload("res://scenes/entities/mob.tscn")
 
-# Called when the node enters the scene tree for the first time.
 func _ready() -> void:
-	pass # Replace with function body.
+	_spawn_mobs()
 
-
-# Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	pass
-
 
 func _draw() -> void:
 	for x in range(0, Constants.WORLD_SIZE_X + 1, GRID_SIZE):
@@ -34,3 +31,14 @@ func _draw() -> void:
 		false,
 		8.0
 	)
+
+func _spawn_mobs() -> void:
+	var container := $MobContainer
+	var margin: float = Constants.MOB_RADIUS + 10.0
+	for i in Constants.MOB_COUNT:
+		var mob := MOB_SCENE.instantiate()
+		mob.position = Vector2(
+			randf_range(margin, Constants.WORLD_SIZE_X - margin),
+			randf_range(margin, Constants.WORLD_SIZE_Y - margin)
+		)
+		container.add_child(mob)
