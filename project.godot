@@ -18,6 +18,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 Constants="*res://autoloads/Constants.gd"
+WebRTCSignaling="*res://autoloads/WebRTCSignaling.gd"
 
 [display]
 

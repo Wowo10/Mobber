@@ -1,0 +1,12 @@
+{
+  "name": "mobber-signaling",
+  "version": "1.0.0",
+  "description": "WebRTC signaling server for Mobber",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

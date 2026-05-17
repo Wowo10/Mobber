@@ -9,7 +9,7 @@ var _leaving: bool = false
 var _scrubbed: bool = false
 
 func _ready() -> void:
-	_networked = multiplayer.multiplayer_peer is ENetMultiplayerPeer
+	_networked = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	_setup_skill_bar()
 
 	if not _networked:

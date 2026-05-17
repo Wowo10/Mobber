@@ -3,3 +3,4 @@
 /android/
 *.pck
 *.x86_64
+**/node_modules/**
