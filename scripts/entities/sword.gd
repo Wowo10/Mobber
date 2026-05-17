@@ -35,19 +35,21 @@ func _end_swing() -> void:
 func _on_body_entered(body: Node2D) -> void:
 	if not body.has_method("take_damage"):
 		return
+	var knockback: Vector2 = (body.global_position - get_parent().global_position).normalized() \
+		* Constants.MOB_KNOCKBACK
 	var networked: bool = multiplayer.multiplayer_peer is ENetMultiplayerPeer
 	if not networked or multiplayer.is_server():
-		body.take_damage(Constants.SWORD_DAMAGE)
+		body.take_damage(Constants.SWORD_DAMAGE, knockback)
 	else:
-		_request_hit.rpc_id(1, body.get_path())
+		_request_hit.rpc_id(1, body.get_path(), knockback)
 
 @rpc("any_peer", "reliable")
-func _request_hit(mob_path: NodePath) -> void:
+func _request_hit(mob_path: NodePath, knockback: Vector2) -> void:
 	if not multiplayer.is_server():
 		return
 	var mob := get_node_or_null(mob_path)
 	if mob and mob.has_method("take_damage"):
-		mob.take_damage(Constants.SWORD_DAMAGE)
+		mob.take_damage(Constants.SWORD_DAMAGE, knockback)
 
 func _draw() -> void:
 	var r := Constants.PLAYER_START_RADIUS

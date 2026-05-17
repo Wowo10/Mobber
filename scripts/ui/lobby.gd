@@ -2,6 +2,13 @@ extends CanvasLayer
 
 const GAME_SCENE = "res://scenes/game/game.tscn"
 
+func _ready() -> void:
+	# Null any leftover peer from a previous game so SceneMultiplayer is clean.
+	# We do this here rather than in game.gd _leave_game so the scene change
+	# happens while the peer is still live — letting SceneMultiplayer disconnect
+	# its tree_exited hooks on tracked nodes before they exit the tree.
+	multiplayer.multiplayer_peer = null
+
 func _on_host_pressed() -> void:
 	$VBox/StatusLabel.text = "Hosting..."
 	var peer := ENetMultiplayerPeer.new()

@@ -8,8 +8,8 @@ var _last_facing := Vector2.RIGHT
 
 var _dashing := false
 var _dash_timer := 0.0
-var _dash_cooldown := 0.0
-var _attack_cooldown := 0.0
+var dash_cooldown := 0.0
+var attack_cooldown := 0.0
 
 func _ready() -> void:
 	# MultiplayerSpawner doesn't sync authority — derive it from node name "Player_N"
@@ -72,25 +72,51 @@ func _physics_process(delta: float) -> void:
 			_dashing = false
 			$DashParticles.emitting = false
 	else:
-		if _dash_cooldown > 0.0:
-			_dash_cooldown -= delta
+		if dash_cooldown > 0.0:
+			dash_cooldown -= delta
 		velocity = move_direction * SPEED
-		if Input.is_action_just_pressed("dash") and _dash_cooldown <= 0.0:
+		if Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0:
 			_dashing = true
 			_dash_timer = Constants.PLAYER_DASH_DURATION
-			_dash_cooldown = Constants.PLAYER_DASH_COOLDOWN
+			dash_cooldown = Constants.PLAYER_DASH_COOLDOWN
 			$DashParticles.direction = -_last_facing
 			$DashParticles.emitting = true
 
 	move_and_slide()
-	_rpc_sync_pos.rpc(position)
+	_push_mobs()
+	if multiplayer.multiplayer_peer is ENetMultiplayerPeer:
+		_rpc_sync_pos.rpc(position)
 	queue_redraw()
 
-	if _attack_cooldown > 0.0:
-		_attack_cooldown -= delta
+	if attack_cooldown > 0.0:
+		attack_cooldown -= delta
 	if Input.is_action_just_pressed("attack") and not $Sword.swinging:
 		$Sword.swing(_last_facing.angle())
-		_attack_cooldown = Constants.SWORD_SWING_DURATION
+		attack_cooldown = Constants.SWORD_SWING_DURATION
+
+func _push_mobs() -> void:
+	var networked := multiplayer.multiplayer_peer is ENetMultiplayerPeer
+	var query := PhysicsShapeQueryParameters2D.new()
+	var circle := CircleShape2D.new()
+	circle.radius = radius + Constants.MOB_RADIUS
+	query.shape = circle
+	query.transform = global_transform
+	query.collision_mask = 1
+	query.exclude = [get_rid()]
+	for hit in get_world_2d().direct_space_state.intersect_shape(query, 16):
+		var body: Node2D = hit["collider"]
+		if not body.has_method("apply_push"):
+			continue
+		var dir := body.global_position - global_position
+		if dir.is_zero_approx():
+			continue
+		var impulse := dir.normalized() * Constants.MOB_PUSH_FORCE * (6.0 if _dashing else 1.0)
+		if not networked or multiplayer.is_server():
+			body.apply_push(impulse)
+		else:
+			var arena: Node = body.get_parent().get_parent()
+			if arena.is_inside_tree():
+				arena.rpc_push_mob.rpc_id(1, body.name, impulse)
 
 @rpc("any_peer", "unreliable_ordered")
 func _rpc_sync_pos(pos: Vector2) -> void:

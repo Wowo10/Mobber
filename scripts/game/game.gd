@@ -6,6 +6,7 @@ var _peer_to_arena: Dictionary = {}
 var _peer_to_player: Dictionary = {}
 var _networked: bool = false
 var _leaving: bool = false
+var _scrubbed: bool = false
 
 func _ready() -> void:
 	_networked = multiplayer.multiplayer_peer is ENetMultiplayerPeer
@@ -48,13 +49,9 @@ func _rpc_spawn_players(client_id: int) -> void:
 	_spawn_player(1)
 	_spawn_player(client_id)
 
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_EXIT_TREE and multiplayer.multiplayer_peer != null:
-		# Null peer before children exit tree so MultiplayerSynchronizers skip
-		# process_simplify_path — otherwise "Node not found: Game" is thrown.
-		multiplayer.multiplayer_peer = null
-
 func _on_server_disconnected() -> void:
+	_scrub_multiplayer_hooks()
+	multiplayer.multiplayer_peer = null
 	_show_disconnect("Host disconnected. Returning to lobby...")
 
 func _on_peer_disconnected(id: int) -> void:
@@ -73,17 +70,39 @@ func _show_disconnect(msg: String) -> void:
 	await get_tree().create_timer(3.0).timeout
 	_leave_game()
 
-func _leave_game() -> void:
-	# Remove mobs synchronously so their MultiplayerSynchronizer _exit_tree
-	# runs while "Game" is still in the scene tree — prevents scene cache errors.
-	# Null peer first so MultiplayerSynchronizer._exit_tree skips path caching.
-	multiplayer.multiplayer_peer = null
+func _scrub_multiplayer_hooks() -> void:
+	if _scrubbed:
+		return
+	_scrubbed = true
+	# Godot 4.5: SceneCacheInterface clears its callable refs when processing
+	# despawn packets but leaves signal connections intact. When nodes then exit
+	# the tree the dangling callable causes a disconnect error. Pre-emptively
+	# remove all connections from the signals SceneMultiplayer tracks.
+	# Mobs must be freed before the spawner exits the tree; if the spawner's
+	# _stop() runs while MobContainer is gone it logs "!node" for every mob.
 	for arena in [$Arena1, $Arena2]:
 		var mc: Node = arena.get_node_or_null("MobContainer")
-		if mc == null:
-			continue
-		for mob in mc.get_children():
-			mob.free()
+		if mc:
+			for mob in mc.get_children():
+				_clear_signal(mob.tree_exiting)
+			mc.free()
+		var spawner: Node = arena.get_node_or_null("MobSpawner")
+		if spawner:
+			_clear_signal(spawner.tree_exited)
+	for player in $PlayerContainer.get_children():
+		_clear_signal(player.tree_exited)
+	_clear_signal(tree_exited)
+
+func _clear_signal(sig: Signal) -> void:
+	for c in sig.get_connections():
+		var cb: Callable = c["callable"]
+		if cb.is_valid() and sig.is_connected(cb):
+			sig.disconnect(cb)
+
+func _leave_game() -> void:
+	_scrub_multiplayer_hooks()
+	if _networked:
+		multiplayer.multiplayer_peer = null
 	get_tree().change_scene_to_file("res://scenes/ui/lobby.tscn")
 
 func _spawn_player(peer_id: int) -> void:
@@ -183,5 +202,5 @@ func _process(_delta: float) -> void:
 	if player == null:
 		return
 	var bar := $HUD/SkillBar
-	bar.get_node("AttackSlot").set_cooldown(player._attack_cooldown, Constants.SWORD_SWING_DURATION)
-	bar.get_node("DashSlot").set_cooldown(player._dash_cooldown, Constants.PLAYER_DASH_COOLDOWN)
+	bar.get_node("AttackSlot").set_cooldown(player.attack_cooldown, Constants.SWORD_SWING_DURATION)
+	bar.get_node("DashSlot").set_cooldown(player.dash_cooldown, Constants.PLAYER_DASH_COOLDOWN)

@@ -24,3 +24,8 @@ const SWORD_LENGTH = 45.0
 const SWORD_WIDTH = 8.0
 const SWORD_SWING_DURATION = 0.25
 const SWORD_ARC_HALF = 70.0
+
+const MOB_PUSH_FORCE = 140.0      # must exceed MOB_FRICTION/60 or contact push cancels out
+const MOB_KNOCKBACK = 5000.0
+const MOB_FRICTION = 1500.0      # higher = faster stop after knockback
+const MOB_MAX_EXTERNAL_SPEED = 600.0

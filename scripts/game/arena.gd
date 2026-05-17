@@ -42,6 +42,14 @@ func spawn_mob() -> void:
 func get_mob_count() -> int:
 	return $MobContainer.get_child_count()
 
+@rpc("any_peer", "unreliable_ordered")
+func rpc_push_mob(mob_name: StringName, impulse: Vector2) -> void:
+	if not multiplayer.is_server():
+		return
+	var mob := $MobContainer.get_node_or_null(NodePath(mob_name))
+	if mob:
+		mob.apply_push(impulse)
+
 func _draw() -> void:
 	for x in range(0, Constants.WORLD_SIZE_X + 1, GRID_SIZE):
 		draw_line(Vector2(x, 0), Vector2(x, Constants.WORLD_SIZE_Y), Color(0.5, 0.5, 0.5, 0.4), 1.0)
