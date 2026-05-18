@@ -17,6 +17,7 @@ func _ready() -> void:
 	if parts.size() == 2 and parts[0] == "Player":
 		set_multiplayer_authority(parts[1].to_int())
 
+	add_to_group("players")
 	_setup_particles()
 	if not is_multiplayer_authority():
 		set_physics_process(false)

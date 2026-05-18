@@ -1,7 +1,7 @@
 extends Node
 
-const WORLD_SIZE_X = 4000
-const WORLD_SIZE_Y = 3000
+const WORLD_SIZE_X = 2667
+const WORLD_SIZE_Y = 2000
 const ARENA_GAP = 300
 const NET_PORT = 7777
 const SIGNALING_URL = "wss://mobber.onrender.com"
@@ -16,6 +16,7 @@ const MOB_SPEED = 120.0
 const MOB_MAX_HEALTH = 30.0
 const MOB_WANDER_INTERVAL = 2.0
 const MOB_COUNT = 5
+const MOB_WIN_COUNT = 50
 
 const PLAYER_DASH_SPEED = 2400.0
 const PLAYER_DASH_DURATION = 0.1
@@ -31,3 +32,7 @@ const MOB_PUSH_FORCE = 140.0      # must exceed MOB_FRICTION/60 or contact push 
 const MOB_KNOCKBACK = 5000.0
 const MOB_FRICTION = 1500.0      # higher = faster stop after knockback
 const MOB_MAX_EXTERNAL_SPEED = 600.0
+
+const MOB_FLEE_SPEED = 220.0
+const MOB_FLEE_MAX_HEALTH = 1.0
+const MOB_FLEE_RADIUS = 9.0

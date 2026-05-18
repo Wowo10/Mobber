@@ -3,6 +3,7 @@ extends CanvasLayer
 const GAME_SCENE = "res://scenes/game/game.tscn"
 
 var _is_web: bool = false
+var _room_code: String = ""
 
 func _ready() -> void:
 	multiplayer.multiplayer_peer = null
@@ -62,9 +63,17 @@ func _on_join_pressed() -> void:
 		multiplayer.connection_failed.connect(_on_failed)
 
 func _on_lobby_created(code: String) -> void:
-	%CodeDisplay.text = "Room Code: %s" % code
+	_room_code = code
+	%CodeDisplay.text = "Room Code: %s  [click to copy]" % code
 	%CodeDisplay.visible = true
 	$VBox/StatusLabel.text = "Waiting for opponent..."
+
+func _on_code_display_pressed() -> void:
+	if OS.get_name() == "Web":
+		JavaScriptBridge.eval("navigator.clipboard.writeText('%s').catch(()=>{})" % _room_code)
+	else:
+		DisplayServer.clipboard_set(_room_code)
+	$VBox/StatusLabel.text = "Copied!"
 
 func _on_game_ready() -> void:
 	get_tree().change_scene_to_file(GAME_SCENE)

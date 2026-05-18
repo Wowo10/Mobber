@@ -144,8 +144,8 @@ func _update_hud_local(a1: int, a2: int) -> void:
 	var my_is_arena1 := (not _networked) or multiplayer.get_unique_id() == 1
 	var my    := a1 if my_is_arena1 else a2
 	var enemy := a2 if my_is_arena1 else a1
-	$HUD/MyLabel.text    = "MY ARENA\n%d / 100" % my
-	$HUD/EnemyLabel.text = "ENEMY ARENA\n%d / 100" % enemy
+	$HUD/MyLabel.text    = "MY ARENA\n%d / %d" % [my, Constants.MOB_WIN_COUNT]
+	$HUD/EnemyLabel.text = "ENEMY ARENA\n%d / %d" % [enemy, Constants.MOB_WIN_COUNT]
 
 @rpc("authority", "reliable")
 func _rpc_update_hud(a1: int, a2: int) -> void:
@@ -153,10 +153,10 @@ func _rpc_update_hud(a1: int, a2: int) -> void:
 
 # --- Win condition ---
 func _check_win(a1: int, a2: int) -> void:
-	if a1 >= 100:
+	if a1 >= Constants.MOB_WIN_COUNT:
 		_rpc_game_over(1)
 		_rpc_game_over.rpc(1)
-	elif a2 >= 100:
+	elif a2 >= Constants.MOB_WIN_COUNT:
 		_rpc_game_over(2)
 		_rpc_game_over.rpc(2)
 

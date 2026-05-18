@@ -1,6 +1,9 @@
 extends CharacterBody2D
 
 enum State { WANDER, FLEE, CHASE }
+enum MobType { BASIC, FLEEING }
+
+var mob_type: MobType = MobType.BASIC
 
 var state: State = State.WANDER
 var radius: float = Constants.MOB_RADIUS
@@ -14,6 +17,13 @@ var _wander_timer := 0.0
 var _external_velocity := Vector2.ZERO
 
 func _ready() -> void:
+	if mob_type == MobType.FLEEING:
+		max_health = Constants.MOB_FLEE_MAX_HEALTH
+		health = Constants.MOB_FLEE_MAX_HEALTH
+		radius = Constants.MOB_FLEE_RADIUS
+		color = Color(0.2, 0.45, 1.0)
+		state = State.FLEE
+
 	_pick_wander_dir()
 	var networked: bool = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked and not multiplayer.is_server():
@@ -30,9 +40,9 @@ func _physics_process(delta: float) -> void:
 		State.WANDER:
 			_process_wander(delta)
 		State.FLEE:
-			pass  # future: _process_flee(delta, target)
+			_process_flee(delta)
 		State.CHASE:
-			pass  # future: _process_chase(delta, target)
+			pass
 	velocity += _external_velocity
 	move_and_slide()
 
@@ -41,6 +51,27 @@ func _process_wander(delta: float) -> void:
 	if _wander_timer <= 0.0:
 		_pick_wander_dir()
 	velocity = _wander_dir * Constants.MOB_SPEED
+
+func _process_flee(delta: float) -> void:
+	var target := _get_nearest_player()
+	if target == null:
+		_process_wander(delta)
+		return
+	var away := (global_position - target.global_position).normalized()
+	if away == Vector2.ZERO:
+		away = Vector2(randf() - 0.5, randf() - 0.5).normalized()
+	velocity = away * Constants.MOB_FLEE_SPEED
+
+func _get_nearest_player() -> Node2D:
+	var players := get_tree().get_nodes_in_group("players")
+	var nearest_dist := INF
+	var nearest: Node2D = null
+	for p in players:
+		var d := global_position.distance_to(p.global_position)
+		if d < nearest_dist:
+			nearest_dist = d
+			nearest = p
+	return nearest
 
 func _pick_wander_dir() -> void:
 	var angle := randf_range(0.0, TAU)

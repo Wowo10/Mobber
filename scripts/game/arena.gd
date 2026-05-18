@@ -28,11 +28,15 @@ func _build_walls() -> void:
 		cs.shape = shape
 		body.add_child(cs)
 
-func spawn_mob() -> void:
+func spawn_mob(type: int = -1) -> void:
 	if not multiplayer.is_server():
 		return
 	var margin: float = Constants.MOB_RADIUS + 10.0
 	var mob := MOB_SCENE.instantiate()
+	if type == -1:
+		mob.mob_type = mob.MobType.FLEEING if randf() < 0.35 else mob.MobType.BASIC
+	else:
+		mob.mob_type = type
 	mob.position = Vector2(
 		randf_range(margin, Constants.WORLD_SIZE_X - margin),
 		randf_range(margin, Constants.WORLD_SIZE_Y - margin)
