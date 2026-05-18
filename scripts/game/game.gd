@@ -25,6 +25,7 @@ func _ready() -> void:
 		_peer_to_arena[1] = $Arena1
 	else:
 		multiplayer.server_disconnected.connect(_on_server_disconnected)
+		await get_tree().process_frame
 		_rpc_client_ready.rpc_id(1)
 
 @rpc("any_peer", "reliable")

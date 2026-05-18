@@ -21,7 +21,7 @@ var _conns: Dictionary = {}
 var _is_host: bool = false
 var _lobby_code: String = ""
 var _joined: bool = false
-var _mp_assigned: bool = false
+var _game_ready_emitted: bool = false
 
 
 func _ready() -> void:
@@ -45,7 +45,7 @@ func _open(url: String) -> void:
 	_mp = WebRTCMultiplayerPeer.new()
 	_conns.clear()
 	_joined = false
-	_mp_assigned = false
+	_game_ready_emitted = false
 	var err: int = _ws.connect_to_url(url)
 	if err != OK:
 		error.emit("Cannot reach signaling server: %s" % error_string(err))
@@ -66,24 +66,18 @@ func _process(_delta: float) -> void:
 				if msg is Dictionary:
 					_on_msg(msg)
 		WebSocketPeer.STATE_CLOSED:
-			if not _mp_assigned:
-				set_process(false)
+			set_process(false)
+			if not _game_ready_emitted:
 				error.emit("Signaling server disconnected")
 
-	if not _mp_assigned and _conns.size() > 0:
-		_mp.poll()
-		var all_connected := true
-		for conn in _conns.values():
-			if conn.get_connection_state() != WebRTCPeerConnection.STATE_CONNECTED:
-				all_connected = false
-				break
-		if all_connected:
-			_mp_assigned = true
-			multiplayer.multiplayer_peer = _mp
+	if not _game_ready_emitted and _conns.size() > 0:
+		if _mp.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
+			_game_ready_emitted = true
 			if _is_host:
 				_send({type = _CMD_SEAL, id = 0, data = ""})
 			game_ready.emit()
-			set_process(false)
+			# Keep _process alive so _ws.poll() keeps flushing queued ICE candidates
+			# until the signaling server closes the socket after sealing
 
 
 func _on_msg(msg: Dictionary) -> void:
@@ -96,6 +90,7 @@ func _on_msg(msg: Dictionary) -> void:
 				_mp.create_server()
 			else:
 				_mp.create_client(id)
+			multiplayer.multiplayer_peer = _mp
 		_CMD_JOIN:
 			if _is_host:
 				lobby_created.emit(data)

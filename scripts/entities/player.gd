@@ -84,7 +84,7 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 	_push_mobs()
-	if multiplayer.multiplayer_peer is ENetMultiplayerPeer:
+	if not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer):
 		_rpc_sync_pos.rpc(position)
 	queue_redraw()
 
@@ -95,7 +95,7 @@ func _physics_process(delta: float) -> void:
 		attack_cooldown = Constants.SWORD_SWING_DURATION
 
 func _push_mobs() -> void:
-	var networked := multiplayer.multiplayer_peer is ENetMultiplayerPeer
+	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	var query := PhysicsShapeQueryParameters2D.new()
 	var circle := CircleShape2D.new()
 	circle.radius = radius + Constants.MOB_RADIUS

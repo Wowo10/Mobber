@@ -15,7 +15,7 @@ var _external_velocity := Vector2.ZERO
 
 func _ready() -> void:
 	_pick_wander_dir()
-	var networked: bool = multiplayer.multiplayer_peer is ENetMultiplayerPeer
+	var networked: bool = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked and not multiplayer.is_server():
 		set_physics_process(false)
 
@@ -51,7 +51,7 @@ func apply_push(impulse: Vector2) -> void:
 	_external_velocity = (_external_velocity + impulse).limit_length(Constants.MOB_MAX_EXTERNAL_SPEED)
 
 func take_damage(amount: float, knockback: Vector2 = Vector2.ZERO) -> void:
-	var networked: bool = multiplayer.multiplayer_peer is ENetMultiplayerPeer
+	var networked: bool = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked and not multiplayer.is_server():
 		return
 	if knockback != Vector2.ZERO:
@@ -63,7 +63,7 @@ func take_damage(amount: float, knockback: Vector2 = Vector2.ZERO) -> void:
 func die() -> void:
 	if not is_inside_tree():
 		return
-	var networked: bool = multiplayer.multiplayer_peer is ENetMultiplayerPeer
+	var networked: bool = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked and multiplayer.is_server():
 		var game := get_tree().root.get_node_or_null("Game")
 		if game and game.has_method("notify_mob_killed"):

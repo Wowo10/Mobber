@@ -37,7 +37,7 @@ func _on_body_entered(body: Node2D) -> void:
 		return
 	var knockback: Vector2 = (body.global_position - get_parent().global_position).normalized() \
 		* Constants.MOB_KNOCKBACK
-	var networked: bool = multiplayer.multiplayer_peer is ENetMultiplayerPeer
+	var networked: bool = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if not networked or multiplayer.is_server():
 		body.take_damage(Constants.SWORD_DAMAGE, knockback)
 	else:
