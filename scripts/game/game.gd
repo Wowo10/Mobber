@@ -4,9 +4,11 @@ const PLAYER_SCENE = preload("res://scenes/entities/player.tscn")
 
 var _peer_to_arena: Dictionary = {}
 var _peer_to_player: Dictionary = {}
+var _peer_to_archetype: Dictionary = {}
 var _networked: bool = false
 var _leaving: bool = false
 var _scrubbed: bool = false
+var _pending_kills: Dictionary = {}  # arena -> count of mobs dying this frame
 
 func _ready() -> void:
 	_networked = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
@@ -14,8 +16,11 @@ func _ready() -> void:
 
 	if not _networked:
 		_peer_to_arena[1] = $Arena1
+		_peer_to_archetype[1] = PlayerPrefs.archetype
 		_spawn_player(1)
-		for i in Constants.MOB_COUNT:
+		var center := Vector2(Constants.WORLD_SIZE_X * 0.5, Constants.WORLD_SIZE_Y * 0.5)
+		$Arena1.spawn_mob(0, center)
+		for i in Constants.MOB_COUNT - 1:
 			$Arena1.spawn_mob()
 		_push_hud_update()
 		return
@@ -26,27 +31,34 @@ func _ready() -> void:
 	else:
 		multiplayer.server_disconnected.connect(_on_server_disconnected)
 		await get_tree().process_frame
-		_rpc_client_ready.rpc_id(1)
+		_rpc_client_ready.rpc_id(1, PlayerPrefs.archetype)
 
 @rpc("any_peer", "reliable")
-func _rpc_client_ready() -> void:
+func _rpc_client_ready(arch: int) -> void:
 	if not multiplayer.is_server():
 		return
 	var id := multiplayer.get_remote_sender_id()
 	_peer_to_arena[id] = $Arena2
-	for i in Constants.MOB_COUNT:
+	_peer_to_archetype[1] = PlayerPrefs.archetype
+	_peer_to_archetype[id] = arch
+	var center := Vector2(Constants.WORLD_SIZE_X * 0.5, Constants.WORLD_SIZE_Y * 0.5)
+	$Arena1.spawn_mob(0, center)
+	for i in Constants.MOB_COUNT - 1:
 		$Arena1.spawn_mob()
-	for i in Constants.MOB_COUNT:
+	$Arena2.spawn_mob(0, center)
+	for i in Constants.MOB_COUNT - 1:
 		$Arena2.spawn_mob()
 	_spawn_player(1)
 	_spawn_player(id)
-	_rpc_spawn_players.rpc(id)
+	_rpc_spawn_players.rpc(id, _peer_to_archetype[1], _peer_to_archetype[id])
 	_push_hud_update()
 
 @rpc("authority", "reliable")
-func _rpc_spawn_players(client_id: int) -> void:
+func _rpc_spawn_players(client_id: int, host_arch: int, client_arch: int) -> void:
 	_peer_to_arena[1] = $Arena1
 	_peer_to_arena[client_id] = $Arena2
+	_peer_to_archetype[1] = host_arch
+	_peer_to_archetype[client_id] = client_arch
 	_spawn_player(1)
 	_spawn_player(client_id)
 
@@ -113,6 +125,7 @@ func _spawn_player(peer_id: int) -> void:
 	var player := PLAYER_SCENE.instantiate()
 	player.name = "Player_%d" % peer_id
 	player.position = arena.position + Vector2(Constants.WORLD_SIZE_X * 0.5, Constants.WORLD_SIZE_Y * 0.5)
+	player.archetype = _peer_to_archetype.get(peer_id, 0)
 	$PlayerContainer.add_child(player, true)
 	player.set_multiplayer_authority(peer_id)
 	_peer_to_player[peer_id] = player
@@ -123,13 +136,16 @@ func notify_mob_killed(arena: Node2D) -> void:
 	var opponent: Node2D = $Arena2 if arena == $Arena1 else $Arena1
 	opponent.spawn_mob()
 	opponent.spawn_mob()
-	# Dying mob not freed yet; subtract 1 from killer's arena count.
-	var a1: int = $Arena1.get_mob_count() - (1 if arena == $Arena1 else 0)
-	var a2: int = $Arena2.get_mob_count() - (1 if arena == $Arena2 else 0)
+	# Accumulate kills this frame — queue_free runs after deferred calls,
+	# so every mob that died this frame is still counted by get_mob_count().
+	_pending_kills[arena] = _pending_kills.get(arena, 0) + 1
+	var a1: int = $Arena1.get_mob_count() - _pending_kills.get($Arena1, 0)
+	var a2: int = $Arena2.get_mob_count() - _pending_kills.get($Arena2, 0)
 	_update_hud_local(a1, a2)
 	if _networked:
 		_rpc_update_hud.rpc(a1, a2)
 	_check_win(a1, a2)
+	_pending_kills.clear.call_deferred()
 
 # --- HUD ---
 
@@ -188,12 +204,22 @@ func _setup_skill_bar() -> void:
 	bar.get_node("AttackSlot").icon_color = Color(0.9, 0.65, 0.15)
 	bar.get_node("DashSlot").key_text = "SHF"
 	bar.get_node("DashSlot").icon_color = Color(0.25, 0.55, 1.0)
-	bar.get_node("Skill1Slot").key_text = "1"
-	bar.get_node("Skill1Slot").available = false
-	bar.get_node("Skill2Slot").key_text = "2"
-	bar.get_node("Skill2Slot").available = false
-	bar.get_node("Skill3Slot").key_text = "3"
-	bar.get_node("Skill3Slot").available = false
+	var s1 := bar.get_node("Skill1Slot")
+	var s2 := bar.get_node("Skill2Slot")
+	var s3 := bar.get_node("Skill3Slot")
+	s1.key_text = "1"
+	s2.key_text = "2"
+	s3.key_text = "3"
+	s1.available = true
+	s2.available = false
+	s3.available = false
+	match PlayerPrefs.archetype:
+		Constants.ARCHETYPE_KNIGHT:
+			s1.icon_color = Color(0.75, 0.75, 0.9)
+			s2.icon_color = Color(0.9, 0.75, 0.2)
+		Constants.ARCHETYPE_PIRATE:
+			s1.icon_color = Color(0.95, 0.7, 0.1)
+			s2.icon_color = Color(0.3, 0.85, 0.45)
 
 func _process(_delta: float) -> void:
 	if _leaving:
@@ -205,3 +231,5 @@ func _process(_delta: float) -> void:
 	var bar := $HUD/SkillBar
 	bar.get_node("AttackSlot").set_cooldown(player.attack_cooldown, Constants.SWORD_SWING_DURATION)
 	bar.get_node("DashSlot").set_cooldown(player.dash_cooldown, Constants.PLAYER_DASH_COOLDOWN)
+	bar.get_node("Skill1Slot").set_cooldown(player.skill1_cooldown, player.skill1_max_cooldown)
+	bar.get_node("Skill2Slot").set_cooldown(player.skill2_cooldown, player.skill2_max_cooldown)

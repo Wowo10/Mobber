@@ -28,7 +28,7 @@ func _build_walls() -> void:
 		cs.shape = shape
 		body.add_child(cs)
 
-func spawn_mob(type: int = -1) -> void:
+func spawn_mob(type: int = -1, near_pos: Vector2 = Vector2(-1.0, -1.0)) -> void:
 	if not multiplayer.is_server():
 		return
 	var margin: float = Constants.MOB_RADIUS + 10.0
@@ -37,10 +37,18 @@ func spawn_mob(type: int = -1) -> void:
 		mob.mob_type = mob.MobType.FLEEING if randf() < 0.35 else mob.MobType.BASIC
 	else:
 		mob.mob_type = type
-	mob.position = Vector2(
-		randf_range(margin, Constants.WORLD_SIZE_X - margin),
-		randf_range(margin, Constants.WORLD_SIZE_Y - margin)
-	)
+	if near_pos.x >= 0.0:
+		var angle := randf_range(0.0, TAU)
+		var dist := randf_range(100.0, 220.0)
+		mob.position = Vector2(
+			clampf(near_pos.x + cos(angle) * dist, margin, Constants.WORLD_SIZE_X - margin),
+			clampf(near_pos.y + sin(angle) * dist, margin, Constants.WORLD_SIZE_Y - margin)
+		)
+	else:
+		mob.position = Vector2(
+			randf_range(margin, Constants.WORLD_SIZE_X - margin),
+			randf_range(margin, Constants.WORLD_SIZE_Y - margin)
+		)
 	$MobContainer.add_child(mob, true)
 
 func get_mob_count() -> int:

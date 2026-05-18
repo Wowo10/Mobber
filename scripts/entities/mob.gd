@@ -3,7 +3,11 @@ extends CharacterBody2D
 enum State { WANDER, FLEE, CHASE }
 enum MobType { BASIC, FLEEING }
 
-var mob_type: MobType = MobType.BASIC
+var mob_type: MobType = MobType.BASIC:
+	set(v):
+		mob_type = v
+		if is_inside_tree():
+			_apply_mob_type()
 
 var state: State = State.WANDER
 var radius: float = Constants.MOB_RADIUS
@@ -16,7 +20,7 @@ var _wander_dir := Vector2.ZERO
 var _wander_timer := 0.0
 var _external_velocity := Vector2.ZERO
 
-func _ready() -> void:
+func _apply_mob_type() -> void:
 	if mob_type == MobType.FLEEING:
 		max_health = Constants.MOB_FLEE_MAX_HEALTH
 		health = Constants.MOB_FLEE_MAX_HEALTH
@@ -24,6 +28,9 @@ func _ready() -> void:
 		color = Color(0.2, 0.45, 1.0)
 		state = State.FLEE
 
+func _ready() -> void:
+	add_to_group("mobs")
+	_apply_mob_type()
 	_pick_wander_dir()
 	var networked: bool = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked and not multiplayer.is_server():

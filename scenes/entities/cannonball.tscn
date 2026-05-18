@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=3 uid="uid://cnonball01sc1"]
+
+[ext_resource type="Script" uid="uid://cnonball01gd1" path="res://scripts/entities/cannonball.gd" id="1_cannon"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_cannon"]
+radius = 8.0
+
+[node name="Cannonball" type="Area2D"]
+collision_mask = 1
+script = ExtResource("1_cannon")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_cannon")

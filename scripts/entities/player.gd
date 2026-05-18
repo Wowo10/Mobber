@@ -1,15 +1,25 @@
 extends CharacterBody2D
 
 const SPEED = 800.0
+const CANNONBALL_SCENE = preload("res://scenes/entities/cannonball.tscn")
+
 var radius = 30.0
 var color = Color(0.33, 0.29, 0.87)
 var move_direction = Vector2.ZERO
 var _last_facing := Vector2.RIGHT
+var archetype: int = 0  # set by game.gd before add_child
 
 var _dashing := false
 var _dash_timer := 0.0
 var dash_cooldown := 0.0
 var attack_cooldown := 0.0
+var skill1_cooldown := 0.0
+var skill2_cooldown := 0.0
+var skill1_max_cooldown := 1.0
+var skill2_max_cooldown := 1.0
+var _speed_boost_timer := 0.0
+var _spinning := false
+var _spin_timer := 0.0
 
 func _ready() -> void:
 	# MultiplayerSpawner doesn't sync authority — derive it from node name "Player_N"
@@ -17,6 +27,7 @@ func _ready() -> void:
 	if parts.size() == 2 and parts[0] == "Player":
 		set_multiplayer_authority(parts[1].to_int())
 
+	_apply_archetype()
 	add_to_group("players")
 	_setup_particles()
 	if not is_multiplayer_authority():
@@ -24,6 +35,17 @@ func _ready() -> void:
 		$Camera2D.enabled = false
 		return
 	_setup_camera()
+
+func _apply_archetype() -> void:
+	match archetype:
+		Constants.ARCHETYPE_KNIGHT:
+			color = Color(0.6, 0.65, 0.85)
+			skill1_max_cooldown = Constants.SKILL_SPIN_COOLDOWN
+			skill2_max_cooldown = Constants.SKILL_WARCRY_COOLDOWN
+		Constants.ARCHETYPE_PIRATE:
+			color = Color(0.8, 0.35, 0.1)
+			skill1_max_cooldown = Constants.SKILL_CANNON_COOLDOWN
+			skill2_max_cooldown = Constants.SKILL_BLINK_COOLDOWN
 
 func _setup_particles() -> void:
 	var p := $DashParticles
@@ -66,6 +88,22 @@ func _physics_process(delta: float) -> void:
 		_last_facing = move_direction
 		$Sword.set_facing(_last_facing.angle())
 
+	if attack_cooldown > 0.0:
+		attack_cooldown -= delta
+	if skill1_cooldown > 0.0:
+		skill1_cooldown = max(0.0, skill1_cooldown - delta)
+	if skill2_cooldown > 0.0:
+		skill2_cooldown = max(0.0, skill2_cooldown - delta)
+	if _speed_boost_timer > 0.0:
+		_speed_boost_timer = max(0.0, _speed_boost_timer - delta)
+
+	if _spinning:
+		_spin_timer -= delta
+		$Sword.rotation += Constants.SKILL_SPIN_SPEED * delta
+		if _spin_timer <= 0.0:
+			_spinning = false
+			$Sword.exit_spin()
+
 	if _dashing:
 		_dash_timer -= delta
 		velocity = _last_facing * Constants.PLAYER_DASH_SPEED
@@ -75,7 +113,8 @@ func _physics_process(delta: float) -> void:
 	else:
 		if dash_cooldown > 0.0:
 			dash_cooldown -= delta
-		velocity = move_direction * SPEED
+		var speed_mult: float = Constants.SKILL_WARCRY_SPEED_MULT if _speed_boost_timer > 0.0 else 1.0
+		velocity = move_direction * SPEED * speed_mult
 		if Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0:
 			_dashing = true
 			_dash_timer = Constants.PLAYER_DASH_DURATION
@@ -89,11 +128,51 @@ func _physics_process(delta: float) -> void:
 		_rpc_sync_pos.rpc(position)
 	queue_redraw()
 
-	if attack_cooldown > 0.0:
-		attack_cooldown -= delta
-	if Input.is_action_just_pressed("attack") and not $Sword.swinging:
+	if Input.is_action_just_pressed("attack") and not $Sword.swinging and not _spinning:
 		$Sword.swing(_last_facing.angle())
 		attack_cooldown = Constants.SWORD_SWING_DURATION
+	if Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0:
+		_use_skill1()
+
+func _use_skill1() -> void:
+	match archetype:
+		Constants.ARCHETYPE_KNIGHT: _skill_spin()
+		Constants.ARCHETYPE_PIRATE: _skill_cannon()
+
+func _use_skill2() -> void:
+	match archetype:
+		Constants.ARCHETYPE_KNIGHT: _skill_warcry()
+		Constants.ARCHETYPE_PIRATE: _skill_blink()
+
+func _skill_spin() -> void:
+	skill1_cooldown = Constants.SKILL_SPIN_COOLDOWN
+	_spinning = true
+	_spin_timer = Constants.SKILL_SPIN_DURATION
+	$Sword.enter_spin()
+
+func _skill_warcry() -> void:
+	skill2_cooldown = Constants.SKILL_WARCRY_COOLDOWN
+	_speed_boost_timer = Constants.SKILL_WARCRY_DURATION
+
+func _skill_cannon() -> void:
+	skill1_cooldown = Constants.SKILL_CANNON_COOLDOWN
+	var cannonball = CANNONBALL_SCENE.instantiate()
+	cannonball.direction = _last_facing
+	cannonball.global_position = global_position + _last_facing * (radius + 12.0)
+	cannonball.player_ref = self
+	get_parent().add_child(cannonball)
+
+func _skill_blink() -> void:
+	skill2_cooldown = Constants.SKILL_BLINK_COOLDOWN
+	global_position += _last_facing * Constants.SKILL_BLINK_DISTANCE
+
+@rpc("any_peer", "reliable")
+func rpc_request_hit(mob_path: NodePath, damage: float, knockback: Vector2) -> void:
+	if not multiplayer.is_server():
+		return
+	var mob := get_node_or_null(mob_path)
+	if mob and mob.has_method("take_damage"):
+		mob.take_damage(damage, knockback)
 
 func _push_mobs() -> void:
 	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)

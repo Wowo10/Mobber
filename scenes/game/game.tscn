@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3 uid="uid://dhxvk0ecumlyh"]
+[gd_scene load_steps=6 format=3 uid="uid://dhxvk0ecumlyh"]
 
 [ext_resource type="Script" uid="uid://c56p5h3yrd8vd" path="res://scripts/game/game.gd" id="1_sul5r"]
 [ext_resource type="PackedScene" uid="uid://arena001tscn" path="res://scenes/game/arena.tscn" id="2_arena"]
 [ext_resource type="PackedScene" uid="uid://lhp5crgd3o0w" path="res://scenes/entities/player.tscn" id="3_player"]
 [ext_resource type="Script" uid="uid://cskillslotgd1" path="res://scripts/ui/skill_slot.gd" id="4_skill"]
+[ext_resource type="Script" uid="uid://mobindicator1" path="res://scripts/ui/mob_indicator.gd" id="5_indicator"]
 
 [node name="Game" type="Node"]
 script = ExtResource("1_sul5r")
@@ -11,7 +12,7 @@ script = ExtResource("1_sul5r")
 [node name="Arena1" parent="." instance=ExtResource("2_arena")]
 
 [node name="Arena2" parent="." instance=ExtResource("2_arena")]
-position = Vector2(4300, 0)
+position = Vector2(2967, 0)
 
 [node name="PlayerContainer" type="Node2D" parent="."]
 
@@ -134,5 +135,11 @@ custom_minimum_size = Vector2(56, 56)
 [node name="Skill3Slot" type="Control" parent="HUD/SkillBar"]
 script = ExtResource("4_skill")
 custom_minimum_size = Vector2(56, 56)
+
+[node name="MobIndicator" type="Control" parent="HUD"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("5_indicator")
 
 [connection signal="pressed" from="GameOverOverlay/VBox/ReturnButton" to="." method="_on_return_pressed"]

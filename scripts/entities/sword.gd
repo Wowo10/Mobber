@@ -1,23 +1,30 @@
 extends Area2D
 
 var swinging := false
+var spin_mode := false
+var _spin_cooldowns := {}
 
 func _ready() -> void:
 	monitoring = false
 	visible = false
 	body_entered.connect(_on_body_entered)
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	queue_redraw()
+	if spin_mode:
+		for key in _spin_cooldowns.keys():
+			_spin_cooldowns[key] -= delta
+			if _spin_cooldowns[key] <= 0.0:
+				_spin_cooldowns.erase(key)
 
 func set_facing(angle: float) -> void:
-	if not swinging:
+	if not swinging and not spin_mode:
 		rotation = angle
 
 func swing(facing_angle: float) -> void:
-	if swinging:
+	if swinging or spin_mode:
 		return
-		
+
 	swinging = true
 	monitoring = true
 	visible = true
@@ -32,24 +39,48 @@ func _end_swing() -> void:
 	swinging = false
 	visible = false
 
+func enter_spin() -> void:
+	spin_mode = true
+	monitoring = true
+	visible = true
+	_spin_cooldowns.clear()
+
+func exit_spin() -> void:
+	spin_mode = false
+	monitoring = false
+	visible = false
+	_spin_cooldowns.clear()
+
 func _on_body_entered(body: Node2D) -> void:
 	if not body.has_method("take_damage"):
 		return
-	var knockback: Vector2 = (body.global_position - get_parent().global_position).normalized() \
-		* Constants.MOB_KNOCKBACK
 	var networked: bool = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
-	if not networked or multiplayer.is_server():
-		body.take_damage(Constants.SWORD_DAMAGE, knockback)
+	var damage: float
+	var knockback_force: float
+	if spin_mode:
+		var rid = body.get_rid()
+		if _spin_cooldowns.has(rid):
+			return
+		_spin_cooldowns[rid] = Constants.SKILL_SPIN_HIT_INTERVAL
+		damage = Constants.SKILL_SPIN_DAMAGE
+		knockback_force = Constants.SKILL_SPIN_KNOCKBACK
 	else:
-		_request_hit.rpc_id(1, body.get_path(), knockback)
+		damage = Constants.SWORD_DAMAGE
+		knockback_force = Constants.MOB_KNOCKBACK
+	var knockback: Vector2 = (body.global_position - get_parent().global_position).normalized() \
+		* knockback_force
+	if not networked or multiplayer.is_server():
+		body.take_damage(damage, knockback)
+	else:
+		_request_hit.rpc_id(1, body.get_path(), damage, knockback)
 
 @rpc("any_peer", "reliable")
-func _request_hit(mob_path: NodePath, knockback: Vector2) -> void:
+func _request_hit(mob_path: NodePath, damage: float, knockback: Vector2) -> void:
 	if not multiplayer.is_server():
 		return
 	var mob := get_node_or_null(mob_path)
 	if mob and mob.has_method("take_damage"):
-		mob.take_damage(Constants.SWORD_DAMAGE, knockback)
+		mob.take_damage(damage, knockback)
 
 func _draw() -> void:
 	var r := Constants.PLAYER_START_RADIUS

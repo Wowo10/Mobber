@@ -7,6 +7,11 @@ var _room_code: String = ""
 
 func _ready() -> void:
 	multiplayer.multiplayer_peer = null
+	var sel := $VBox/ArchetypeSelect
+	sel.add_item("Knight", 0)
+	sel.add_item("Pirate", 1)
+	sel.select(PlayerPrefs.archetype)
+	sel.item_selected.connect(func(i: int) -> void: PlayerPrefs.archetype = i)
 	_is_web = OS.get_name() == "Web" or Constants.FORCE_WEBRTC
 	if _is_web:
 		%IPInput.placeholder_text = "Room Code"
