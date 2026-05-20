@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://c56p5h3yrd8vd" path="res://scripts/game/game.gd" id="1_sul5r"]
 [ext_resource type="PackedScene" uid="uid://arena001tscn" path="res://scenes/game/arena.tscn" id="2_arena"]
 [ext_resource type="PackedScene" uid="uid://lhp5crgd3o0w" path="res://scenes/entities/player.tscn" id="3_player"]
-[ext_resource type="Script" uid="uid://cskillslotgd1" path="res://scripts/ui/skill_slot.gd" id="4_skill"]
+[ext_resource type="Script" uid="uid://dldp2677k28n2" path="res://scripts/ui/skill_slot.gd" id="4_skill"]
 [ext_resource type="Script" uid="uid://mobindicator1" path="res://scripts/ui/mob_indicator.gd" id="5_indicator"]
 
 [node name="Game" type="Node"]
@@ -88,8 +88,7 @@ offset_bottom = 70.0
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 3
 theme_override_font_sizes/font_size = 18
-text = "MY ARENA
-0 / 100"
+text = "MY ARENA\n0 / 100"
 
 [node name="EnemyLabel" type="Label" parent="HUD"]
 anchor_left = 1.0
@@ -102,8 +101,8 @@ theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 3
 theme_override_font_sizes/font_size = 18
 horizontal_alignment = 2
-text = "ENEMY ARENA
-0 / 100"
+text = "ENEMY ARENA\n0 / 100"
+
 
 [node name="SkillBar" type="HBoxContainer" parent="HUD"]
 anchor_left = 0.5

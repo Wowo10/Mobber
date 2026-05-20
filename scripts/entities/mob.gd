@@ -102,7 +102,7 @@ func die() -> void:
 	if not is_inside_tree():
 		return
 	var networked: bool = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
-	if networked and multiplayer.is_server():
+	if not networked or multiplayer.is_server():
 		var game := get_tree().root.get_node_or_null("Game")
 		if game and game.has_method("notify_mob_killed"):
 			var arena := get_parent().get_parent()
