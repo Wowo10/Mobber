@@ -9,10 +9,23 @@ var _networked: bool = false
 var _leaving: bool = false
 var _scrubbed: bool = false
 var _pending_kills: Dictionary = {}  # arena -> count of mobs dying this frame
+var _pending_kills_flush_queued: bool = false
+var _player_speed_levels: Dictionary = {}   # peer_id -> int
+var _player_damage_levels: Dictionary = {}
+var _player_sword_size_levels: Dictionary = {}
+var _player_attack_speed_levels: Dictionary = {}
+var _money_a1: int = 0
+var _money_a2: int = 0
+var _in_shop_zone := false
 
 func _ready() -> void:
 	_networked = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	_setup_skill_bar()
+	_setup_shop()
+	$Arena1.player_entered_shop.connect(_on_player_entered_shop)
+	$Arena1.player_exited_shop.connect(_on_player_exited_shop)
+	$Arena2.player_entered_shop.connect(_on_player_entered_shop)
+	$Arena2.player_exited_shop.connect(_on_player_exited_shop)
 
 	if not _networked:
 		_peer_to_arena[1] = $Arena1
@@ -50,11 +63,12 @@ func _rpc_client_ready(arch: int) -> void:
 		$Arena2.spawn_mob()
 	_spawn_player(1)
 	_spawn_player(id)
-	_rpc_spawn_players.rpc(id, _peer_to_archetype[1], _peer_to_archetype[id])
+	_rpc_spawn_players.rpc(id, _peer_to_archetype[1], _peer_to_archetype[id], PlayerPrefs.mob_win_count)
 	_push_hud_update()
 
 @rpc("authority", "reliable")
-func _rpc_spawn_players(client_id: int, host_arch: int, client_arch: int) -> void:
+func _rpc_spawn_players(client_id: int, host_arch: int, client_arch: int, win_count: int) -> void:
+	PlayerPrefs.mob_win_count = win_count
 	_peer_to_arena[1] = $Arena1
 	_peer_to_arena[client_id] = $Arena2
 	_peer_to_archetype[1] = host_arch
@@ -136,6 +150,13 @@ func notify_mob_killed(arena: Node2D) -> void:
 	var opponent: Node2D = $Arena2 if arena == $Arena1 else $Arena1
 	opponent.spawn_mob()
 	opponent.spawn_mob()
+	if arena == $Arena1:
+		_money_a1 += Constants.KILL_REWARD
+	else:
+		_money_a2 += Constants.KILL_REWARD
+	_update_money_local(_money_a1, _money_a2)
+	if _networked:
+		_rpc_update_money.rpc(_money_a1, _money_a2)
 	# Accumulate kills this frame — queue_free runs after deferred calls,
 	# so every mob that died this frame is still counted by get_mob_count().
 	_pending_kills[arena] = _pending_kills.get(arena, 0) + 1
@@ -145,7 +166,13 @@ func notify_mob_killed(arena: Node2D) -> void:
 	if _networked:
 		_rpc_update_hud.rpc(a1, a2)
 	_check_win(a1, a2)
-	_pending_kills.clear.call_deferred()
+	if not _pending_kills_flush_queued:
+		_pending_kills_flush_queued = true
+		call_deferred("_clear_pending_kills")
+
+func _clear_pending_kills() -> void:
+	_pending_kills.clear()
+	_pending_kills_flush_queued = false
 
 # --- HUD ---
 
@@ -160,19 +187,30 @@ func _update_hud_local(a1: int, a2: int) -> void:
 	var my_is_arena1 := (not _networked) or multiplayer.get_unique_id() == 1
 	var my    := a1 if my_is_arena1 else a2
 	var enemy := a2 if my_is_arena1 else a1
-	$HUD/MyLabel.text    = "MY ARENA\n%d / %d" % [my, Constants.MOB_WIN_COUNT]
-	$HUD/EnemyLabel.text = "ENEMY ARENA\n%d / %d" % [enemy, Constants.MOB_WIN_COUNT]
+	$HUD/MyLabel.text    = "%d / %d" % [my, PlayerPrefs.mob_win_count]
+	$HUD/EnemyLabel.text = "ENEMY: %d / %d" % [enemy, PlayerPrefs.mob_win_count]
 
 @rpc("authority", "reliable")
 func _rpc_update_hud(a1: int, a2: int) -> void:
 	_update_hud_local(a1, a2)
 
+func _update_money_local(m1: int, m2: int) -> void:
+	_money_a1 = m1
+	_money_a2 = m2
+	var my_is_arena1 := (not _networked) or multiplayer.get_unique_id() == 1
+	$HUD/MoneyLabel.text = "$%d" % (m1 if my_is_arena1 else m2)
+	_update_shop_ui()
+
+@rpc("authority", "reliable")
+func _rpc_update_money(m1: int, m2: int) -> void:
+	_update_money_local(m1, m2)
+
 # --- Win condition ---
 func _check_win(a1: int, a2: int) -> void:
-	if a1 >= Constants.MOB_WIN_COUNT:
+	if a1 >= PlayerPrefs.mob_win_count:
 		_rpc_game_over(1)
 		_rpc_game_over.rpc(1)
-	elif a2 >= Constants.MOB_WIN_COUNT:
+	elif a2 >= PlayerPrefs.mob_win_count:
 		_rpc_game_over(2)
 		_rpc_game_over.rpc(2)
 
@@ -211,15 +249,15 @@ func _setup_skill_bar() -> void:
 	s2.key_text = "2"
 	s3.key_text = "3"
 	s1.available = true
-	s2.available = false
+	s2.available = true
 	s3.available = false
 	match PlayerPrefs.archetype:
 		Constants.ARCHETYPE_KNIGHT:
 			s1.icon_color = Color(0.75, 0.75, 0.9)
-			s2.icon_color = Color(0.9, 0.75, 0.2)
+			s2.icon_color = Color(1.0, 0.85, 0.2)
 		Constants.ARCHETYPE_PIRATE:
 			s1.icon_color = Color(0.95, 0.7, 0.1)
-			s2.icon_color = Color(0.3, 0.85, 0.45)
+			s2.icon_color = Color(0.45, 0.3, 0.15)
 
 func _process(_delta: float) -> void:
 	if _leaving:
@@ -233,3 +271,174 @@ func _process(_delta: float) -> void:
 	bar.get_node("DashSlot").set_cooldown(player.dash_cooldown, Constants.PLAYER_DASH_COOLDOWN)
 	bar.get_node("Skill1Slot").set_cooldown(player.skill1_cooldown, player.skill1_max_cooldown)
 	bar.get_node("Skill2Slot").set_cooldown(player.skill2_cooldown, player.skill2_max_cooldown)
+
+func _on_player_entered_shop() -> void:
+	if _leaving:
+		return
+	_in_shop_zone = true
+	$ShopPanel.visible = true
+	_update_shop_ui()
+
+func _on_player_exited_shop() -> void:
+	_in_shop_zone = false
+	$ShopPanel.visible = false
+
+func _upgrade_cost(base: int, inc: int, current_level: int) -> int:
+	return base + current_level * inc
+
+func _setup_shop() -> void:
+	var vbox := $ShopPanel/PanelBG/VBox
+	vbox.get_node("SendMobBtn").pressed.connect(func(): _buy(0))
+	vbox.get_node("Send3MobsBtn").pressed.connect(func(): _buy(1))
+	vbox.get_node("SendFleeingBtn").pressed.connect(func(): _buy(2))
+	vbox.get_node("SendBossBtn").pressed.connect(func(): _buy(7))
+	vbox.get_node("SpeedBtn").pressed.connect(func(): _buy(3))
+	vbox.get_node("DamageBtn").pressed.connect(func(): _buy(4))
+	vbox.get_node("SwordSizeBtn").pressed.connect(func(): _buy(5))
+	vbox.get_node("AttackSpeedBtn").pressed.connect(func(): _buy(6))
+
+
+func _update_shop_ui() -> void:
+	if not $ShopPanel.visible:
+		return
+	var my_id: int = 1 if not _networked else multiplayer.get_unique_id()
+	var money: int = _money_a1 if my_id == 1 else _money_a2
+	var max_lvl := Constants.SHOP_UPGRADE_MAX_LEVEL
+	var vbox := $ShopPanel/PanelBG/VBox
+	vbox.get_node("ShopMoneyLabel").text = "$%d" % money
+	vbox.get_node("SendMobBtn").disabled = money < Constants.SHOP_COST_SEND_MOB
+	vbox.get_node("Send3MobsBtn").disabled = money < Constants.SHOP_COST_SEND_3_MOBS
+	vbox.get_node("SendFleeingBtn").disabled = money < Constants.SHOP_COST_SEND_FLEEING
+	vbox.get_node("SendBossBtn").disabled = money < Constants.SHOP_COST_SEND_BOSS
+	_refresh_upgrade_btn(vbox.get_node("SpeedBtn"), "Speed",
+		_player_speed_levels.get(my_id, 0), max_lvl, money,
+		Constants.SHOP_COST_SPEED_BASE, Constants.SHOP_COST_SPEED_INC)
+	_refresh_upgrade_btn(vbox.get_node("DamageBtn"), "Damage",
+		_player_damage_levels.get(my_id, 0), max_lvl, money,
+		Constants.SHOP_COST_DAMAGE_BASE, Constants.SHOP_COST_DAMAGE_INC)
+	_refresh_upgrade_btn(vbox.get_node("SwordSizeBtn"), "Sword Size",
+		_player_sword_size_levels.get(my_id, 0), max_lvl, money,
+		Constants.SHOP_COST_SWORD_SIZE_BASE, Constants.SHOP_COST_SWORD_SIZE_INC)
+	_refresh_upgrade_btn(vbox.get_node("AttackSpeedBtn"), "Attack Speed",
+		_player_attack_speed_levels.get(my_id, 0), max_lvl, money,
+		Constants.SHOP_COST_ATTACK_SPEED_BASE, Constants.SHOP_COST_ATTACK_SPEED_INC)
+
+func _refresh_upgrade_btn(btn: Button, label: String, lvl: int, max_lvl: int, money: int, base: int, inc: int) -> void:
+	var cost := _upgrade_cost(base, inc, lvl)
+	btn.text = "%s (Lv %d/%d)   $%d" % [label, lvl, max_lvl, cost]
+	btn.disabled = lvl >= max_lvl or money < cost
+
+
+func _buy(item_id: int) -> void:
+	if _networked and not multiplayer.is_server():
+		_rpc_request_purchase.rpc_id(1, item_id)
+	else:
+		_apply_purchase(1 if not _networked else multiplayer.get_unique_id(), item_id)
+
+@rpc("any_peer", "reliable")
+func _rpc_request_purchase(item_id: int) -> void:
+	if not multiplayer.is_server():
+		return
+	_apply_purchase(multiplayer.get_remote_sender_id(), item_id)
+
+func _apply_purchase(peer_id: int, item_id: int) -> void:
+	if _leaving:
+		return
+	var is_a1: bool = peer_id == 1
+	var money: int = _money_a1 if is_a1 else _money_a2
+	var opponent_arena: Node2D = $Arena2 if is_a1 else $Arena1
+
+	match item_id:
+		0:
+			if money < Constants.SHOP_COST_SEND_MOB:
+				return
+			money -= Constants.SHOP_COST_SEND_MOB
+			opponent_arena.spawn_mob()
+		1:
+			if money < Constants.SHOP_COST_SEND_3_MOBS:
+				return
+			money -= Constants.SHOP_COST_SEND_3_MOBS
+			for i in 3:
+				opponent_arena.spawn_mob()
+		2:
+			if money < Constants.SHOP_COST_SEND_FLEEING:
+				return
+			money -= Constants.SHOP_COST_SEND_FLEEING
+			opponent_arena.spawn_mob(1)
+		7:
+			if money < Constants.SHOP_COST_SEND_BOSS:
+				return
+			money -= Constants.SHOP_COST_SEND_BOSS
+			opponent_arena.spawn_mob(2)
+		3:
+			var cur_level: int = _player_speed_levels.get(peer_id, 0)
+			var cost := _upgrade_cost(Constants.SHOP_COST_SPEED_BASE, Constants.SHOP_COST_SPEED_INC, cur_level)
+			if cur_level >= Constants.SHOP_UPGRADE_MAX_LEVEL or money < cost:
+				return
+			money -= cost
+			var new_level: int = cur_level + 1
+			_player_speed_levels[peer_id] = new_level
+			var player = _peer_to_player.get(peer_id)
+			if player and is_instance_valid(player):
+				player.speed_level = new_level
+				if _networked and peer_id != 1:
+					player.rpc_apply_speed_level.rpc_id(peer_id, new_level)
+			if _networked and peer_id != 1:
+				_rpc_sync_speed_level.rpc_id(peer_id, new_level)
+		4:
+			var cur_level: int = _player_damage_levels.get(peer_id, 0)
+			var cost := _upgrade_cost(Constants.SHOP_COST_DAMAGE_BASE, Constants.SHOP_COST_DAMAGE_INC, cur_level)
+			if cur_level >= Constants.SHOP_UPGRADE_MAX_LEVEL or money < cost:
+				return
+			money -= cost
+			var new_level: int = cur_level + 1
+			_player_damage_levels[peer_id] = new_level
+			var player = _peer_to_player.get(peer_id)
+			if player and is_instance_valid(player):
+				player.damage_level = new_level
+				player.apply_upgrades_to_sword()
+				if _networked and peer_id != 1:
+					player.rpc_apply_damage_level.rpc_id(peer_id, new_level)
+		5:
+			var cur_level: int = _player_sword_size_levels.get(peer_id, 0)
+			var cost := _upgrade_cost(Constants.SHOP_COST_SWORD_SIZE_BASE, Constants.SHOP_COST_SWORD_SIZE_INC, cur_level)
+			if cur_level >= Constants.SHOP_UPGRADE_MAX_LEVEL or money < cost:
+				return
+			money -= cost
+			var new_level: int = cur_level + 1
+			_player_sword_size_levels[peer_id] = new_level
+			var player = _peer_to_player.get(peer_id)
+			if player and is_instance_valid(player):
+				player.sword_size_level = new_level
+				player.apply_upgrades_to_sword()
+				if _networked and peer_id != 1:
+					player.rpc_apply_sword_size_level.rpc_id(peer_id, new_level)
+		6:
+			var cur_level: int = _player_attack_speed_levels.get(peer_id, 0)
+			var cost := _upgrade_cost(Constants.SHOP_COST_ATTACK_SPEED_BASE, Constants.SHOP_COST_ATTACK_SPEED_INC, cur_level)
+			if cur_level >= Constants.SHOP_UPGRADE_MAX_LEVEL or money < cost:
+				return
+			money -= cost
+			var new_level: int = cur_level + 1
+			_player_attack_speed_levels[peer_id] = new_level
+			var player = _peer_to_player.get(peer_id)
+			if player and is_instance_valid(player):
+				player.attack_speed_level = new_level
+				player.apply_upgrades_to_sword()
+				if _networked and peer_id != 1:
+					player.rpc_apply_attack_speed_level.rpc_id(peer_id, new_level)
+
+	if is_a1:
+		_money_a1 = money
+	else:
+		_money_a2 = money
+	_update_money_local(_money_a1, _money_a2)
+	if _networked:
+		_rpc_update_money.rpc(_money_a1, _money_a2)
+	_push_hud_update()
+
+@rpc("authority", "reliable")
+func _rpc_sync_speed_level(level: int) -> void:
+	var my_id: int = multiplayer.get_unique_id()
+	_player_speed_levels[my_id] = level
+	_update_shop_ui()

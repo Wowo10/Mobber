@@ -2,6 +2,7 @@ extends Area2D
 
 var direction := Vector2.RIGHT
 var player_ref: Node = null
+var homing := true
 var _distance_traveled := 0.0
 var _target: Node2D = null
 
@@ -10,10 +11,14 @@ func _ready() -> void:
 	body_entered.connect(_on_body_entered)
 
 func _process(delta: float) -> void:
-	_update_target()
-	if _target and is_instance_valid(_target):
-		var to_target := (_target.global_position - global_position).normalized()
-		direction = direction.lerp(to_target, Constants.SKILL_CANNON_TURN_SPEED * delta).normalized()
+	if homing:
+		_update_target()
+		if _target and is_instance_valid(_target):
+			var to_target := (_target.global_position - global_position).normalized()
+			var turn: float = clamp(angle_difference(direction.angle(), to_target.angle()),
+				-Constants.SKILL_CANNON_TURN_SPEED * delta,
+				Constants.SKILL_CANNON_TURN_SPEED * delta)
+			direction = direction.rotated(turn)
 	var step := direction * Constants.SKILL_CANNON_SPEED * delta
 	global_position += step
 	_distance_traveled += step.length()

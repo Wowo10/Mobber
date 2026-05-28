@@ -2,8 +2,10 @@ extends CharacterBody2D
 
 const SPEED = 800.0
 const CANNONBALL_SCENE = preload("res://scenes/entities/cannonball.tscn")
+const CONSECRATION_SCENE = preload("res://scenes/entities/consecration.tscn")
+const TURRET_SCENE = preload("res://scenes/entities/turret_cannon.tscn")
 
-var radius = 30.0
+var radius = 20.0
 var color = Color(0.33, 0.29, 0.87)
 var move_direction = Vector2.ZERO
 var _last_facing := Vector2.RIGHT
@@ -17,9 +19,14 @@ var skill1_cooldown := 0.0
 var skill2_cooldown := 0.0
 var skill1_max_cooldown := 1.0
 var skill2_max_cooldown := 1.0
+var speed_level: int = 0
+var damage_level: int = 0
+var sword_size_level: int = 0
+var attack_speed_level: int = 0
 var _speed_boost_timer := 0.0
 var _spinning := false
 var _spin_timer := 0.0
+var _turret: Node2D = null
 
 func _ready() -> void:
 	# MultiplayerSpawner doesn't sync authority — derive it from node name "Player_N"
@@ -41,11 +48,11 @@ func _apply_archetype() -> void:
 		Constants.ARCHETYPE_KNIGHT:
 			color = Color(0.6, 0.65, 0.85)
 			skill1_max_cooldown = Constants.SKILL_SPIN_COOLDOWN
-			skill2_max_cooldown = Constants.SKILL_WARCRY_COOLDOWN
+			skill2_max_cooldown = Constants.SKILL_CONSECRATION_COOLDOWN
 		Constants.ARCHETYPE_PIRATE:
 			color = Color(0.8, 0.35, 0.1)
 			skill1_max_cooldown = Constants.SKILL_CANNON_COOLDOWN
-			skill2_max_cooldown = Constants.SKILL_BLINK_COOLDOWN
+			skill2_max_cooldown = Constants.SKILL_TURRET_COOLDOWN
 
 func _setup_particles() -> void:
 	var p := $DashParticles
@@ -94,9 +101,6 @@ func _physics_process(delta: float) -> void:
 		skill1_cooldown = max(0.0, skill1_cooldown - delta)
 	if skill2_cooldown > 0.0:
 		skill2_cooldown = max(0.0, skill2_cooldown - delta)
-	if _speed_boost_timer > 0.0:
-		_speed_boost_timer = max(0.0, _speed_boost_timer - delta)
-
 	if _spinning:
 		_spin_timer -= delta
 		$Sword.rotation += Constants.SKILL_SPIN_SPEED * delta
@@ -113,8 +117,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		if dash_cooldown > 0.0:
 			dash_cooldown -= delta
-		var speed_mult: float = Constants.SKILL_WARCRY_SPEED_MULT if _speed_boost_timer > 0.0 else 1.0
-		velocity = move_direction * SPEED * speed_mult
+		velocity = move_direction * SPEED * (1.0 + Constants.SHOP_SPEED_MULT_PER_LEVEL * speed_level)
 		if Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0:
 			_dashing = true
 			_dash_timer = Constants.PLAYER_DASH_DURATION
@@ -130,9 +133,11 @@ func _physics_process(delta: float) -> void:
 
 	if Input.is_action_just_pressed("attack") and not $Sword.swinging and not _spinning:
 		$Sword.swing(_last_facing.angle())
-		attack_cooldown = Constants.SWORD_SWING_DURATION
+		attack_cooldown = $Sword.swing_duration
 	if Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0:
 		_use_skill1()
+	if Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0:
+		_use_skill2()
 
 func _use_skill1() -> void:
 	match archetype:
@@ -141,18 +146,14 @@ func _use_skill1() -> void:
 
 func _use_skill2() -> void:
 	match archetype:
-		Constants.ARCHETYPE_KNIGHT: _skill_warcry()
-		Constants.ARCHETYPE_PIRATE: _skill_blink()
+		Constants.ARCHETYPE_KNIGHT: _skill_consecration()
+		Constants.ARCHETYPE_PIRATE: _skill_turret()
 
 func _skill_spin() -> void:
 	skill1_cooldown = Constants.SKILL_SPIN_COOLDOWN
 	_spinning = true
 	_spin_timer = Constants.SKILL_SPIN_DURATION
 	$Sword.enter_spin()
-
-func _skill_warcry() -> void:
-	skill2_cooldown = Constants.SKILL_WARCRY_COOLDOWN
-	_speed_boost_timer = Constants.SKILL_WARCRY_DURATION
 
 func _skill_cannon() -> void:
 	skill1_cooldown = Constants.SKILL_CANNON_COOLDOWN
@@ -162,9 +163,50 @@ func _skill_cannon() -> void:
 	cannonball.player_ref = self
 	get_parent().add_child(cannonball)
 
-func _skill_blink() -> void:
-	skill2_cooldown = Constants.SKILL_BLINK_COOLDOWN
-	global_position += _last_facing * Constants.SKILL_BLINK_DISTANCE
+func _skill_consecration() -> void:
+	skill2_cooldown = Constants.SKILL_CONSECRATION_COOLDOWN
+	var c := CONSECRATION_SCENE.instantiate()
+	c.player_ref = self
+	get_parent().add_child(c)
+	c.global_position = global_position
+
+func _skill_turret() -> void:
+	skill2_cooldown = Constants.SKILL_TURRET_COOLDOWN
+	if _turret and is_instance_valid(_turret):
+		_turret.global_position = global_position
+		_turret.facing = _last_facing
+		_turret.reset_fire_timer()
+	else:
+		_turret = TURRET_SCENE.instantiate()
+		_turret.facing = _last_facing
+		_turret.player_ref = self
+		get_parent().add_child(_turret)
+		_turret.global_position = global_position
+
+func apply_upgrades_to_sword() -> void:
+	var dmg_bonus := damage_level * Constants.SHOP_DAMAGE_PER_LEVEL
+	var sz_mult := 1.0 + sword_size_level * Constants.SHOP_SWORD_SIZE_PER_LEVEL
+	var spd_mult := 1.0 - attack_speed_level * Constants.SHOP_ATTACK_SPEED_PER_LEVEL
+	$Sword.apply_upgrades(dmg_bonus, sz_mult, spd_mult)
+
+@rpc("any_peer", "reliable")
+func rpc_apply_speed_level(level: int) -> void:
+	speed_level = level
+
+@rpc("any_peer", "reliable")
+func rpc_apply_damage_level(level: int) -> void:
+	damage_level = level
+	apply_upgrades_to_sword()
+
+@rpc("any_peer", "reliable")
+func rpc_apply_sword_size_level(level: int) -> void:
+	sword_size_level = level
+	apply_upgrades_to_sword()
+
+@rpc("any_peer", "reliable")
+func rpc_apply_attack_speed_level(level: int) -> void:
+	attack_speed_level = level
+	apply_upgrades_to_sword()
 
 @rpc("any_peer", "reliable")
 func rpc_request_hit(mob_path: NodePath, damage: float, knockback: Vector2) -> void:

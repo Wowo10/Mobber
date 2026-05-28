@@ -4,6 +4,7 @@ const GAME_SCENE = "res://scenes/game/game.tscn"
 
 var _is_web: bool = false
 var _room_code: String = ""
+var _paste_cb: JavaScriptObject
 
 func _ready() -> void:
 	multiplayer.multiplayer_peer = null
@@ -12,6 +13,14 @@ func _ready() -> void:
 	sel.add_item("Pirate", 1)
 	sel.select(PlayerPrefs.archetype)
 	sel.item_selected.connect(func(i: int) -> void: PlayerPrefs.archetype = i)
+
+	var win_opts := [50, 75, 100, 120]
+	var wsel := %WinCountSelect
+	for v in win_opts:
+		wsel.add_item(str(v), v)
+	var default_idx := win_opts.find(PlayerPrefs.mob_win_count)
+	wsel.select(default_idx if default_idx >= 0 else win_opts.find(50))
+	wsel.item_selected.connect(func(_i: int) -> void: PlayerPrefs.mob_win_count = wsel.get_selected_id())
 	_is_web = OS.get_name() == "Web" or Constants.FORCE_WEBRTC
 	if _is_web:
 		%IPInput.placeholder_text = "Room Code"
@@ -44,6 +53,18 @@ func _on_host_pressed() -> void:
 
 func _on_peer_joined(_id: int) -> void:
 	get_tree().change_scene_to_file(GAME_SCENE)
+
+func _on_paste_pressed() -> void:
+	if _is_web:
+		_paste_cb = JavaScriptBridge.create_callback(func(args: Array) -> void:
+			var text: String = str(args[0]) if args.size() > 0 else ""
+			if not text.is_empty():
+				%IPInput.text = text
+		)
+		JavaScriptBridge.get_interface("window")["_gdPasteCb"] = _paste_cb
+		JavaScriptBridge.eval("navigator.clipboard.readText().then(function(t){window._gdPasteCb(t);}).catch(function(){var t=window.prompt('Paste room code:','');if(t)window._gdPasteCb(t);})")
+	else:
+		%IPInput.text = DisplayServer.clipboard_get()
 
 func _on_join_pressed() -> void:
 	if _is_web:

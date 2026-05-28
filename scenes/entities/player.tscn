@@ -4,7 +4,7 @@
 [ext_resource type="Script" uid="uid://csword1gd0001" path="res://scripts/entities/sword.gd" id="2_sword"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_08t41"]
-radius = 30.0
+radius = 20.0
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_sword"]
 size = Vector2(45, 8)

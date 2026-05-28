@@ -1,7 +1,7 @@
 extends CharacterBody2D
 
 enum State { WANDER, FLEE, CHASE }
-enum MobType { BASIC, FLEEING }
+enum MobType { BASIC, FLEEING, BOSS }
 
 var mob_type: MobType = MobType.BASIC:
 	set(v):
@@ -12,6 +12,7 @@ var mob_type: MobType = MobType.BASIC:
 var state: State = State.WANDER
 var radius: float = Constants.MOB_RADIUS
 var color := Color(0.85, 0.25, 0.25)
+var mob_worth: int = 1
 
 var max_health: float = Constants.MOB_MAX_HEALTH
 var health: float = Constants.MOB_MAX_HEALTH
@@ -27,6 +28,13 @@ func _apply_mob_type() -> void:
 		radius = Constants.MOB_FLEE_RADIUS
 		color = Color(0.2, 0.45, 1.0)
 		state = State.FLEE
+	elif mob_type == MobType.BOSS:
+		max_health = Constants.MOB_BOSS_MAX_HEALTH
+		health = Constants.MOB_BOSS_MAX_HEALTH
+		radius = Constants.MOB_BOSS_RADIUS
+		color = Color(0.6, 0.1, 0.75)
+		mob_worth = Constants.MOB_BOSS_WORTH
+		state = State.WANDER
 
 func _ready() -> void:
 	add_to_group("mobs")
@@ -54,24 +62,48 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 func _process_wander(delta: float) -> void:
+	if mob_type == MobType.BASIC:
+		var target := _get_nearest_player_within(Constants.MOB_FLEE_DETECTION_RADIUS)
+		if target != null:
+			state = State.FLEE
+			return
 	_wander_timer -= delta
 	if _wander_timer <= 0.0:
 		_pick_wander_dir()
-	velocity = _wander_dir * Constants.MOB_SPEED
+	var spd: float = Constants.MOB_BOSS_SPEED if mob_type == MobType.BOSS else Constants.MOB_SPEED
+	velocity = _wander_dir * spd
 
 func _process_flee(delta: float) -> void:
 	var target := _get_nearest_player()
 	if target == null:
+		if mob_type == MobType.BASIC:
+			state = State.WANDER
 		_process_wander(delta)
+		return
+	var dist := global_position.distance_to(target.global_position)
+	if mob_type == MobType.BASIC and dist > Constants.MOB_FLEE_STOP_RADIUS:
+		state = State.WANDER
 		return
 	var away := (global_position - target.global_position).normalized()
 	if away == Vector2.ZERO:
 		away = Vector2(randf() - 0.5, randf() - 0.5).normalized()
-	velocity = away * Constants.MOB_FLEE_SPEED
+	var flee_speed: float = Constants.MOB_FLEE_SPEED if mob_type == MobType.FLEEING else Constants.MOB_FLEE_BASIC_SPEED
+	velocity = away * flee_speed
 
 func _get_nearest_player() -> Node2D:
 	var players := get_tree().get_nodes_in_group("players")
 	var nearest_dist := INF
+	var nearest: Node2D = null
+	for p in players:
+		var d := global_position.distance_to(p.global_position)
+		if d < nearest_dist:
+			nearest_dist = d
+			nearest = p
+	return nearest
+
+func _get_nearest_player_within(max_dist: float) -> Node2D:
+	var players := get_tree().get_nodes_in_group("players")
+	var nearest_dist := max_dist
 	var nearest: Node2D = null
 	for p in players:
 		var d := global_position.distance_to(p.global_position)

@@ -1,10 +1,9 @@
-[gd_scene load_steps=6 format=3 uid="uid://dhxvk0ecumlyh"]
+[gd_scene load_steps=5 format=3 uid="uid://dhxvk0ecumlyh"]
 
 [ext_resource type="Script" uid="uid://c56p5h3yrd8vd" path="res://scripts/game/game.gd" id="1_sul5r"]
-[ext_resource type="PackedScene" uid="uid://arena001tscn" path="res://scenes/game/arena.tscn" id="2_arena"]
-[ext_resource type="PackedScene" uid="uid://lhp5crgd3o0w" path="res://scenes/entities/player.tscn" id="3_player"]
+[ext_resource type="PackedScene" uid="uid://rena001tscn" path="res://scenes/game/arena.tscn" id="2_arena"]
 [ext_resource type="Script" uid="uid://dldp2677k28n2" path="res://scripts/ui/skill_slot.gd" id="4_skill"]
-[ext_resource type="Script" uid="uid://mobindicator1" path="res://scripts/ui/mob_indicator.gd" id="5_indicator"]
+[ext_resource type="Script" uid="uid://22vu6qkk72iq" path="res://scripts/ui/mob_indicator.gd" id="5_indicator"]
 
 [node name="Game" type="Node"]
 script = ExtResource("1_sul5r")
@@ -19,15 +18,17 @@ position = Vector2(2967, 0)
 [node name="PlayerSpawner" type="MultiplayerSpawner" parent="."]
 
 [node name="GameOverOverlay" type="CanvasLayer" parent="."]
-visible = false
 layer = 10
+visible = false
 
 [node name="BG" type="ColorRect" parent="GameOverOverlay"]
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 color = Color(0, 0, 0, 0.82)
 
 [node name="VBox" type="VBoxContainer" parent="GameOverOverlay"]
+anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
@@ -41,30 +42,32 @@ theme_override_constants/separation = 16
 [node name="TitleLabel" type="Label" parent="GameOverOverlay/VBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 48
-horizontal_alignment = 1
 text = "YOU WIN!"
+horizontal_alignment = 1
 
 [node name="SubLabel" type="Label" parent="GameOverOverlay/VBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
+text = "You killed it!"
 horizontal_alignment = 1
-text = "Your arena reached 100 mobs."
 
 [node name="ReturnButton" type="Button" parent="GameOverOverlay/VBox"]
-layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
 text = "Return to Lobby"
 
 [node name="DisconnectOverlay" type="CanvasLayer" parent="."]
-visible = false
 layer = 10
+visible = false
 
 [node name="BG" type="ColorRect" parent="DisconnectOverlay"]
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 color = Color(0, 0, 0, 0.72)
 
 [node name="MsgLabel" type="Label" parent="DisconnectOverlay"]
+anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
@@ -74,23 +77,29 @@ offset_top = -40.0
 offset_right = 260.0
 offset_bottom = 40.0
 theme_override_font_sizes/font_size = 24
+text = "Connection lost. Returning to lobby..."
 horizontal_alignment = 1
 vertical_alignment = 1
-text = "Connection lost. Returning to lobby..."
 
 [node name="HUD" type="CanvasLayer" parent="."]
 
 [node name="MyLabel" type="Label" parent="HUD"]
-offset_left = 12.0
-offset_top = 12.0
-offset_right = 220.0
-offset_bottom = 70.0
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -104.0
+offset_top = 11.0
+offset_right = 104.0
+offset_bottom = 69.0
+grow_horizontal = 2
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 3
-theme_override_font_sizes/font_size = 18
-text = "MY ARENA\n0 / 100"
+theme_override_font_sizes/font_size = 28
+text = "0 / 100"
+horizontal_alignment = 1
 
 [node name="EnemyLabel" type="Label" parent="HUD"]
+anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
 offset_left = -220.0
@@ -99,12 +108,20 @@ offset_right = -12.0
 offset_bottom = 70.0
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 3
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 20
+text = "ENEMY: 0 / 100"
 horizontal_alignment = 2
-text = "ENEMY ARENA\n0 / 100"
 
+[node name="MoneyLabel" type="Label" parent="HUD"]
+offset_left = 16.0
+offset_top = 15.0
+offset_right = 216.0
+offset_bottom = 53.0
+theme_override_font_sizes/font_size = 30
+text = "$0"
 
 [node name="SkillBar" type="HBoxContainer" parent="HUD"]
+anchors_preset = 7
 anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
@@ -116,29 +133,130 @@ offset_bottom = -12.0
 theme_override_constants/separation = 8
 
 [node name="AttackSlot" type="Control" parent="HUD/SkillBar"]
-script = ExtResource("4_skill")
 custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+script = ExtResource("4_skill")
 
 [node name="DashSlot" type="Control" parent="HUD/SkillBar"]
-script = ExtResource("4_skill")
 custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+script = ExtResource("4_skill")
 
 [node name="Skill1Slot" type="Control" parent="HUD/SkillBar"]
-script = ExtResource("4_skill")
 custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+script = ExtResource("4_skill")
 
 [node name="Skill2Slot" type="Control" parent="HUD/SkillBar"]
-script = ExtResource("4_skill")
 custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+script = ExtResource("4_skill")
 
 [node name="Skill3Slot" type="Control" parent="HUD/SkillBar"]
-script = ExtResource("4_skill")
 custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+script = ExtResource("4_skill")
 
 [node name="MobIndicator" type="Control" parent="HUD"]
+layout_mode = 3
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("5_indicator")
+
+[node name="ShopPanel" type="CanvasLayer" parent="."]
+layer = 8
+visible = false
+
+[node name="PanelBG" type="ColorRect" parent="ShopPanel"]
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -264.0
+color = Color(0.05, 0.05, 0.12, 0.96)
+
+[node name="VBox" type="VBoxContainer" parent="ShopPanel/PanelBG"]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+theme_override_constants/separation = 6
+
+[node name="TitleLabel" type="Label" parent="ShopPanel/PanelBG/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "SHOP"
+horizontal_alignment = 1
+
+[node name="ShopMoneyLabel" type="Label" parent="ShopPanel/PanelBG/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "$0"
+horizontal_alignment = 1
+
+[node name="HSep1" type="HSeparator" parent="ShopPanel/PanelBG/VBox"]
+layout_mode = 2
+
+[node name="SectionSend" type="Label" parent="ShopPanel/PanelBG/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.55, 0.6, 1)
+theme_override_font_sizes/font_size = 11
+text = "SEND TO ENEMY"
+
+[node name="SendMobBtn" type="Button" parent="ShopPanel/PanelBG/VBox"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+text = "Send Mob   $5"
+
+[node name="Send3MobsBtn" type="Button" parent="ShopPanel/PanelBG/VBox"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+text = "Send 3 Mobs   $12"
+
+[node name="SendFleeingBtn" type="Button" parent="ShopPanel/PanelBG/VBox"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+text = "Fleeing Mob   $8"
+
+[node name="SendBossBtn" type="Button" parent="ShopPanel/PanelBG/VBox"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+text = "BOSS (x10)   $50"
+
+[node name="HSep2" type="HSeparator" parent="ShopPanel/PanelBG/VBox"]
+layout_mode = 2
+
+[node name="SectionUpgrade" type="Label" parent="ShopPanel/PanelBG/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.55, 0.6, 1)
+theme_override_font_sizes/font_size = 11
+text = "UPGRADES"
+
+[node name="SpeedBtn" type="Button" parent="ShopPanel/PanelBG/VBox"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+text = "Speed +20% (0/3)   $15"
+
+[node name="DamageBtn" type="Button" parent="ShopPanel/PanelBG/VBox"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+text = "Damage +3 (0/3)   $15"
+
+[node name="SwordSizeBtn" type="Button" parent="ShopPanel/PanelBG/VBox"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+text = "Sword Size +20% (0/3)   $15"
+
+[node name="AttackSpeedBtn" type="Button" parent="ShopPanel/PanelBG/VBox"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+text = "Attack Speed +20% (0/3)   $20"
 
 [connection signal="pressed" from="GameOverOverlay/VBox/ReturnButton" to="." method="_on_return_pressed"]

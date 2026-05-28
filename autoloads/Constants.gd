@@ -17,6 +17,7 @@ const MOB_MAX_HEALTH = 30.0
 const MOB_WANDER_INTERVAL = 2.0
 const MOB_COUNT = 5
 const MOB_WIN_COUNT = 50
+const KILL_REWARD = 10
 
 const PLAYER_DASH_SPEED = 2400.0
 const PLAYER_DASH_DURATION = 0.1
@@ -28,14 +29,22 @@ const SWORD_WIDTH = 8.0
 const SWORD_SWING_DURATION = 0.25
 const SWORD_ARC_HALF = 70.0
 
-const MOB_PUSH_FORCE = 140.0      # must exceed MOB_FRICTION/60 or contact push cancels out
+const MOB_PUSH_FORCE = 80.0       # gentle contact push — friction wins quickly once player passes
 const MOB_KNOCKBACK = 5000.0
-const MOB_FRICTION = 1500.0      # higher = faster stop after knockback
-const MOB_MAX_EXTERNAL_SPEED = 600.0
+const MOB_FRICTION = 3000.0      # higher = faster stop after knockback
+const MOB_MAX_EXTERNAL_SPEED = 250.0
 
 const MOB_FLEE_SPEED = 220.0
 const MOB_FLEE_MAX_HEALTH = 1.0
 const MOB_FLEE_RADIUS = 9.0
+const MOB_FLEE_DETECTION_RADIUS = 180.0
+const MOB_FLEE_STOP_RADIUS = 280.0
+const MOB_FLEE_BASIC_SPEED = 160.0
+
+const MOB_BOSS_RADIUS = 40.0
+const MOB_BOSS_SPEED = 55.0
+const MOB_BOSS_MAX_HEALTH = 150.0
+const MOB_BOSS_WORTH = 10
 
 const ARCHETYPE_KNIGHT = 0
 const ARCHETYPE_PIRATE = 1
@@ -54,6 +63,39 @@ const SKILL_CANNON_RANGE = 800.0
 const SKILL_CANNON_DAMAGE = 20.0
 const SKILL_CANNON_KNOCKBACK = 10000.0
 const SKILL_CANNON_COOLDOWN = 3.5
-const SKILL_CANNON_TURN_SPEED = 4.5  # lerp rate for homing steering
+const SKILL_CANNON_TURN_SPEED = 12.0  # max turn rate in rad/s for homing steering
 const SKILL_BLINK_DISTANCE = 220.0
 const SKILL_BLINK_COOLDOWN = 5.0
+
+const SKILL_CONSECRATION_RADIUS = 200.0
+const SKILL_CONSECRATION_DURATION = 5.0
+const SKILL_CONSECRATION_DAMAGE = 3.0
+const SKILL_CONSECRATION_TICK_RATE = 0.5
+const SKILL_CONSECRATION_COOLDOWN = 8.0
+
+const SKILL_TURRET_COOLDOWN = 4.0
+const SKILL_TURRET_FIRE_INTERVAL = 2.5
+const SKILL_TURRET_SPREAD = 18.0
+
+const SHOP_COST_SEND_MOB = 5
+const SHOP_COST_SEND_3_MOBS = 12
+const SHOP_COST_SEND_FLEEING = 8
+const SHOP_COST_SEND_BOSS = 50
+const SHOP_UPGRADE_MAX_LEVEL = 3
+
+# Escalating cost formula: base + current_level * increment
+const SHOP_COST_SPEED_BASE = 15
+const SHOP_COST_SPEED_INC = 10       # 15 / 25 / 35
+const SHOP_SPEED_MULT_PER_LEVEL = 0.2
+
+const SHOP_COST_DAMAGE_BASE = 15
+const SHOP_COST_DAMAGE_INC = 12      # 15 / 27 / 39
+const SHOP_DAMAGE_PER_LEVEL = 3.0
+
+const SHOP_COST_SWORD_SIZE_BASE = 15
+const SHOP_COST_SWORD_SIZE_INC = 12  # 15 / 27 / 39
+const SHOP_SWORD_SIZE_PER_LEVEL = 0.2
+
+const SHOP_COST_ATTACK_SPEED_BASE = 20
+const SHOP_COST_ATTACK_SPEED_INC = 15 # 20 / 35 / 50
+const SHOP_ATTACK_SPEED_PER_LEVEL = 0.2
