@@ -7,6 +7,7 @@ const TURRET_SCENE = preload("res://scenes/entities/turret_cannon.tscn")
 
 var radius = 20.0
 var color = Color(0.33, 0.29, 0.87)
+var player_name: String = ""
 var move_direction = Vector2.ZERO
 var _last_facing := Vector2.RIGHT
 var archetype: int = 0  # set by game.gd before add_child
@@ -23,7 +24,6 @@ var speed_level: int = 0
 var damage_level: int = 0
 var sword_size_level: int = 0
 var attack_speed_level: int = 0
-var _speed_boost_timer := 0.0
 var _spinning := false
 var _spin_timer := 0.0
 var _turret: Node2D = null
@@ -249,6 +249,12 @@ func _rpc_sync_pos(pos: Vector2) -> void:
 
 func _draw() -> void:
 	draw_circle(Vector2.ZERO, radius, color)
+	if not player_name.is_empty():
+		var font := ThemeDB.fallback_font
+		var font_size := 13
+		var tw := font.get_string_size(player_name, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		draw_string(font, Vector2(-tw * 0.5, -radius - 4.0), player_name,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 1.0, 1.0, 0.9))
 	if move_direction == Vector2.ZERO:
 		return
 	var tip: Vector2 = move_direction * (radius + 14.0)

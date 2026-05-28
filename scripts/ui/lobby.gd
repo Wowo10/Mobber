@@ -4,16 +4,14 @@ const GAME_SCENE = "res://scenes/game/game.tscn"
 const GAME_ROOM_SCENE = "res://scenes/ui/game_room.tscn"
 
 var _is_web: bool = false
-var _room_code: String = ""
 var _paste_cb: JavaScriptObject
 
 func _ready() -> void:
 	multiplayer.multiplayer_peer = null
-	var sel := $VBox/ArchetypeSelect
-	sel.add_item("Knight", 0)
-	sel.add_item("Pirate", 1)
-	sel.select(PlayerPrefs.archetype)
-	sel.item_selected.connect(func(i: int) -> void: PlayerPrefs.archetype = i)
+
+	var saved_name := _load_name()
+	PlayerPrefs.player_name = saved_name
+	%NameInput.text = saved_name
 
 	var win_opts := [50, 75, 100, 120]
 	var wsel := %WinCountSelect
@@ -22,6 +20,7 @@ func _ready() -> void:
 	var default_idx := win_opts.find(PlayerPrefs.mob_win_count)
 	wsel.select(default_idx if default_idx >= 0 else win_opts.find(50))
 	wsel.item_selected.connect(func(_i: int) -> void: PlayerPrefs.mob_win_count = wsel.get_selected_id())
+
 	_is_web = OS.get_name() == "Web" or Constants.FORCE_WEBRTC
 	if _is_web:
 		%IPInput.placeholder_text = "Room Code"
@@ -37,6 +36,25 @@ func _exit_tree() -> void:
 			WebRTCSignaling.game_ready.disconnect(_on_game_ready)
 		if WebRTCSignaling.error.is_connected(_on_signaling_error):
 			WebRTCSignaling.error.disconnect(_on_signaling_error)
+
+func _load_name() -> String:
+	if OS.get_name() == "Web":
+		return str(JavaScriptBridge.eval("localStorage.getItem('mobber_name') || ''"))
+	var cfg := ConfigFile.new()
+	if cfg.load("user://prefs.cfg") == OK:
+		return cfg.get_value("player", "name", "")
+	return ""
+
+func _on_name_changed(new_text: String) -> void:
+	PlayerPrefs.player_name = new_text
+	if OS.get_name() == "Web":
+		var safe := new_text.replace("\\", "\\\\").replace("'", "\\'")
+		JavaScriptBridge.eval("localStorage.setItem('mobber_name','%s')" % safe)
+	else:
+		var cfg := ConfigFile.new()
+		cfg.load("user://prefs.cfg")
+		cfg.set_value("player", "name", new_text)
+		cfg.save("user://prefs.cfg")
 
 func _on_host_pressed() -> void:
 	if _is_web:
@@ -90,19 +108,11 @@ func _on_lobby_created(code: String) -> void:
 	PlayerPrefs.room_code = code
 	get_tree().change_scene_to_file(GAME_ROOM_SCENE)
 
-func _on_code_display_pressed() -> void:
-	if OS.get_name() == "Web":
-		JavaScriptBridge.eval("navigator.clipboard.writeText('%s').catch(()=>{})" % _room_code)
-	else:
-		DisplayServer.clipboard_set(_room_code)
-	$VBox/StatusLabel.text = "Copied!"
-
 func _on_game_ready() -> void:
 	get_tree().change_scene_to_file(GAME_ROOM_SCENE)
 
 func _on_signaling_error(msg: String) -> void:
 	$VBox/StatusLabel.text = msg
-	%CodeDisplay.visible = false
 
 func _on_connected() -> void:
 	get_tree().change_scene_to_file(GAME_ROOM_SCENE)

@@ -77,6 +77,21 @@ custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
 theme_override_constants/separation = 4
 
+[node name="WinCountRow" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="WinLabel" type="Label" parent="VBox/WinCountRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Mob limit:"
+vertical_alignment = 1
+
+[node name="WinCountSelect" type="OptionButton" parent="VBox/WinCountRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 36)
+layout_mode = 2
+
 [node name="StatusLabel" type="Label" parent="VBox"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -96,6 +111,7 @@ custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
 text = "Back to Lobby"
 
+[connection signal="item_selected" from="VBox/WinCountRow/WinCountSelect" to="." method="_on_win_count_selected"]
 [connection signal="pressed" from="VBox/CodeDisplay" to="." method="_on_code_display_pressed"]
 [connection signal="pressed" from="VBox/StartButton" to="." method="_on_start_pressed"]
 [connection signal="pressed" from="VBox/BackButton" to="." method="_on_back_pressed"]

@@ -16,8 +16,7 @@ var _player_speed_levels: Dictionary = {}   # peer_id -> int
 var _player_damage_levels: Dictionary = {}
 var _player_sword_size_levels: Dictionary = {}
 var _player_attack_speed_levels: Dictionary = {}
-var _money_a1: int = 0
-var _money_a2: int = 0
+var _peer_money: Dictionary = {}  # peer_id -> int
 var _in_shop_zone := false
 
 func _ready() -> void:
@@ -30,6 +29,7 @@ func _ready() -> void:
 	$Arena2.player_exited_shop.connect(_on_player_exited_shop)
 
 	if not _networked:
+		PlayerPrefs.peer_names = {1: PlayerPrefs.player_name}
 		_peer_to_arena[1] = $Arena1
 		_peer_to_archetype[1] = PlayerPrefs.archetype
 		_spawn_player(1)
@@ -178,6 +178,7 @@ func _spawn_player(peer_id: int) -> void:
 	player.name = "Player_%d" % peer_id
 	player.position = arena.position + center + offset
 	player.archetype = _peer_to_archetype.get(peer_id, 0)
+	player.player_name = PlayerPrefs.peer_names.get(peer_id, "")
 	$PlayerContainer.add_child(player, true)
 	player.set_multiplayer_authority(peer_id)
 	_peer_to_player[peer_id] = player
@@ -188,13 +189,12 @@ func notify_mob_killed(arena: Node2D) -> void:
 	var opponent: Node2D = $Arena2 if arena == $Arena1 else $Arena1
 	opponent.spawn_mob()
 	opponent.spawn_mob()
-	if arena == $Arena1:
-		_money_a1 += Constants.KILL_REWARD
-	else:
-		_money_a2 += Constants.KILL_REWARD
-	_update_money_local(_money_a1, _money_a2)
+	for pid in _peer_to_arena:
+		if _peer_to_arena[pid] == arena:
+			_peer_money[pid] = _peer_money.get(pid, 0) + Constants.KILL_REWARD
+	_update_money_local(_peer_money)
 	if _networked:
-		_rpc_update_money.rpc(_money_a1, _money_a2)
+		_rpc_update_money.rpc(_peer_money)
 	# Accumulate kills this frame — queue_free runs after deferred calls,
 	# so every mob that died this frame is still counted by get_mob_count().
 	_pending_kills[arena] = _pending_kills.get(arena, 0) + 1
@@ -233,17 +233,15 @@ func _update_hud_local(a1: int, a2: int) -> void:
 func _rpc_update_hud(a1: int, a2: int) -> void:
 	_update_hud_local(a1, a2)
 
-func _update_money_local(m1: int, m2: int) -> void:
-	_money_a1 = m1
-	_money_a2 = m2
+func _update_money_local(peer_money: Dictionary) -> void:
+	_peer_money = peer_money
 	var my_id: int = 1 if not _networked else multiplayer.get_unique_id()
-	var my_is_arena1: bool = _peer_to_arena.get(my_id) == $Arena1
-	$HUD/MoneyLabel.text = "$%d" % (m1 if my_is_arena1 else m2)
+	$HUD/MoneyLabel.text = "$%d" % _peer_money.get(my_id, 0)
 	_update_shop_ui()
 
 @rpc("authority", "reliable")
-func _rpc_update_money(m1: int, m2: int) -> void:
-	_update_money_local(m1, m2)
+func _rpc_update_money(peer_money: Dictionary) -> void:
+	_update_money_local(peer_money)
 
 # --- Win condition ---
 func _check_win(a1: int, a2: int) -> void:
@@ -343,7 +341,7 @@ func _update_shop_ui() -> void:
 	if not $ShopPanel.visible:
 		return
 	var my_id: int = 1 if not _networked else multiplayer.get_unique_id()
-	var money: int = _money_a1 if _peer_to_arena.get(my_id) == $Arena1 else _money_a2
+	var money: int = _peer_money.get(my_id, 0)
 	var max_lvl := Constants.SHOP_UPGRADE_MAX_LEVEL
 	var vbox := $ShopPanel/PanelBG/VBox
 	vbox.get_node("ShopMoneyLabel").text = "$%d" % money
@@ -386,7 +384,7 @@ func _apply_purchase(peer_id: int, item_id: int) -> void:
 	if _leaving:
 		return
 	var is_a1: bool = _peer_to_arena.get(peer_id) == $Arena1
-	var money: int = _money_a1 if is_a1 else _money_a2
+	var money: int = _peer_money.get(peer_id, 0)
 	var opponent_arena: Node2D = $Arena2 if is_a1 else $Arena1
 
 	match item_id:
@@ -442,7 +440,9 @@ func _apply_purchase(peer_id: int, item_id: int) -> void:
 					player.rpc_apply_damage_level.rpc_id(peer_id, new_level)
 		5:
 			var cur_level: int = _player_sword_size_levels.get(peer_id, 0)
-			var cost := _upgrade_cost(Constants.SHOP_COST_SWORD_SIZE_BASE, Constants.SHOP_COST_SWORD_SIZE_INC, cur_level)
+			var cost := _upgrade_cost(
+				Constants.SHOP_COST_SWORD_SIZE_BASE, Constants.SHOP_COST_SWORD_SIZE_INC, cur_level
+			)
 			if cur_level >= Constants.SHOP_UPGRADE_MAX_LEVEL or money < cost:
 				return
 			money -= cost
@@ -456,7 +456,9 @@ func _apply_purchase(peer_id: int, item_id: int) -> void:
 					player.rpc_apply_sword_size_level.rpc_id(peer_id, new_level)
 		6:
 			var cur_level: int = _player_attack_speed_levels.get(peer_id, 0)
-			var cost := _upgrade_cost(Constants.SHOP_COST_ATTACK_SPEED_BASE, Constants.SHOP_COST_ATTACK_SPEED_INC, cur_level)
+			var cost := _upgrade_cost(
+				Constants.SHOP_COST_ATTACK_SPEED_BASE, Constants.SHOP_COST_ATTACK_SPEED_INC, cur_level
+			)
 			if cur_level >= Constants.SHOP_UPGRADE_MAX_LEVEL or money < cost:
 				return
 			money -= cost
@@ -469,13 +471,10 @@ func _apply_purchase(peer_id: int, item_id: int) -> void:
 				if _networked and peer_id != 1:
 					player.rpc_apply_attack_speed_level.rpc_id(peer_id, new_level)
 
-	if is_a1:
-		_money_a1 = money
-	else:
-		_money_a2 = money
-	_update_money_local(_money_a1, _money_a2)
+	_peer_money[peer_id] = money
+	_update_money_local(_peer_money)
 	if _networked:
-		_rpc_update_money.rpc(_money_a1, _money_a2)
+		_rpc_update_money.rpc(_peer_money)
 	_push_hud_update()
 
 @rpc("authority", "reliable")
