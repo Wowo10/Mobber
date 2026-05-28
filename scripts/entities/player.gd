@@ -69,8 +69,9 @@ func _setup_particles() -> void:
 	p.color = Color(0.55, 0.50, 1.0, 0.75)
 
 func _setup_camera() -> void:
-	var arena_x: float = 0.0 if multiplayer.get_unique_id() == 1 \
-		else float(Constants.WORLD_SIZE_X + Constants.ARENA_GAP)
+	var my_id := multiplayer.get_unique_id()
+	var team: int = PlayerPrefs.peer_teams.get(my_id, 0)
+	var arena_x: float = 0.0 if team == 0 else float(Constants.WORLD_SIZE_X + Constants.ARENA_GAP)
 	var cam := $Camera2D
 	cam.limit_left = int(arena_x)
 	cam.limit_right = int(arena_x + Constants.WORLD_SIZE_X)

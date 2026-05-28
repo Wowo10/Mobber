@@ -1,0 +1,101 @@
+[gd_scene load_steps=2 format=3 uid="uid://c3orm7ac5g0lh"]
+
+[ext_resource type="Script" path="res://scripts/ui/game_room.gd" id="1_gameroom"]
+
+[node name="GameRoom" type="CanvasLayer"]
+script = ExtResource("1_gameroom")
+
+[node name="BG" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.08, 0.08, 0.1, 1)
+
+[node name="VBox" type="VBoxContainer" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -180.0
+offset_right = 200.0
+offset_bottom = 180.0
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "GAME ROOM"
+horizontal_alignment = 1
+
+[node name="CodeDisplay" type="Button" parent="VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+text = ""
+visible = false
+
+[node name="TeamsRow" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Team1Column" type="VBoxContainer" parent="VBox/TeamsRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="Team1Title" type="Label" parent="VBox/TeamsRow/Team1Column"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "TEAM 1"
+horizontal_alignment = 1
+
+[node name="Team1List" type="VBoxContainer" parent="VBox/TeamsRow/Team1Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="VSeparator" type="VSeparator" parent="VBox/TeamsRow"]
+layout_mode = 2
+
+[node name="Team2Column" type="VBoxContainer" parent="VBox/TeamsRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="Team2Title" type="Label" parent="VBox/TeamsRow/Team2Column"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "TEAM 2"
+horizontal_alignment = 1
+
+[node name="Team2List" type="VBoxContainer" parent="VBox/TeamsRow/Team2Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="StatusLabel" type="Label" parent="VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "Waiting for opponents..."
+horizontal_alignment = 1
+
+[node name="StartButton" type="Button" parent="VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "Start Game"
+visible = false
+
+[node name="BackButton" type="Button" parent="VBox"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+text = "Back to Lobby"
+
+[connection signal="pressed" from="VBox/CodeDisplay" to="." method="_on_code_display_pressed"]
+[connection signal="pressed" from="VBox/StartButton" to="." method="_on_start_pressed"]
+[connection signal="pressed" from="VBox/BackButton" to="." method="_on_back_pressed"]

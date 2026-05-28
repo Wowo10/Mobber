@@ -73,11 +73,7 @@ func _process(_delta: float) -> void:
 	if not _game_ready_emitted and _conns.size() > 0:
 		if _mp.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
 			_game_ready_emitted = true
-			if _is_host:
-				_send({type = _CMD_SEAL, id = 0, data = ""})
 			game_ready.emit()
-			# Keep _process alive so _ws.poll() keeps flushing queued ICE candidates
-			# until the signaling server closes the socket after sealing
 
 
 func _on_msg(msg: Dictionary) -> void:
@@ -133,6 +129,10 @@ func _add_peer(peer_id: int) -> void:
 
 	if _is_host:
 		conn.create_offer()
+
+
+func seal() -> void:
+	_send({type = _CMD_SEAL, id = 0, data = ""})
 
 
 func _send(msg: Dictionary) -> void:

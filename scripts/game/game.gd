@@ -8,6 +8,8 @@ var _peer_to_archetype: Dictionary = {}
 var _networked: bool = false
 var _leaving: bool = false
 var _scrubbed: bool = false
+var _clients_ready_count: int = 0
+var _expected_client_count: int = 0
 var _pending_kills: Dictionary = {}  # arena -> count of mobs dying this frame
 var _pending_kills_flush_queued: bool = false
 var _player_speed_levels: Dictionary = {}   # peer_id -> int
@@ -38,9 +40,14 @@ func _ready() -> void:
 		_push_hud_update()
 		return
 
+	# Populate arena assignments from the team layout decided in game_room
+	for peer_id in PlayerPrefs.peer_teams:
+		_peer_to_arena[peer_id] = $Arena1 if PlayerPrefs.peer_teams[peer_id] == 0 else $Arena2
+
 	if multiplayer.is_server():
+		_expected_client_count = multiplayer.get_peers().size()
+		_peer_to_archetype[1] = PlayerPrefs.archetype
 		multiplayer.peer_disconnected.connect(_on_peer_disconnected)
-		_peer_to_arena[1] = $Arena1
 	else:
 		multiplayer.server_disconnected.connect(_on_server_disconnected)
 		await get_tree().process_frame
@@ -51,30 +58,27 @@ func _rpc_client_ready(arch: int) -> void:
 	if not multiplayer.is_server():
 		return
 	var id := multiplayer.get_remote_sender_id()
-	_peer_to_arena[id] = $Arena2
-	_peer_to_archetype[1] = PlayerPrefs.archetype
 	_peer_to_archetype[id] = arch
+	_clients_ready_count += 1
+	if _clients_ready_count < _expected_client_count:
+		return
 	var center := Vector2(Constants.WORLD_SIZE_X * 0.5, Constants.WORLD_SIZE_Y * 0.5)
-	$Arena1.spawn_mob(0, center)
-	for i in Constants.MOB_COUNT - 1:
-		$Arena1.spawn_mob()
-	$Arena2.spawn_mob(0, center)
-	for i in Constants.MOB_COUNT - 1:
-		$Arena2.spawn_mob()
-	_spawn_player(1)
-	_spawn_player(id)
-	_rpc_spawn_players.rpc(id, _peer_to_archetype[1], _peer_to_archetype[id], PlayerPrefs.mob_win_count)
+	for arena in [$Arena1, $Arena2]:
+		arena.spawn_mob(0, center)
+		for i in Constants.MOB_COUNT - 1:
+			arena.spawn_mob()
+	for peer_id in _peer_to_arena:
+		_spawn_player(peer_id)
+	_rpc_spawn_players.rpc(_peer_to_archetype, PlayerPrefs.mob_win_count)
 	_push_hud_update()
 
 @rpc("authority", "reliable")
-func _rpc_spawn_players(client_id: int, host_arch: int, client_arch: int, win_count: int) -> void:
+func _rpc_spawn_players(archetypes: Dictionary, win_count: int) -> void:
 	PlayerPrefs.mob_win_count = win_count
-	_peer_to_arena[1] = $Arena1
-	_peer_to_arena[client_id] = $Arena2
-	_peer_to_archetype[1] = host_arch
-	_peer_to_archetype[client_id] = client_arch
-	_spawn_player(1)
-	_spawn_player(client_id)
+	_peer_to_archetype = archetypes
+	# _peer_to_arena already populated from PlayerPrefs.peer_teams in _ready()
+	for peer_id in _peer_to_arena:
+		_spawn_player(peer_id)
 
 func _on_server_disconnected() -> void:
 	_scrub_multiplayer_hooks()
@@ -85,8 +89,36 @@ func _on_peer_disconnected(id: int) -> void:
 	if _peer_to_player.has(id):
 		_peer_to_player[id].queue_free()
 	_peer_to_player.erase(id)
+	var arena: Node2D = _peer_to_arena.get(id)
 	_peer_to_arena.erase(id)
-	_show_disconnect("Player disconnected. Returning to lobby...")
+
+	if arena != null and _count_players_in_arena(arena) == 0:
+		var losing_arena_id := 1 if arena == $Arena1 else 2
+		_rpc_game_over(losing_arena_id)
+		_rpc_game_over.rpc(losing_arena_id)
+	else:
+		_rpc_show_notice.rpc("A player disconnected.")
+
+func _count_players_in_arena(arena: Node2D) -> int:
+	var count := 0
+	for pid in _peer_to_player:
+		if _peer_to_arena.get(pid) == arena:
+			count += 1
+	return count
+
+@rpc("authority", "reliable")
+func _rpc_show_notice(msg: String) -> void:
+	var lbl := Label.new()
+	lbl.text = msg
+	lbl.add_theme_font_size_override("font_size", 16)
+	lbl.add_theme_color_override("font_color", Color(1, 0.8, 0.3))
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.anchors_preset = Control.PRESET_TOP_WIDE
+	lbl.offset_top = 60.0
+	$HUD.add_child(lbl)
+	await get_tree().create_timer(3.0).timeout
+	if is_instance_valid(lbl):
+		lbl.queue_free()
 
 func _show_disconnect(msg: String) -> void:
 	_leaving = true
@@ -136,9 +168,15 @@ func _spawn_player(peer_id: int) -> void:
 	if _peer_to_player.has(peer_id):
 		return
 	var arena: Node2D = _peer_to_arena[peer_id]
+	var slot := 0
+	for existing_id in _peer_to_player:
+		if _peer_to_arena[existing_id] == arena:
+			slot += 1
+	var center := Vector2(Constants.WORLD_SIZE_X * 0.5, Constants.WORLD_SIZE_Y * 0.5)
+	var offset := Vector2((slot * 200) - 100, 0)
 	var player := PLAYER_SCENE.instantiate()
 	player.name = "Player_%d" % peer_id
-	player.position = arena.position + Vector2(Constants.WORLD_SIZE_X * 0.5, Constants.WORLD_SIZE_Y * 0.5)
+	player.position = arena.position + center + offset
 	player.archetype = _peer_to_archetype.get(peer_id, 0)
 	$PlayerContainer.add_child(player, true)
 	player.set_multiplayer_authority(peer_id)
@@ -184,7 +222,8 @@ func _push_hud_update() -> void:
 		_rpc_update_hud.rpc(a1, a2)
 
 func _update_hud_local(a1: int, a2: int) -> void:
-	var my_is_arena1 := (not _networked) or multiplayer.get_unique_id() == 1
+	var my_id: int = 1 if not _networked else multiplayer.get_unique_id()
+	var my_is_arena1: bool = _peer_to_arena.get(my_id) == $Arena1
 	var my    := a1 if my_is_arena1 else a2
 	var enemy := a2 if my_is_arena1 else a1
 	$HUD/MyLabel.text    = "%d / %d" % [my, PlayerPrefs.mob_win_count]
@@ -197,7 +236,8 @@ func _rpc_update_hud(a1: int, a2: int) -> void:
 func _update_money_local(m1: int, m2: int) -> void:
 	_money_a1 = m1
 	_money_a2 = m2
-	var my_is_arena1 := (not _networked) or multiplayer.get_unique_id() == 1
+	var my_id: int = 1 if not _networked else multiplayer.get_unique_id()
+	var my_is_arena1: bool = _peer_to_arena.get(my_id) == $Arena1
 	$HUD/MoneyLabel.text = "$%d" % (m1 if my_is_arena1 else m2)
 	_update_shop_ui()
 
@@ -219,7 +259,8 @@ func _rpc_game_over(losing_arena_id: int) -> void:
 	for child in $PlayerContainer.get_children():
 		child.set_physics_process(false)
 
-	var my_is_arena1 := (not _networked) or multiplayer.get_unique_id() == 1
+	var my_id: int = 1 if not _networked else multiplayer.get_unique_id()
+	var my_is_arena1: bool = _peer_to_arena.get(my_id) == $Arena1
 	var i_lost: bool = (losing_arena_id == 1 and my_is_arena1) or (losing_arena_id == 2 and not my_is_arena1)
 
 	var title := $GameOverOverlay/VBox/TitleLabel
@@ -302,7 +343,7 @@ func _update_shop_ui() -> void:
 	if not $ShopPanel.visible:
 		return
 	var my_id: int = 1 if not _networked else multiplayer.get_unique_id()
-	var money: int = _money_a1 if my_id == 1 else _money_a2
+	var money: int = _money_a1 if _peer_to_arena.get(my_id) == $Arena1 else _money_a2
 	var max_lvl := Constants.SHOP_UPGRADE_MAX_LEVEL
 	var vbox := $ShopPanel/PanelBG/VBox
 	vbox.get_node("ShopMoneyLabel").text = "$%d" % money
@@ -344,7 +385,7 @@ func _rpc_request_purchase(item_id: int) -> void:
 func _apply_purchase(peer_id: int, item_id: int) -> void:
 	if _leaving:
 		return
-	var is_a1: bool = peer_id == 1
+	var is_a1: bool = _peer_to_arena.get(peer_id) == $Arena1
 	var money: int = _money_a1 if is_a1 else _money_a2
 	var opponent_arena: Node2D = $Arena2 if is_a1 else $Arena1
 

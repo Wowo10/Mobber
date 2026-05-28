@@ -1,6 +1,7 @@
 extends CanvasLayer
 
 const GAME_SCENE = "res://scenes/game/game.tscn"
+const GAME_ROOM_SCENE = "res://scenes/ui/game_room.tscn"
 
 var _is_web: bool = false
 var _room_code: String = ""
@@ -44,15 +45,12 @@ func _on_host_pressed() -> void:
 	else:
 		$VBox/StatusLabel.text = "Hosting..."
 		var peer := ENetMultiplayerPeer.new()
-		var err := peer.create_server(Constants.NET_PORT, 2)
+		var err := peer.create_server(Constants.NET_PORT, Constants.MAX_PLAYERS)
 		if err != OK:
 			$VBox/StatusLabel.text = "Failed to host: %s" % error_string(err)
 			return
 		multiplayer.multiplayer_peer = peer
-		multiplayer.peer_connected.connect(_on_peer_joined)
-
-func _on_peer_joined(_id: int) -> void:
-	get_tree().change_scene_to_file(GAME_SCENE)
+		get_tree().change_scene_to_file(GAME_ROOM_SCENE)
 
 func _on_paste_pressed() -> void:
 	if _is_web:
@@ -89,10 +87,8 @@ func _on_join_pressed() -> void:
 		multiplayer.connection_failed.connect(_on_failed)
 
 func _on_lobby_created(code: String) -> void:
-	_room_code = code
-	%CodeDisplay.text = "Room Code: %s  [click to copy]" % code
-	%CodeDisplay.visible = true
-	$VBox/StatusLabel.text = "Waiting for opponent..."
+	PlayerPrefs.room_code = code
+	get_tree().change_scene_to_file(GAME_ROOM_SCENE)
 
 func _on_code_display_pressed() -> void:
 	if OS.get_name() == "Web":
@@ -102,14 +98,14 @@ func _on_code_display_pressed() -> void:
 	$VBox/StatusLabel.text = "Copied!"
 
 func _on_game_ready() -> void:
-	get_tree().change_scene_to_file(GAME_SCENE)
+	get_tree().change_scene_to_file(GAME_ROOM_SCENE)
 
 func _on_signaling_error(msg: String) -> void:
 	$VBox/StatusLabel.text = msg
 	%CodeDisplay.visible = false
 
 func _on_connected() -> void:
-	get_tree().change_scene_to_file(GAME_SCENE)
+	get_tree().change_scene_to_file(GAME_ROOM_SCENE)
 
 func _on_failed() -> void:
 	$VBox/StatusLabel.text = "Connection failed."
