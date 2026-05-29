@@ -269,21 +269,24 @@ func _rpc_sync_pos(pos: Vector2) -> void:
 		position = pos
 		queue_redraw()
 
+func _draw_droplet(r: float, col: Color, fwd: Vector2) -> void:
+	var n := 20
+	var shoulder_a := deg_to_rad(60.0)
+	var back_cx := -r * 0.2
+	var back_r := r * 0.9
+	var rot := fwd.angle()
+	var pts := PackedVector2Array()
+	for i in range(n + 1):
+		var a := shoulder_a + float(i) / float(n) * (TAU - 2.0 * shoulder_a)
+		pts.append(Vector2(back_cx + back_r * cos(a), back_r * sin(a)).rotated(rot))
+	pts.append(fwd * r * 1.35)
+	draw_colored_polygon(pts, col)
+
 func _draw() -> void:
-	draw_circle(Vector2.ZERO, radius, color)
+	_draw_droplet(radius, color, _last_facing)
 	if not player_name.is_empty():
 		var font := ThemeDB.fallback_font
 		var font_size := 13
 		var tw := font.get_string_size(player_name, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 		draw_string(font, Vector2(-tw * 0.5, -radius - 4.0), player_name,
 				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1.0, 1.0, 1.0, 0.9))
-	if move_direction == Vector2.ZERO:
-		return
-	var tip: Vector2 = move_direction * (radius + 14.0)
-	var perp: Vector2 = move_direction.rotated(PI / 2.0)
-	var base_center: Vector2 = move_direction * (radius + 2.0)
-	draw_colored_polygon(PackedVector2Array([
-		tip,
-		base_center + perp * 7.0,
-		base_center - perp * 7.0
-	]), Color.WHITE)

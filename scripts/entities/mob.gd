@@ -141,8 +141,24 @@ func die() -> void:
 			game.call_deferred("notify_mob_killed", arena)
 	queue_free()
 
+func _draw_droplet(r: float, col: Color, fwd: Vector2) -> void:
+	var n := 20
+	var shoulder_a := deg_to_rad(60.0)
+	var back_cx := -r * 0.2
+	var back_r := r * 0.9
+	var rot := fwd.angle()
+	var pts := PackedVector2Array()
+	for i in range(n + 1):
+		var a := shoulder_a + float(i) / float(n) * (TAU - 2.0 * shoulder_a)
+		pts.append(Vector2(back_cx + back_r * cos(a), back_r * sin(a)).rotated(rot))
+	pts.append(fwd * r * 1.35)
+	draw_colored_polygon(pts, col)
+
 func _draw() -> void:
-	draw_circle(Vector2.ZERO, radius, color)
+	var fwd := velocity.normalized() if velocity.length_squared() > 1.0 else _wander_dir
+	if fwd.is_zero_approx():
+		fwd = Vector2.RIGHT
+	_draw_droplet(radius, color, fwd)
 	if health < max_health:
 		var bar_w := radius * 2.0
 		var bar_h := 5.0
