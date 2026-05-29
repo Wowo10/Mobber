@@ -83,14 +83,6 @@ func get_mob_count() -> int:
 		total += mob.mob_worth
 	return total
 
-@rpc("any_peer", "unreliable_ordered")
-func rpc_push_mob(mob_name: StringName, impulse: Vector2) -> void:
-	if not multiplayer.is_server():
-		return
-	var mob := $MobContainer.get_node_or_null(NodePath(mob_name))
-	if mob:
-		mob.apply_push(impulse)
-
 
 func _draw() -> void:
 	var i := 0

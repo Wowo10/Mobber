@@ -183,15 +183,24 @@ func _spawn_player(peer_id: int) -> void:
 	player.set_multiplayer_authority(peer_id)
 	_peer_to_player[peer_id] = player
 
-func notify_mob_killed(arena: Node2D) -> void:
+func notify_mob_killed(arena: Node2D, killer: Node = null) -> void:
 	if not multiplayer.is_server() or _leaving:
 		return
 	var opponent: Node2D = $Arena2 if arena == $Arena1 else $Arena1
 	opponent.spawn_mob()
 	opponent.spawn_mob()
-	for pid in _peer_to_arena:
-		if _peer_to_arena[pid] == arena:
-			_peer_money[pid] = _peer_money.get(pid, 0) + Constants.KILL_REWARD
+	var killer_id := -1
+	if killer and is_instance_valid(killer):
+		for pid in _peer_to_player:
+			if _peer_to_player[pid] == killer:
+				killer_id = pid
+				break
+	if killer_id != -1:
+		_peer_money[killer_id] = _peer_money.get(killer_id, 0) + Constants.KILL_REWARD
+	else:
+		for pid in _peer_to_arena:
+			if _peer_to_arena[pid] == arena:
+				_peer_money[pid] = _peer_money.get(pid, 0) + Constants.KILL_REWARD
 	_update_money_local(_peer_money)
 	if _networked:
 		_rpc_update_money.rpc(_peer_money)

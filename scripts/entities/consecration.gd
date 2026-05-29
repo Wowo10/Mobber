@@ -26,15 +26,11 @@ func _process(delta: float) -> void:
 func _apply_damage() -> void:
 	if visual_only:
 		return
-	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	for body in _bodies_inside.duplicate():
 		if not is_instance_valid(body) or not body.has_method("take_damage"):
 			_bodies_inside.erase(body)
 			continue
-		if not networked or multiplayer.is_server():
-			body.take_damage(Constants.SKILL_CONSECRATION_DAMAGE)
-		elif player_ref and is_instance_valid(player_ref):
-			player_ref.rpc_request_hit.rpc_id(1, body.get_path(), Constants.SKILL_CONSECRATION_DAMAGE, Vector2.ZERO)
+		body.take_damage(Constants.SKILL_CONSECRATION_DAMAGE, Vector2.ZERO, player_ref)
 
 func _on_body_entered(body: Node2D) -> void:
 	if body.has_method("take_damage") and not _bodies_inside.has(body):

@@ -20,6 +20,7 @@ var health: float = Constants.MOB_MAX_HEALTH
 var _wander_dir := Vector2.ZERO
 var _wander_timer := 0.0
 var _external_velocity := Vector2.ZERO
+var _last_attacker: Node = null
 
 func _apply_mob_type() -> void:
 	if mob_type == MobType.FLEEING:
@@ -120,10 +121,12 @@ func _pick_wander_dir() -> void:
 func apply_push(impulse: Vector2) -> void:
 	_external_velocity = (_external_velocity + impulse).limit_length(Constants.MOB_MAX_EXTERNAL_SPEED)
 
-func take_damage(amount: float, knockback: Vector2 = Vector2.ZERO) -> void:
+func take_damage(amount: float, knockback: Vector2 = Vector2.ZERO, attacker: Node = null) -> void:
 	var networked: bool = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked and not multiplayer.is_server():
 		return
+	if attacker:
+		_last_attacker = attacker
 	if knockback != Vector2.ZERO:
 		apply_push(knockback)
 	health = max(0.0, health - amount)
@@ -138,7 +141,7 @@ func die() -> void:
 		var game := get_tree().root.get_node_or_null("Game")
 		if game and game.has_method("notify_mob_killed"):
 			var arena := get_parent().get_parent()
-			game.call_deferred("notify_mob_killed", arena)
+			game.call_deferred("notify_mob_killed", arena, _last_attacker)
 	queue_free()
 
 func _draw_droplet(r: float, col: Color, fwd: Vector2) -> void:

@@ -58,6 +58,8 @@ func _on_body_entered(body: Node2D) -> void:
 	if not body.has_method("take_damage"):
 		return
 	var networked: bool = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
+	if networked and not multiplayer.is_server():
+		return
 	var damage: float
 	var knockback_force: float
 	if spin_mode:
@@ -72,18 +74,7 @@ func _on_body_entered(body: Node2D) -> void:
 		knockback_force = Constants.MOB_KNOCKBACK
 	var knockback: Vector2 = (body.global_position - get_parent().global_position).normalized() \
 		* knockback_force
-	if not networked or multiplayer.is_server():
-		body.take_damage(damage, knockback)
-	else:
-		_request_hit.rpc_id(1, body.get_path(), damage, knockback)
-
-@rpc("any_peer", "reliable")
-func _request_hit(mob_path: NodePath, damage: float, knockback: Vector2) -> void:
-	if not multiplayer.is_server():
-		return
-	var mob := get_node_or_null(mob_path)
-	if mob and mob.has_method("take_damage"):
-		mob.take_damage(damage, knockback)
+	body.take_damage(damage, knockback, get_parent())
 
 func apply_upgrades(dmg_bonus: float, sz_mult: float, spd_mult: float) -> void:
 	damage_bonus = dmg_bonus

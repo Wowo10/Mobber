@@ -27,6 +27,14 @@ var attack_speed_level: int = 0
 var _spinning := false
 var _spin_timer := 0.0
 var _turret: Node2D = null
+var _visual_turret: Node2D = null
+
+# Server-side input buffers — written by client RPCs, consumed each physics tick
+var _received_direction := Vector2.ZERO
+var _pending_attack := false
+var _pending_dash := false
+var _pending_skill1 := false
+var _pending_skill2 := false
 
 func _ready() -> void:
 	# MultiplayerSpawner doesn't sync authority — derive it from node name "Player_N"
@@ -37,11 +45,23 @@ func _ready() -> void:
 	_apply_archetype()
 	add_to_group("players")
 	_setup_particles()
-	if not is_multiplayer_authority():
-		set_physics_process(false)
-		$Camera2D.enabled = false
-		return
-	_setup_camera()
+
+	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
+	if networked:
+		# Server simulates all players; client only renders
+		if not multiplayer.is_server():
+			set_physics_process(false)
+		# Camera follows own player on whichever peer owns it
+		if is_multiplayer_authority():
+			_setup_camera()
+		else:
+			$Camera2D.enabled = false
+	else:
+		if not is_multiplayer_authority():
+			set_physics_process(false)
+			$Camera2D.enabled = false
+		else:
+			_setup_camera()
 
 func _apply_archetype() -> void:
 	match archetype:
@@ -79,29 +99,36 @@ func _setup_camera() -> void:
 	cam.limit_bottom = int(Constants.WORLD_SIZE_Y)
 	cam.make_current()
 
-func _physics_process(delta: float) -> void:
-	var direction := Vector2.ZERO
+# --- Client: input collection and visual prediction ---
 
-	if Input.is_action_pressed("move_left"):
-		direction.x -= 1
-	if Input.is_action_pressed("move_right"):
-		direction.x += 1
-	if Input.is_action_pressed("move_up"):
-		direction.y -= 1
-	if Input.is_action_pressed("move_down"):
-		direction.y += 1
+func _process(delta: float) -> void:
+	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 
-	move_direction = direction.normalized()
-	if move_direction != Vector2.ZERO:
-		_last_facing = move_direction
-		$Sword.set_facing(_last_facing.angle())
+	# Keep spinning sword rotating for non-authority players we're observing
+	if networked and not multiplayer.is_server() and not is_multiplayer_authority() and _spinning:
+		$Sword.rotation += Constants.SKILL_SPIN_SPEED * delta
 
+	if not networked or not is_multiplayer_authority() or multiplayer.is_server():
+		return
+
+	# Shadow cooldowns — for HUD display and local input gating only
 	if attack_cooldown > 0.0:
 		attack_cooldown -= delta
+	if dash_cooldown > 0.0:
+		dash_cooldown -= delta
 	if skill1_cooldown > 0.0:
 		skill1_cooldown = max(0.0, skill1_cooldown - delta)
 	if skill2_cooldown > 0.0:
 		skill2_cooldown = max(0.0, skill2_cooldown - delta)
+
+	# Dash particle timer (visual only)
+	if _dashing:
+		_dash_timer -= delta
+		if _dash_timer <= 0.0:
+			_dashing = false
+			$DashParticles.emitting = false
+
+	# Spin visual tick
 	if _spinning:
 		_spin_timer -= delta
 		$Sword.rotation += Constants.SKILL_SPIN_SPEED * delta
@@ -109,42 +136,177 @@ func _physics_process(delta: float) -> void:
 			_spinning = false
 			$Sword.exit_spin()
 
+	# Collect direction
+	var direction := Vector2.ZERO
+	if Input.is_action_pressed("move_left"):  direction.x -= 1
+	if Input.is_action_pressed("move_right"): direction.x += 1
+	if Input.is_action_pressed("move_up"):    direction.y -= 1
+	if Input.is_action_pressed("move_down"):  direction.y += 1
+	direction = direction.normalized()
+
+	move_direction = direction
+	if direction != Vector2.ZERO:
+		_last_facing = direction
+		$Sword.set_facing(_last_facing.angle())
+
+	queue_redraw()
+
+	# Send direction to server every frame
+	_rpc_send_direction.rpc_id(1, direction)
+
+	# One-shot actions — sent reliably so they are never dropped
+	var action_mask := 0
+
+	if Input.is_action_just_pressed("attack") and not $Sword.swinging and not _spinning:
+		action_mask |= 1
+		$Sword.swing(_last_facing.angle())  # visual only; sword.gd guards hit on client
+		attack_cooldown = $Sword.swing_duration
+
+	if Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0:
+		action_mask |= 2
+		dash_cooldown = Constants.PLAYER_DASH_COOLDOWN
+		_dashing = true
+		_dash_timer = Constants.PLAYER_DASH_DURATION
+		$DashParticles.direction = -_last_facing
+		$DashParticles.emitting = true
+
+	if Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0:
+		action_mask |= 4
+		if archetype == Constants.ARCHETYPE_KNIGHT:
+			skill1_cooldown = Constants.SKILL_SPIN_COOLDOWN
+			_spinning = true
+			_spin_timer = Constants.SKILL_SPIN_DURATION
+			$Sword.enter_spin()
+		else:
+			skill1_cooldown = skill1_max_cooldown
+
+	if Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0:
+		action_mask |= 8
+		skill2_cooldown = skill2_max_cooldown
+
+	if action_mask != 0:
+		_rpc_send_action.rpc_id(1, action_mask)
+
+# --- Server: simulation ---
+
+func _physics_process(delta: float) -> void:
+	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
+
+	# Determine input source
+	var direction: Vector2
+	var do_attack: bool
+	var do_dash: bool
+	var do_skill1: bool
+	var do_skill2: bool
+
+	if not networked or is_multiplayer_authority():
+		# Offline or server's own player: read keyboard directly
+		direction = Vector2.ZERO
+		if Input.is_action_pressed("move_left"):  direction.x -= 1
+		if Input.is_action_pressed("move_right"): direction.x += 1
+		if Input.is_action_pressed("move_up"):    direction.y -= 1
+		if Input.is_action_pressed("move_down"):  direction.y += 1
+		direction = direction.normalized()
+		do_attack = Input.is_action_just_pressed("attack") and not $Sword.swinging and not _spinning
+		do_dash   = Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0
+		do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0
+		do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0
+	else:
+		# Server simulating a remote client's player: consume buffered input
+		direction = _received_direction
+		do_attack = _pending_attack and not $Sword.swinging and not _spinning
+		do_dash   = _pending_dash and dash_cooldown <= 0.0
+		do_skill1 = _pending_skill1 and skill1_cooldown <= 0.0
+		do_skill2 = _pending_skill2 and skill2_cooldown <= 0.0
+		_pending_attack = false
+		_pending_dash   = false
+		_pending_skill1 = false
+		_pending_skill2 = false
+
+	move_direction = direction
+	if move_direction != Vector2.ZERO:
+		_last_facing = move_direction
+		$Sword.set_facing(_last_facing.angle())
+
+	# Cooldown ticks
+	if attack_cooldown > 0.0:
+		attack_cooldown -= delta
+	if skill1_cooldown > 0.0:
+		skill1_cooldown = max(0.0, skill1_cooldown - delta)
+	if skill2_cooldown > 0.0:
+		skill2_cooldown = max(0.0, skill2_cooldown - delta)
+
+	# Spin tick
+	if _spinning:
+		_spin_timer -= delta
+		$Sword.rotation += Constants.SKILL_SPIN_SPEED * delta
+		if _spin_timer <= 0.0:
+			_spinning = false
+			$Sword.exit_spin()
+			if networked:
+				_rpc_trigger_spin_stop.rpc()
+
+	# Dash / movement
 	if _dashing:
 		_dash_timer -= delta
 		velocity = _last_facing * Constants.PLAYER_DASH_SPEED
 		if _dash_timer <= 0.0:
 			_dashing = false
-			if not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer):
+			$DashParticles.emitting = false
+			if networked:
 				_rpc_set_dash_particles.rpc(Vector2.ZERO, false)
-			else:
-				$DashParticles.emitting = false
 	else:
 		if dash_cooldown > 0.0:
 			dash_cooldown -= delta
 		velocity = move_direction * SPEED * (1.0 + Constants.SHOP_SPEED_MULT_PER_LEVEL * speed_level)
-		if Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0:
+		if do_dash:
 			_dashing = true
 			_dash_timer = Constants.PLAYER_DASH_DURATION
 			dash_cooldown = Constants.PLAYER_DASH_COOLDOWN
-			if not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer):
+			$DashParticles.direction = -_last_facing
+			$DashParticles.emitting = true
+			if networked:
 				_rpc_set_dash_particles.rpc(-_last_facing, true)
-			else:
-				$DashParticles.direction = -_last_facing
-				$DashParticles.emitting = true
 
 	move_and_slide()
 	_push_mobs()
-	if not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer):
-		_rpc_sync_pos.rpc(position)
 	queue_redraw()
 
-	if Input.is_action_just_pressed("attack") and not $Sword.swinging and not _spinning:
+	# Attack
+	if do_attack:
 		$Sword.swing(_last_facing.angle())
 		attack_cooldown = $Sword.swing_duration
-	if Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0:
+		if networked:
+			_rpc_trigger_swing.rpc(_last_facing.angle())
+
+	# Skills
+	if do_skill1:
 		_use_skill1()
-	if Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0:
+	if do_skill2:
 		_use_skill2()
+
+	# Broadcast authoritative position + facing to all clients
+	if networked:
+		_rpc_sync_pos.rpc(position, _last_facing, move_direction)
+
+# --- Input RPCs (client → server) ---
+
+@rpc("any_peer", "unreliable_ordered")
+func _rpc_send_direction(direction: Vector2) -> void:
+	if not multiplayer.is_server():
+		return
+	_received_direction = direction
+
+@rpc("any_peer", "reliable")
+func _rpc_send_action(action_mask: int) -> void:
+	if not multiplayer.is_server():
+		return
+	if action_mask & 1: _pending_attack = true
+	if action_mask & 2: _pending_dash   = true
+	if action_mask & 4: _pending_skill1 = true
+	if action_mask & 8: _pending_skill2 = true
+
+# --- Skills ---
 
 func _use_skill1() -> void:
 	match archetype:
@@ -161,6 +323,9 @@ func _skill_spin() -> void:
 	_spinning = true
 	_spin_timer = Constants.SKILL_SPIN_DURATION
 	$Sword.enter_spin()
+	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
+	if networked:
+		_rpc_trigger_spin_start.rpc()
 
 func _skill_cannon() -> void:
 	skill1_cooldown = Constants.SKILL_CANNON_COOLDOWN
@@ -169,13 +334,14 @@ func _skill_cannon() -> void:
 	cannonball.global_position = global_position + _last_facing * (radius + 12.0)
 	cannonball.player_ref = self
 	get_parent().add_child(cannonball)
+	broadcast_cannonball(cannonball.global_position, _last_facing, true)
 
 func _skill_consecration() -> void:
 	skill2_cooldown = Constants.SKILL_CONSECRATION_COOLDOWN
-	if not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer):
+	_spawn_consecration_local(global_position, false)
+	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
+	if networked:
 		_rpc_spawn_consecration.rpc(global_position)
-	else:
-		_spawn_consecration_local(global_position, false)
 
 func _spawn_consecration_local(pos: Vector2, visual_only: bool) -> void:
 	var c := CONSECRATION_SCENE.instantiate()
@@ -196,6 +362,75 @@ func _skill_turret() -> void:
 		_turret.player_ref = self
 		get_parent().add_child(_turret)
 		_turret.global_position = global_position
+	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
+	if networked:
+		_rpc_place_turret.rpc(global_position, _last_facing)
+
+func broadcast_cannonball(pos: Vector2, dir: Vector2, homing: bool) -> void:
+	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
+	if networked:
+		_rpc_spawn_cannonball.rpc(pos, dir, homing)
+
+@rpc("any_peer", "reliable")
+func _rpc_spawn_cannonball(pos: Vector2, dir: Vector2, homing: bool) -> void:
+	var ball := CANNONBALL_SCENE.instantiate()
+	ball.direction = dir
+	ball.homing = homing
+	ball.visual_only = true
+	ball.player_ref = self
+	get_parent().add_child(ball)
+	ball.global_position = pos
+
+@rpc("any_peer", "reliable")
+func _rpc_place_turret(pos: Vector2, fac: Vector2) -> void:
+	if _visual_turret and is_instance_valid(_visual_turret):
+		_visual_turret.global_position = pos
+		_visual_turret.facing = fac
+	else:
+		_visual_turret = TURRET_SCENE.instantiate()
+		_visual_turret.facing = fac
+		_visual_turret.visual_only = true
+		_visual_turret.player_ref = self
+		get_parent().add_child(_visual_turret)
+		_visual_turret.global_position = pos
+
+# --- Visual RPC (server → owning client) ---
+
+@rpc("any_peer", "reliable")
+func _rpc_spawn_consecration(pos: Vector2) -> void:
+	_spawn_consecration_local(pos, true)
+
+@rpc("any_peer", "unreliable_ordered")
+func _rpc_set_dash_particles(dir: Vector2, emitting: bool) -> void:
+	$DashParticles.direction = dir
+	$DashParticles.emitting = emitting
+
+@rpc("any_peer", "reliable")
+func _rpc_trigger_swing(facing_angle: float) -> void:
+	$Sword.swing(facing_angle)
+
+@rpc("any_peer", "reliable")
+func _rpc_trigger_spin_start() -> void:
+	_spinning = true
+	_spin_timer = Constants.SKILL_SPIN_DURATION
+	$Sword.enter_spin()
+
+@rpc("any_peer", "reliable")
+func _rpc_trigger_spin_stop() -> void:
+	_spinning = false
+	$Sword.exit_spin()
+
+# --- Position sync (server → all clients) ---
+
+@rpc("any_peer", "unreliable_ordered")
+func _rpc_sync_pos(pos: Vector2, facing: Vector2, move_dir: Vector2) -> void:
+	position = pos
+	_last_facing = facing
+	move_direction = move_dir
+	$Sword.set_facing(facing.angle())
+	queue_redraw()
+
+# --- Upgrade RPCs (server → client) ---
 
 func apply_upgrades_to_sword() -> void:
 	var dmg_bonus := damage_level * Constants.SHOP_DAMAGE_PER_LEVEL
@@ -222,16 +457,9 @@ func rpc_apply_attack_speed_level(level: int) -> void:
 	attack_speed_level = level
 	apply_upgrades_to_sword()
 
-@rpc("any_peer", "reliable")
-func rpc_request_hit(mob_path: NodePath, damage: float, knockback: Vector2) -> void:
-	if not multiplayer.is_server():
-		return
-	var mob := get_node_or_null(mob_path)
-	if mob and mob.has_method("take_damage"):
-		mob.take_damage(damage, knockback)
+# --- Mob pushing (server only) ---
 
 func _push_mobs() -> void:
-	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	var query := PhysicsShapeQueryParameters2D.new()
 	var circle := CircleShape2D.new()
 	circle.radius = radius + Constants.MOB_RADIUS
@@ -246,28 +474,9 @@ func _push_mobs() -> void:
 		var dir := body.global_position - global_position
 		if dir.is_zero_approx():
 			continue
-		var impulse := dir.normalized() * Constants.MOB_PUSH_FORCE * (6.0 if _dashing else 1.0)
-		if not networked or multiplayer.is_server():
-			body.apply_push(impulse)
-		else:
-			var arena: Node = body.get_parent().get_parent()
-			if arena.is_inside_tree():
-				arena.rpc_push_mob.rpc_id(1, body.name, impulse)
+		body.apply_push(dir.normalized() * Constants.MOB_PUSH_FORCE * (6.0 if _dashing else 1.0))
 
-@rpc("authority", "reliable")
-func _rpc_set_dash_particles(dir: Vector2, emitting: bool) -> void:
-	$DashParticles.direction = dir
-	$DashParticles.emitting = emitting
-
-@rpc("authority", "reliable")
-func _rpc_spawn_consecration(pos: Vector2) -> void:
-	_spawn_consecration_local(pos, not multiplayer.is_server())
-
-@rpc("any_peer", "unreliable_ordered")
-func _rpc_sync_pos(pos: Vector2) -> void:
-	if not is_multiplayer_authority():
-		position = pos
-		queue_redraw()
+# --- Drawing ---
 
 func _draw_droplet(r: float, col: Color, fwd: Vector2) -> void:
 	var n := 20

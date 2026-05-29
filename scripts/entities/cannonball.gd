@@ -3,6 +3,7 @@ extends Area2D
 var direction := Vector2.RIGHT
 var player_ref: Node = null
 var homing := true
+var visual_only := false
 var _distance_traveled := 0.0
 var _target: Node2D = null
 
@@ -58,12 +59,8 @@ func _on_body_entered(body: Node2D) -> void:
 	if not body.has_method("take_damage"):
 		return
 	_spawn_impact()
-	var knockback := direction * Constants.SKILL_CANNON_KNOCKBACK
-	var networked: bool = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
-	if not networked or multiplayer.is_server():
-		body.take_damage(Constants.SKILL_CANNON_DAMAGE, knockback)
-	elif player_ref and is_instance_valid(player_ref):
-		player_ref.rpc_request_hit.rpc_id(1, body.get_path(), Constants.SKILL_CANNON_DAMAGE, knockback)
+	if not visual_only:
+		body.take_damage(Constants.SKILL_CANNON_DAMAGE, direction * Constants.SKILL_CANNON_KNOCKBACK, player_ref)
 	queue_free()
 
 func _draw() -> void:

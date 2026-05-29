@@ -4,6 +4,7 @@ const CANNONBALL_SCENE = preload("res://scenes/entities/cannonball.tscn")
 
 var facing := Vector2.RIGHT
 var player_ref: Node = null
+var visual_only := false
 var _fire_timer := 0.0
 
 func _ready() -> void:
@@ -13,10 +14,11 @@ func reset_fire_timer() -> void:
 	_fire_timer = 0.0
 
 func _process(delta: float) -> void:
-	_fire_timer -= delta
-	if _fire_timer <= 0.0:
-		_fire_timer = Constants.SKILL_TURRET_FIRE_INTERVAL
-		_fire_cone()
+	if not visual_only:
+		_fire_timer -= delta
+		if _fire_timer <= 0.0:
+			_fire_timer = Constants.SKILL_TURRET_FIRE_INTERVAL
+			_fire_cone()
 	queue_redraw()
 
 func _fire_cone() -> void:
@@ -30,6 +32,8 @@ func _fire_cone() -> void:
 		ball.global_position = global_position + dir * 22.0
 		ball.player_ref = player_ref
 		get_parent().add_child(ball)
+		if player_ref and is_instance_valid(player_ref):
+			player_ref.broadcast_cannonball(ball.global_position, dir, false)
 
 func _draw() -> void:
 	draw_circle(Vector2.ZERO, 14.0, Color(0.3, 0.25, 0.15))
