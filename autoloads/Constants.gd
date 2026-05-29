@@ -3,22 +3,15 @@ extends Node
 const WORLD_SIZE_X = 2667
 const WORLD_SIZE_Y = 2000
 const ARENA_GAP = 300
-const NET_PORT = 7777
-const MAX_PLAYERS = 8
-const MAX_PLAYERS_PER_TEAM = 4
 const SIGNALING_URL = "wss://mobber.onrender.com"
-const FORCE_WEBRTC = false   # set false before shipping; true forces WebRTC even on desktop
 const PLAYER_SPEED = 300.0
 const PLAYER_START_RADIUS = 30.0
-const FOOD_RADIUS = 5.0
-const FOOD_COUNT = 200
 
 const MOB_RADIUS = 15.0
 const MOB_SPEED = 120.0
 const MOB_MAX_HEALTH = 30.0
 const MOB_WANDER_INTERVAL = 2.0
 const MOB_COUNT = 5
-const MOB_WIN_COUNT = 50
 const KILL_REWARD = 10
 
 const PLAYER_DASH_SPEED = 2400.0

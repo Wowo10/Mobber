@@ -55,22 +55,6 @@ horizontal_alignment = 1
 [node name="HSep" type="HSeparator" parent="VBox"]
 layout_mode = 2
 
-[node name="IPRow" type="HBoxContainer" parent="VBox"]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="IPInput" type="LineEdit" parent="VBox/IPRow"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 36)
-layout_mode = 2
-size_flags_horizontal = 3
-placeholder_text = "Server IP (default: 127.0.0.1)"
-
-[node name="PasteButton" type="Button" parent="VBox/IPRow"]
-custom_minimum_size = Vector2(60, 36)
-layout_mode = 2
-text = "Paste"
-
 [node name="JoinButton" type="Button" parent="VBox"]
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
@@ -85,4 +69,3 @@ horizontal_alignment = 1
 [connection signal="pressed" from="VBox/HostButton" to="." method="_on_host_pressed"]
 [connection signal="pressed" from="VBox/JoinButton" to="." method="_on_join_pressed"]
 [connection signal="pressed" from="VBox/CodeDisplay" to="." method="_on_code_display_pressed"]
-[connection signal="pressed" from="VBox/IPRow/PasteButton" to="." method="_on_paste_pressed"]

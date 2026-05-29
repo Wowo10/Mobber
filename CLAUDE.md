@@ -45,7 +45,7 @@ The player has a basic melee attack. The server is authoritative: it validates i
 
 ### Networking approach
 
-Use **Godot's built-in `ENetMultiplayerPeer`** — no separate server process needed. One player calls `create_server()`, the other calls `create_client(ip)`. The host runs server logic in the same process. Start with direct IP connection; add a relay/matchmaking layer (Go server) only if room codes or NAT traversal become necessary. A Go server would only handle connection brokering — never game logic, since that would duplicate all hit detection and spawning in a second language.
+Use **WebRTC via `WebRTCMultiplayerPeer`** with a WebSocket signaling server (`Constants.SIGNALING_URL`). One player hosts (calls `create_server()` on the peer), others join with a room code. `WebRTCSignaling` (autoload) handles the full offer/answer/ICE handshake and emits `game_ready` when the connection is established. The signaling server only brokers connection setup — all game logic runs peer-to-peer.
 
 ### Design patterns to follow
 
@@ -74,7 +74,7 @@ func sync_state(pos: Vector2, mob_positions: Array): ...
 1. Add a basic melee hitbox to the player (Area2D, swing animation optional).
 2. Create a `Mob` scene (CharacterBody2D, simple wandering AI, health).
 3. Build a `GameServer` singleton that owns both arenas, handles mob spawning, tracks counts.
-4. Wire up `ENetMultiplayerPeer` with a host/join UI (two buttons: Host / Join + IP field).
+4. Wire up `WebRTCMultiplayerPeer` with a host/join UI (Host button + room code field).
 5. Implement server-authoritative movement: client sends direction input, server moves the character, broadcasts position.
 6. Implement kill → spawn-2-in-opponent's-arena logic on the server.
 7. Add win condition check (mob count ≥ 100) and game-over RPC.

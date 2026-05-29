@@ -5,7 +5,6 @@ const LOBBY_SCENE = "res://scenes/ui/lobby.tscn"
 const ARCHETYPE_NAMES := ["Knight", "Pirate"]
 
 var _is_host: bool = false
-var _is_web: bool = false
 var _team_assignments: Dictionary = {}   # peer_id -> 0 or 1
 var _peer_names: Dictionary = {}         # peer_id -> String
 var _peer_archetypes: Dictionary = {}    # peer_id -> int
@@ -15,7 +14,6 @@ var _team_lists: Array                   # [%Team1List, %Team2List]
 
 func _ready() -> void:
 	_is_host = multiplayer.is_server()
-	_is_web = OS.get_name() == "Web" or Constants.FORCE_WEBRTC
 	_team_lists = [%Team1List, %Team2List]
 	%StartButton.visible = _is_host
 	%StartButton.disabled = true
@@ -33,7 +31,7 @@ func _ready() -> void:
 		_team_assignments[1] = 0
 		_add_row(1, true, 0)
 		multiplayer.peer_disconnected.connect(_on_peer_disconnected)
-		if _is_web and not PlayerPrefs.room_code.is_empty():
+		if not PlayerPrefs.room_code.is_empty():
 			%CodeDisplay.text = "Room: %s  [click to copy]" % PlayerPrefs.room_code
 			%CodeDisplay.visible = true
 	else:
@@ -250,11 +248,7 @@ func _kick_peer(peer_id: int) -> void:
 	call_deferred("_disconnect_peer", peer_id)
 
 func _disconnect_peer(peer_id: int) -> void:
-	var peer = multiplayer.multiplayer_peer
-	if peer is ENetMultiplayerPeer:
-		peer.disconnect_peer(peer_id)
-	elif peer is WebRTCMultiplayerPeer:
-		peer.remove_peer(peer_id)
+	(multiplayer.multiplayer_peer as WebRTCMultiplayerPeer).remove_peer(peer_id)
 
 @rpc("authority", "reliable")
 func _rpc_kicked() -> void:
@@ -287,8 +281,7 @@ func _rpc_win_count_changed(count: int) -> void:
 func _on_start_pressed() -> void:
 	if not _is_host:
 		return
-	if _is_web:
-		WebRTCSignaling.seal()
+	WebRTCSignaling.seal()
 	PlayerPrefs.peer_teams = _team_assignments
 	PlayerPrefs.peer_names = _peer_names
 	_rpc_start_game.rpc(_team_assignments)
