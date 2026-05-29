@@ -114,7 +114,10 @@ func _physics_process(delta: float) -> void:
 		velocity = _last_facing * Constants.PLAYER_DASH_SPEED
 		if _dash_timer <= 0.0:
 			_dashing = false
-			$DashParticles.emitting = false
+			if not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer):
+				_rpc_set_dash_particles.rpc(Vector2.ZERO, false)
+			else:
+				$DashParticles.emitting = false
 	else:
 		if dash_cooldown > 0.0:
 			dash_cooldown -= delta
@@ -123,8 +126,11 @@ func _physics_process(delta: float) -> void:
 			_dashing = true
 			_dash_timer = Constants.PLAYER_DASH_DURATION
 			dash_cooldown = Constants.PLAYER_DASH_COOLDOWN
-			$DashParticles.direction = -_last_facing
-			$DashParticles.emitting = true
+			if not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer):
+				_rpc_set_dash_particles.rpc(-_last_facing, true)
+			else:
+				$DashParticles.direction = -_last_facing
+				$DashParticles.emitting = true
 
 	move_and_slide()
 	_push_mobs()
@@ -166,10 +172,17 @@ func _skill_cannon() -> void:
 
 func _skill_consecration() -> void:
 	skill2_cooldown = Constants.SKILL_CONSECRATION_COOLDOWN
+	if not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer):
+		_rpc_spawn_consecration.rpc(global_position)
+	else:
+		_spawn_consecration_local(global_position, false)
+
+func _spawn_consecration_local(pos: Vector2, visual_only: bool) -> void:
 	var c := CONSECRATION_SCENE.instantiate()
 	c.player_ref = self
+	c.visual_only = visual_only
 	get_parent().add_child(c)
-	c.global_position = global_position
+	c.global_position = pos
 
 func _skill_turret() -> void:
 	skill2_cooldown = Constants.SKILL_TURRET_COOLDOWN
@@ -240,6 +253,15 @@ func _push_mobs() -> void:
 			var arena: Node = body.get_parent().get_parent()
 			if arena.is_inside_tree():
 				arena.rpc_push_mob.rpc_id(1, body.name, impulse)
+
+@rpc("authority", "reliable")
+func _rpc_set_dash_particles(dir: Vector2, emitting: bool) -> void:
+	$DashParticles.direction = dir
+	$DashParticles.emitting = emitting
+
+@rpc("authority", "reliable")
+func _rpc_spawn_consecration(pos: Vector2) -> void:
+	_spawn_consecration_local(pos, not multiplayer.is_server())
 
 @rpc("any_peer", "unreliable_ordered")
 func _rpc_sync_pos(pos: Vector2) -> void:

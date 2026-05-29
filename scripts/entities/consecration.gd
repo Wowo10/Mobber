@@ -1,6 +1,7 @@
 extends Area2D
 
 var player_ref: Node = null
+var visual_only := false
 var _duration_left: float = Constants.SKILL_CONSECRATION_DURATION
 var _tick_timer := 0.0
 var _bodies_inside := []
@@ -23,6 +24,8 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 func _apply_damage() -> void:
+	if visual_only:
+		return
 	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	for body in _bodies_inside.duplicate():
 		if not is_instance_valid(body) or not body.has_method("take_damage"):
