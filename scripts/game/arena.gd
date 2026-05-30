@@ -6,6 +6,9 @@ signal player_exited_shop
 const GRID_SIZE = 100
 const MOB_SCENE = preload("res://scenes/entities/mob.tscn")
 const SHOP_ZONE_RECT := Rect2(100, 1650, 300, 300)
+const MOB_SYNC_INTERVAL := 0.05  # 20 Hz
+
+var _sync_timer := 0.0
 
 func _ready() -> void:
 	_build_walls()
@@ -53,6 +56,35 @@ func _build_walls() -> void:
 		cs.position = w[0]
 		cs.shape = shape
 		body.add_child(cs)
+
+func _physics_process(delta: float) -> void:
+	var networked: bool = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
+	if not networked or not multiplayer.is_server():
+		return
+	_sync_timer += delta
+	if _sync_timer < MOB_SYNC_INTERVAL:
+		return
+	_sync_timer = 0.0
+	var mobs := $MobContainer.get_children()
+	if mobs.is_empty():
+		return
+	var names := PackedStringArray()
+	var positions := PackedVector2Array()
+	var velocities := PackedVector2Array()
+	for mob in mobs:
+		names.append(mob.name)
+		positions.append(mob.position)
+		velocities.append(mob.velocity)
+	_rpc_sync_mob_states.rpc(names, positions, velocities)
+
+@rpc("authority", "unreliable_ordered")
+func _rpc_sync_mob_states(names: PackedStringArray, positions: PackedVector2Array, velocities: PackedVector2Array) -> void:
+	for i in names.size():
+		var mob := $MobContainer.get_node_or_null(names[i])
+		if mob == null:
+			continue
+		mob.position = positions[i]
+		mob.velocity = velocities[i]
 
 func spawn_mob(type: int = -1, near_pos: Vector2 = Vector2(-1.0, -1.0)) -> void:
 	if not multiplayer.is_server():
