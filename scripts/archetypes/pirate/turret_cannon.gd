@@ -1,6 +1,8 @@
 extends Node2D
 
-const CANNONBALL_SCENE = preload("res://scenes/entities/cannonball.tscn")
+const CANNONBALL_SCENE = preload("res://scenes/archetypes/pirate/cannonball.tscn")
+const FIRE_INTERVAL = 2.5
+const SPREAD = 18.0
 
 var facing := Vector2.RIGHT
 var player_ref: Node = null
@@ -17,14 +19,14 @@ func _process(delta: float) -> void:
 	if not visual_only:
 		_fire_timer -= delta
 		if _fire_timer <= 0.0:
-			_fire_timer = Constants.SKILL_TURRET_FIRE_INTERVAL
+			_fire_timer = FIRE_INTERVAL
 			_fire_cone()
 	queue_redraw()
 
 func _fire_cone() -> void:
-	var spread := deg_to_rad(Constants.SKILL_TURRET_SPREAD)
+	var spread := deg_to_rad(SPREAD)
 	for i in range(3):
-		var angle_offset := (i - 1) * spread  # -spread, 0, +spread
+		var angle_offset := (i - 1) * spread
 		var dir := facing.rotated(angle_offset)
 		var ball := CANNONBALL_SCENE.instantiate()
 		ball.direction = dir

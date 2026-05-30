@@ -1,5 +1,11 @@
 extends Area2D
 
+const SPEED = 1200.0
+const RANGE = 800.0
+const DAMAGE = 20.0
+const KNOCKBACK = 10000.0
+const TURN_SPEED = 12.0
+
 var direction := Vector2.RIGHT
 var player_ref: Node = null
 var homing := true
@@ -17,14 +23,14 @@ func _process(delta: float) -> void:
 		if _target and is_instance_valid(_target):
 			var to_target := (_target.global_position - global_position).normalized()
 			var turn: float = clamp(angle_difference(direction.angle(), to_target.angle()),
-				-Constants.SKILL_CANNON_TURN_SPEED * delta,
-				Constants.SKILL_CANNON_TURN_SPEED * delta)
+				-TURN_SPEED * delta,
+				TURN_SPEED * delta)
 			direction = direction.rotated(turn)
-	var step := direction * Constants.SKILL_CANNON_SPEED * delta
+	var step := direction * SPEED * delta
 	global_position += step
 	_distance_traveled += step.length()
 	queue_redraw()
-	if _distance_traveled >= Constants.SKILL_CANNON_RANGE:
+	if _distance_traveled >= RANGE:
 		queue_free()
 
 func _update_target() -> void:
@@ -60,7 +66,7 @@ func _on_body_entered(body: Node2D) -> void:
 		return
 	_spawn_impact()
 	if not visual_only:
-		body.take_damage(Constants.SKILL_CANNON_DAMAGE, direction * Constants.SKILL_CANNON_KNOCKBACK, player_ref)
+		body.take_damage(DAMAGE, direction * KNOCKBACK, player_ref)
 	queue_free()
 
 func _draw() -> void:

@@ -1,28 +1,33 @@
 class_name ArchetypeKnight
 extends ArchetypeBase
 
-const CONSECRATION_SCENE = preload("res://scenes/entities/consecration.tscn")
+const CONSECRATION_SCENE = preload("res://scenes/archetypes/knight/consecration.tscn")
+
+const SPIN_COOLDOWN = 7.0
+const SPIN_DURATION = 2.5
+const SPIN_SPEED = TAU * 3.0
+const CONSECRATION_COOLDOWN = 8.0
 
 func get_color() -> Color:
 	return Color(0.6, 0.65, 0.85)
 
 func get_skill1_max_cooldown() -> float:
-	return Constants.SKILL_SPIN_COOLDOWN
+	return SPIN_COOLDOWN
 
 func get_skill2_max_cooldown() -> float:
-	return Constants.SKILL_CONSECRATION_COOLDOWN
+	return CONSECRATION_COOLDOWN
 
 func use_skill1() -> void:
-	_player.skill1_cooldown = Constants.SKILL_SPIN_COOLDOWN
+	_player.skill1_cooldown = SPIN_COOLDOWN
 	_player.spinning = true
-	_player.spin_timer = Constants.SKILL_SPIN_DURATION
+	_player.spin_timer = SPIN_DURATION
 	_player.get_node("Sword").enter_spin()
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
 		_player.rpc_trigger_spin_start.rpc()
 
 func use_skill2() -> void:
-	_player.skill2_cooldown = Constants.SKILL_CONSECRATION_COOLDOWN
+	_player.skill2_cooldown = CONSECRATION_COOLDOWN
 	spawn_consecration_local(_player.global_position, false)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:

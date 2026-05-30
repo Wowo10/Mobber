@@ -1,5 +1,9 @@
 extends Area2D
 
+const SPIN_DAMAGE = 10.0
+const SPIN_KNOCKBACK = 1800.0
+const SPIN_HIT_INTERVAL = 0.4
+
 var swinging := false
 var spin_mode := false
 var _spin_cooldowns := {}
@@ -66,9 +70,9 @@ func _on_body_entered(body: Node2D) -> void:
 		var rid = body.get_rid()
 		if _spin_cooldowns.has(rid):
 			return
-		_spin_cooldowns[rid] = Constants.SKILL_SPIN_HIT_INTERVAL
-		damage = Constants.SKILL_SPIN_DAMAGE + damage_bonus
-		knockback_force = Constants.SKILL_SPIN_KNOCKBACK
+		_spin_cooldowns[rid] = SPIN_HIT_INTERVAL
+		damage = SPIN_DAMAGE + damage_bonus
+		knockback_force = SPIN_KNOCKBACK
 	else:
 		damage = Constants.SWORD_DAMAGE + damage_bonus
 		knockback_force = Constants.MOB_KNOCKBACK

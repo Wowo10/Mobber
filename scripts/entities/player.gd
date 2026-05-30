@@ -107,7 +107,7 @@ func _process(delta: float) -> void:
 
 	# Keep spinning sword rotating for non-authority players we're observing
 	if networked and not multiplayer.is_server() and not is_multiplayer_authority() and spinning:
-		$Sword.rotation += Constants.SKILL_SPIN_SPEED * delta
+		$Sword.rotation += ArchetypeKnight.SPIN_SPEED * delta
 
 	if not networked or not is_multiplayer_authority() or multiplayer.is_server():
 		return
@@ -132,7 +132,7 @@ func _process(delta: float) -> void:
 	# Spin visual tick
 	if spinning:
 		spin_timer -= delta
-		$Sword.rotation += Constants.SKILL_SPIN_SPEED * delta
+		$Sword.rotation += ArchetypeKnight.SPIN_SPEED * delta
 		if spin_timer <= 0.0:
 			spinning = false
 			$Sword.exit_spin()
@@ -174,9 +174,9 @@ func _process(delta: float) -> void:
 	if Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0:
 		action_mask |= 4
 		if archetype == Constants.ARCHETYPE_KNIGHT:
-			skill1_cooldown = Constants.SKILL_SPIN_COOLDOWN
+			skill1_cooldown = skill1_max_cooldown
 			spinning = true
-			spin_timer = Constants.SKILL_SPIN_DURATION
+			spin_timer = ArchetypeKnight.SPIN_DURATION
 			$Sword.enter_spin()
 		else:
 			skill1_cooldown = skill1_max_cooldown
@@ -240,7 +240,7 @@ func _physics_process(delta: float) -> void:
 	# Spin tick
 	if spinning:
 		spin_timer -= delta
-		$Sword.rotation += Constants.SKILL_SPIN_SPEED * delta
+		$Sword.rotation += ArchetypeKnight.SPIN_SPEED * delta
 		if spin_timer <= 0.0:
 			spinning = false
 			$Sword.exit_spin()
@@ -394,7 +394,7 @@ func _rpc_trigger_swing(facing_angle: float) -> void:
 @rpc("any_peer", "reliable")
 func rpc_trigger_spin_start() -> void:
 	spinning = true
-	spin_timer = Constants.SKILL_SPIN_DURATION
+	spin_timer = ArchetypeKnight.SPIN_DURATION
 	$Sword.enter_spin()
 
 @rpc("any_peer", "reliable")

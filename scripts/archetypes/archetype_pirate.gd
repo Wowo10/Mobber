@@ -1,8 +1,11 @@
 class_name ArchetypePirate
 extends ArchetypeBase
 
-const CANNONBALL_SCENE = preload("res://scenes/entities/cannonball.tscn")
-const TURRET_SCENE = preload("res://scenes/entities/turret_cannon.tscn")
+const CANNONBALL_SCENE = preload("res://scenes/archetypes/pirate/cannonball.tscn")
+const TURRET_SCENE = preload("res://scenes/archetypes/pirate/turret_cannon.tscn")
+
+const CANNON_COOLDOWN = 3.5
+const TURRET_COOLDOWN = 4.0
 
 var _turret: Node2D = null
 var _visual_turret: Node2D = null
@@ -11,13 +14,13 @@ func get_color() -> Color:
 	return Color(0.8, 0.35, 0.1)
 
 func get_skill1_max_cooldown() -> float:
-	return Constants.SKILL_CANNON_COOLDOWN
+	return CANNON_COOLDOWN
 
 func get_skill2_max_cooldown() -> float:
-	return Constants.SKILL_TURRET_COOLDOWN
+	return TURRET_COOLDOWN
 
 func use_skill1() -> void:
-	_player.skill1_cooldown = Constants.SKILL_CANNON_COOLDOWN
+	_player.skill1_cooldown = CANNON_COOLDOWN
 	var cannonball = CANNONBALL_SCENE.instantiate()
 	cannonball.direction = _player.last_facing
 	cannonball.global_position = _player.global_position + _player.last_facing * (_player.radius + 12.0)
@@ -26,7 +29,7 @@ func use_skill1() -> void:
 	_player.broadcast_cannonball(cannonball.global_position, _player.last_facing, true)
 
 func use_skill2() -> void:
-	_player.skill2_cooldown = Constants.SKILL_TURRET_COOLDOWN
+	_player.skill2_cooldown = TURRET_COOLDOWN
 	if _turret and is_instance_valid(_turret):
 		_turret.global_position = _player.global_position
 		_turret.facing = _player.last_facing
