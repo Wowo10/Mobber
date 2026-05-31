@@ -284,6 +284,14 @@ func _on_return_pressed() -> void:
 	_leaving = true
 	_leave_game()
 
+func _make_archetype(arch_id: int) -> ArchetypeBase:
+	match arch_id:
+		Constants.ARCHETYPE_KNIGHT: return ArchetypeKnight.new()
+		Constants.ARCHETYPE_PIRATE: return ArchetypePirate.new()
+		Constants.ARCHETYPE_MAGE:   return ArchetypeMage.new()
+		Constants.ARCHETYPE_CYBORG: return ArchetypeCyborg.new()
+	return ArchetypeBase.new()
+
 func _setup_skill_bar() -> void:
 	var bar := $HUD/SkillBar
 	bar.get_node("AttackSlot").key_text = "SPC"
@@ -299,13 +307,9 @@ func _setup_skill_bar() -> void:
 	s1.available = true
 	s2.available = true
 	s3.available = false
-	match PlayerPrefs.archetype:
-		Constants.ARCHETYPE_KNIGHT:
-			s1.icon_color = Color(0.75, 0.75, 0.9)
-			s2.icon_color = Color(1.0, 0.85, 0.2)
-		Constants.ARCHETYPE_PIRATE:
-			s1.icon_color = Color(0.95, 0.7, 0.1)
-			s2.icon_color = Color(0.45, 0.3, 0.15)
+	var arch := _make_archetype(PlayerPrefs.archetype)
+	s1.icon_color = arch.get_skill1_color()
+	s2.icon_color = arch.get_skill2_color()
 
 func _process(_delta: float) -> void:
 	if _leaving:

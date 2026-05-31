@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=3 uid="uid://cyblt01tscn"]
+
+[ext_resource type="Script" uid="uid://ys72c7xs6bus" path="res://scripts/archetypes/cyborg/cyber_bullet.gd" id="1_cyblt"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_cyblt"]
+radius = 8.0
+
+[node name="CyberBullet" type="Area2D"]
+collision_mask = 1
+script = ExtResource("1_cyblt")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_cyblt")

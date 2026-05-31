@@ -9,6 +9,7 @@ func _ready() -> void:
 	var saved_name := _load_name()
 	PlayerPrefs.player_name = saved_name
 	%NameInput.text = saved_name
+	PlayerPrefs.archetype = _load_archetype()
 
 	var win_opts := [50, 75, 100, 120]
 	var wsel := %WinCountSelect
@@ -37,6 +38,15 @@ func _load_name() -> String:
 	if cfg.load("user://prefs.cfg") == OK:
 		return cfg.get_value("player", "name", "")
 	return ""
+
+func _load_archetype() -> int:
+	if OS.get_name() == "Web":
+		var val: String = str(JavaScriptBridge.eval("localStorage.getItem('mobber_arch') || '0'"))
+		return val.to_int()
+	var cfg := ConfigFile.new()
+	if cfg.load("user://prefs.cfg") == OK:
+		return cfg.get_value("player", "archetype", 0)
+	return 0
 
 func _on_name_changed(new_text: String) -> void:
 	PlayerPrefs.player_name = new_text

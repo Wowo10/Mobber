@@ -11,6 +11,12 @@ const CONSECRATION_COOLDOWN = 8.0
 func get_color() -> Color:
 	return Color(0.6, 0.65, 0.85)
 
+func get_skill1_color() -> Color:
+	return Color(0.75, 0.75, 0.9)
+
+func get_skill2_color() -> Color:
+	return Color(1.0, 0.85, 0.2)
+
 func get_skill1_max_cooldown() -> float:
 	return SPIN_COOLDOWN
 

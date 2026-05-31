@@ -13,6 +13,12 @@ var _visual_turret: Node2D = null
 func get_color() -> Color:
 	return Color(0.8, 0.35, 0.1)
 
+func get_skill1_color() -> Color:
+	return Color(0.95, 0.7, 0.1)
+
+func get_skill2_color() -> Color:
+	return Color(0.45, 0.3, 0.15)
+
 func get_skill1_max_cooldown() -> float:
 	return CANNON_COOLDOWN
 

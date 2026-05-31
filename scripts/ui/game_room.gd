@@ -2,7 +2,6 @@ extends CanvasLayer
 
 const GAME_SCENE = "res://scenes/game/game.tscn"
 const LOBBY_SCENE = "res://scenes/ui/lobby.tscn"
-const ARCHETYPE_NAMES := ["Knight", "Pirate"]
 
 var _is_host: bool = false
 var _team_assignments: Dictionary = {}   # peer_id -> 0 or 1
@@ -42,7 +41,7 @@ func _ready() -> void:
 # --- Helpers ---
 
 func _archetype_name(arch: int) -> String:
-	return ARCHETYPE_NAMES[arch] if arch >= 0 and arch < ARCHETYPE_NAMES.size() else "?"
+	return Constants.ARCHETYPE_NAMES[arch] if arch >= 0 and arch < Constants.ARCHETYPE_NAMES.size() else "?"
 
 func _display_name(peer_id: int) -> String:
 	var n: String = _peer_names.get(peer_id, "")
@@ -75,8 +74,8 @@ func _add_row(peer_id: int, is_self: bool, team: int) -> void:
 
 	if is_self:
 		var arch_btn := OptionButton.new()
-		for i in ARCHETYPE_NAMES.size():
-			arch_btn.add_item(ARCHETYPE_NAMES[i], i)
+		for i in Constants.ARCHETYPE_NAMES.size():
+			arch_btn.add_item(Constants.ARCHETYPE_NAMES[i], i)
 		arch_btn.select(_peer_archetypes.get(peer_id, 0))
 		arch_btn.item_selected.connect(func(idx: int): _on_archetype_selected(arch_btn.get_item_id(idx)))
 		row.add_child(arch_btn)
@@ -127,6 +126,16 @@ func _update_status() -> void:
 
 func _on_archetype_selected(arch: int) -> void:
 	PlayerPrefs.archetype = arch
+	_save_archetype(arch)
+
+func _save_archetype(arch: int) -> void:
+	if OS.get_name() == "Web":
+		JavaScriptBridge.eval("localStorage.setItem('mobber_arch','%d')" % arch)
+	else:
+		var cfg := ConfigFile.new()
+		cfg.load("user://prefs.cfg")
+		cfg.set_value("player", "archetype", arch)
+		cfg.save("user://prefs.cfg")
 	if _is_host:
 		var my_id := multiplayer.get_unique_id()
 		_peer_archetypes[my_id] = arch

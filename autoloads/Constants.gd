@@ -43,6 +43,9 @@ const MOB_BOSS_WORTH = 10
 
 const ARCHETYPE_KNIGHT = 0
 const ARCHETYPE_PIRATE = 1
+const ARCHETYPE_MAGE = 2
+const ARCHETYPE_CYBORG = 3
+const ARCHETYPE_NAMES := ["Knight", "Pirate", "Mage", "Cyborg"]
 
 const SKILL_WARCRY_DURATION = 3.0
 const SKILL_WARCRY_SPEED_MULT = 1.7

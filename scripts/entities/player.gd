@@ -75,6 +75,10 @@ func _apply_archetype() -> void:
 			_archetype_handler = ArchetypeKnight.new()
 		Constants.ARCHETYPE_PIRATE:
 			_archetype_handler = ArchetypePirate.new()
+		Constants.ARCHETYPE_MAGE:
+			_archetype_handler = ArchetypeMage.new()
+		Constants.ARCHETYPE_CYBORG:
+			_archetype_handler = ArchetypeCyborg.new()
 		_:
 			_archetype_handler = ArchetypeBase.new()
 	_archetype_handler.setup(self)
@@ -128,7 +132,7 @@ func _physics_process(delta: float) -> void:
 	if not networked:
 		# Path A — Offline: read keyboard, full simulation, no RPCs
 		direction = _read_direction()
-		do_attack = Input.is_action_just_pressed("attack") and not $Sword.swinging and not spinning
+		do_attack = Input.is_action_just_pressed("attack") and _archetype_handler.can_attack()
 		do_dash   = Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0
 		do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0
 		do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0
@@ -137,13 +141,13 @@ func _physics_process(delta: float) -> void:
 		# Path B — Server: simulate all players authoritatively
 		if is_multiplayer_authority():
 			direction = _read_direction()
-			do_attack = Input.is_action_just_pressed("attack") and not $Sword.swinging and not spinning
+			do_attack = Input.is_action_just_pressed("attack") and _archetype_handler.can_attack()
 			do_dash   = Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0
 			do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0
 			do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0
 		else:
 			direction = _received_direction
-			do_attack = _pending_attack and not $Sword.swinging and not spinning
+			do_attack = _pending_attack and _archetype_handler.can_attack()
 			do_dash   = _pending_dash and dash_cooldown <= 0.0
 			do_skill1 = _pending_skill1 and skill1_cooldown <= 0.0
 			do_skill2 = _pending_skill2 and skill2_cooldown <= 0.0
@@ -155,7 +159,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		# Path C — Client own player: predict locally and send input to server
 		direction = _read_direction()
-		do_attack = Input.is_action_just_pressed("attack") and not $Sword.swinging and not spinning
+		do_attack = Input.is_action_just_pressed("attack") and _archetype_handler.can_attack()
 		do_dash   = Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0
 		do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0
 		do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0
@@ -225,7 +229,7 @@ func _physics_process(delta: float) -> void:
 		if _server_correction.length() < 0.5:
 			_server_correction = Vector2.ZERO
 
-	# Mob pushing — server and offline only; client doesn't have authoritative mob physics
+	# Mob pushing — server and offline only
 	if not networked or multiplayer.is_server():
 		_push_mobs()
 
@@ -234,21 +238,20 @@ func _physics_process(delta: float) -> void:
 	if not networked or multiplayer.is_server():
 		# Paths A & B: authoritative attack + skill spawning + position broadcast
 		if do_attack:
-			$Sword.swing(last_facing.angle())
-			attack_cooldown = $Sword.swing_duration
+			_archetype_handler.use_attack()
 			if networked:
-				_rpc_trigger_swing.rpc(last_facing.angle())
+				_archetype_handler.broadcast_attack()
 		if do_skill1:
 			_use_skill1()
 		if do_skill2:
 			_use_skill2()
+		_archetype_handler.physics_process(delta)
 		if networked:
 			_rpc_sync_pos.rpc(position, last_facing, move_direction)
 	else:
-		# Path C: local visual prediction only — no server-authoritative spawning
+		# Path C: local visual prediction — no server-authoritative spawning
 		if do_attack:
-			$Sword.swing(last_facing.angle())
-			attack_cooldown = $Sword.swing_duration
+			_archetype_handler.use_attack_visual()
 		if do_skill1:
 			if archetype == Constants.ARCHETYPE_KNIGHT:
 				spinning = true
@@ -257,8 +260,10 @@ func _physics_process(delta: float) -> void:
 				skill1_cooldown = skill1_max_cooldown
 			else:
 				skill1_cooldown = skill1_max_cooldown
+				_archetype_handler.on_skill1_client_predict()
 		if do_skill2:
 			skill2_cooldown = skill2_max_cooldown
+		_archetype_handler.physics_process(delta)
 
 # --- Input helper ---
 
@@ -343,6 +348,9 @@ func _push_mobs() -> void:
 
 # --- Broadcast helpers (called by archetype handlers) ---
 
+func broadcast_swing(angle: float) -> void:
+	rpc_trigger_swing.rpc(angle)
+
 func broadcast_cannonball(pos: Vector2, dir: Vector2, homing: bool) -> void:
 	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked and multiplayer.is_server():
@@ -362,13 +370,41 @@ func rpc_place_turret(pos: Vector2, fac: Vector2) -> void:
 func rpc_spawn_consecration(pos: Vector2) -> void:
 	(_archetype_handler as ArchetypeKnight).spawn_consecration_local(pos, true)
 
+@rpc("any_peer", "reliable")
+func rpc_spawn_mage_bolt(pos: Vector2, dir: Vector2) -> void:
+	if is_multiplayer_authority():
+		return
+	(_archetype_handler as ArchetypeMage).spawn_bolt_local(pos, dir, true)
+
+@rpc("any_peer", "reliable")
+func rpc_spawn_rain(pos: Vector2) -> void:
+	(_archetype_handler as ArchetypeMage).spawn_rain_local(pos, true)
+
+@rpc("any_peer", "reliable")
+func rpc_spawn_fireball(pos: Vector2, dir: Vector2) -> void:
+	(_archetype_handler as ArchetypeMage).spawn_fireball_local(pos, dir, true)
+
+@rpc("any_peer", "reliable")
+func rpc_spawn_cyber_bullet(pos: Vector2, dir: Vector2) -> void:
+	if is_multiplayer_authority():
+		return
+	(_archetype_handler as ArchetypeCyborg).spawn_bullet_local(pos, dir, true)
+
+@rpc("any_peer", "reliable")
+func rpc_spawn_cyber_ray(pos: Vector2, facing: Vector2) -> void:
+	(_archetype_handler as ArchetypeCyborg).spawn_ray_local(pos, facing, true)
+
+@rpc("any_peer", "reliable")
+func rpc_set_cyborg_ranged_mode(active: bool) -> void:
+	(_archetype_handler as ArchetypeCyborg).set_ranged_mode(active)
+
 @rpc("any_peer", "unreliable_ordered")
 func _rpc_set_dash_particles(dir: Vector2, emitting: bool) -> void:
 	$DashParticles.direction = dir
 	$DashParticles.emitting = emitting
 
 @rpc("any_peer", "reliable")
-func _rpc_trigger_swing(facing_angle: float) -> void:
+func rpc_trigger_swing(facing_angle: float) -> void:
 	$Sword.swing(facing_angle)
 
 @rpc("any_peer", "reliable")

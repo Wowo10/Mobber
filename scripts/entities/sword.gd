@@ -11,6 +11,12 @@ var damage_bonus: float = 0.0
 var size_mult: float = 1.0
 var swing_duration: float = Constants.SWORD_SWING_DURATION
 
+# Archetype-specific base stats — set once in setup, layered under shop upgrades
+var base_damage: float = Constants.SWORD_DAMAGE
+var base_length: float = Constants.SWORD_LENGTH
+var base_width: float = Constants.SWORD_WIDTH
+var base_swing_duration: float = Constants.SWORD_SWING_DURATION
+
 func _ready() -> void:
 	monitoring = false
 	visible = false
@@ -74,7 +80,7 @@ func _on_body_entered(body: Node2D) -> void:
 		damage = SPIN_DAMAGE + damage_bonus
 		knockback_force = SPIN_KNOCKBACK
 	else:
-		damage = Constants.SWORD_DAMAGE + damage_bonus
+		damage = base_damage + damage_bonus
 		knockback_force = Constants.MOB_KNOCKBACK
 	var knockback: Vector2 = (body.global_position - get_parent().global_position).normalized() \
 		* knockback_force
@@ -83,13 +89,13 @@ func _on_body_entered(body: Node2D) -> void:
 func apply_upgrades(dmg_bonus: float, sz_mult: float, spd_mult: float) -> void:
 	damage_bonus = dmg_bonus
 	size_mult = sz_mult
-	swing_duration = maxf(0.08, Constants.SWORD_SWING_DURATION * spd_mult)
+	swing_duration = maxf(0.08, base_swing_duration * spd_mult)
 	var col_shape := $CollisionShape2D.shape as RectangleShape2D
-	col_shape.size = Vector2(Constants.SWORD_LENGTH * sz_mult, Constants.SWORD_WIDTH * sz_mult)
-	$CollisionShape2D.position.x = Constants.PLAYER_START_RADIUS + Constants.SWORD_LENGTH * sz_mult * 0.5
+	col_shape.size = Vector2(base_length * sz_mult, base_width * sz_mult)
+	$CollisionShape2D.position.x = Constants.PLAYER_START_RADIUS + base_length * sz_mult * 0.5
 
 func _draw() -> void:
 	var r := Constants.PLAYER_START_RADIUS
-	var sw := Constants.SWORD_WIDTH * size_mult
-	var sl := Constants.SWORD_LENGTH * size_mult
+	var sw := base_width * size_mult
+	var sl := base_length * size_mult
 	draw_rect(Rect2(r, -sw * 0.5, sl, sw), Color(0.78, 0.78, 0.82))

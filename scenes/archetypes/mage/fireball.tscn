@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=3 uid="uid://mgfb01tscne"]
+
+[ext_resource type="Script" uid="uid://dvvvnfms0d20o" path="res://scripts/archetypes/mage/fireball.gd" id="1_fireball"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_fireball"]
+radius = 16.0
+
+[node name="Fireball" type="Area2D"]
+collision_mask = 1
+script = ExtResource("1_fireball")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_fireball")
