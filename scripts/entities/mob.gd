@@ -21,6 +21,7 @@ var _wander_dir := Vector2.ZERO
 var _wander_timer := 0.0
 var _external_velocity := Vector2.ZERO
 var _last_attacker: Node = null
+var _panicking: bool = false
 
 func _apply_mob_type() -> void:
 	if mob_type == MobType.FLEEING:
@@ -85,11 +86,19 @@ func _process_flee(delta: float) -> void:
 	if mob_type == MobType.BASIC and dist > Constants.MOB_FLEE_STOP_RADIUS:
 		state = State.WANDER
 		return
+	if dist < Constants.MOB_FLEE_PANIC_RADIUS:
+		_panicking = true
+	elif dist > Constants.MOB_FLEE_PANIC_RADIUS + 30.0:
+		_panicking = false
 	var away := (global_position - target.global_position).normalized()
 	if away == Vector2.ZERO:
 		away = Vector2(randf() - 0.5, randf() - 0.5).normalized()
 	var steer := (away + _wall_avoidance_force()).normalized()
-	var flee_speed: float = Constants.MOB_FLEE_SPEED if mob_type == MobType.FLEEING else Constants.MOB_FLEE_BASIC_SPEED
+	var flee_speed: float
+	if mob_type == MobType.FLEEING:
+		flee_speed = Constants.MOB_FLEE_PANIC_SPEED if _panicking else Constants.MOB_FLEE_SPEED
+	else:
+		flee_speed = Constants.MOB_FLEE_BASIC_SPEED
 	velocity = steer * flee_speed
 
 func _wall_avoidance_force() -> Vector2:
@@ -177,6 +186,11 @@ func _draw() -> void:
 	if fwd.is_zero_approx():
 		fwd = Vector2.RIGHT
 	_draw_droplet(radius, color, fwd)
+	if _panicking:
+		var t := Time.get_ticks_msec() * 0.001 * Constants.MOB_FLEE_PANIC_PULSE_FREQ
+		var pulse := sin(t) * 0.5 + 0.5
+		var ring_r := radius + 4.0 + pulse * 5.0
+		draw_arc(Vector2.ZERO, ring_r, 0.0, TAU, 24, Color(1.0, 0.9, 0.2, 0.6 + pulse * 0.4), 2.0)
 	if health < max_health:
 		var bar_w := radius * 2.0
 		var bar_h := 5.0
