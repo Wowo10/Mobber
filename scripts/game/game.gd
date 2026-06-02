@@ -229,6 +229,8 @@ func _push_hud_update() -> void:
 	_update_hud_local(a1, a2)
 	if _networked and multiplayer.is_server():
 		_rpc_update_hud.rpc(a1, a2)
+	if multiplayer.is_server() or not _networked:
+		_check_win(a1, a2)
 
 func _update_hud_local(a1: int, a2: int) -> void:
 	var my_id: int = 1 if not _networked else multiplayer.get_unique_id()
