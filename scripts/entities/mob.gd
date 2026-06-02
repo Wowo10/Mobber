@@ -149,6 +149,9 @@ func _pick_wander_dir() -> void:
 func apply_push(impulse: Vector2) -> void:
 	_external_velocity = (_external_velocity + impulse).limit_length(Constants.MOB_MAX_EXTERNAL_SPEED)
 
+func apply_burst(impulse: Vector2) -> void:
+	_external_velocity = impulse
+
 func take_damage(amount: float, knockback: Vector2 = Vector2.ZERO, attacker: Node = null) -> void:
 	var networked: bool = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked and not multiplayer.is_server():

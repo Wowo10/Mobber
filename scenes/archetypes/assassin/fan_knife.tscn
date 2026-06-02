@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=3 uid="uid://fanknife01tscn"]
+
+[ext_resource type="Script" path="res://scripts/archetypes/assassin/fan_knife.gd" id="1_fknife"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_fknife"]
+size = Vector2(18, 4)
+
+[node name="FanKnife" type="Area2D"]
+collision_mask = 1
+script = ExtResource("1_fknife")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_fknife")

@@ -1,0 +1,15 @@
+[gd_scene load_steps=3 format=3 uid="uid://voidrift01tscn"]
+
+[ext_resource type="Script" path="res://scripts/archetypes/warlock/void_rift.gd" id="1_rift"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_rift"]
+radius = 150.0
+
+[node name="VoidRift" type="Area2D"]
+collision_mask = 1
+script = ExtResource("1_rift")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_rift")
+
+[node name="SfxAmbient" type="AudioStreamPlayer2D" parent="."]

@@ -50,7 +50,10 @@ const ARCHETYPE_KNIGHT = 0
 const ARCHETYPE_PIRATE = 1
 const ARCHETYPE_MAGE = 2
 const ARCHETYPE_CYBORG = 3
-const ARCHETYPE_NAMES := ["Knight", "Pirate", "Mage", "Cyborg"]
+const ARCHETYPE_ASSASSIN = 4
+const ARCHETYPE_BERSERKER = 5
+const ARCHETYPE_WARLOCK = 6
+const ARCHETYPE_NAMES := ["Knight", "Pirate", "Mage", "Cyborg", "Assassin", "Berserker", "Warlock"]
 
 const SKILL_WARCRY_DURATION = 3.0
 const SKILL_WARCRY_SPEED_MULT = 1.7

@@ -64,7 +64,22 @@ func use_attack_visual() -> void:
 func broadcast_attack() -> void:
 	_player.broadcast_swing(_player.last_facing.angle())
 
+func get_speed_mult() -> float:
+	return 1.0
+
+func use_dash() -> bool:
+	return false  # false = use default dash behavior
+
+func get_dash_duration() -> float:
+	return Constants.PLAYER_DASH_DURATION
+
+func on_dash_end() -> void:
+	pass
+
 func on_skill1_client_predict() -> void:
+	pass
+
+func on_skill2_client_predict() -> void:
 	pass
 
 func use_skill1() -> void:

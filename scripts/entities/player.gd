@@ -83,6 +83,12 @@ func _apply_archetype() -> void:
 			_archetype_handler = ArchetypeMage.new()
 		Constants.ARCHETYPE_CYBORG:
 			_archetype_handler = ArchetypeCyborg.new()
+		Constants.ARCHETYPE_ASSASSIN:
+			_archetype_handler = ArchetypeAssassin.new()
+		Constants.ARCHETYPE_BERSERKER:
+			_archetype_handler = ArchetypeBerserker.new()
+		Constants.ARCHETYPE_WARLOCK:
+			_archetype_handler = ArchetypeWarlock.new()
 		_:
 			_archetype_handler = ArchetypeBase.new()
 	_archetype_handler.setup(self)
@@ -227,20 +233,25 @@ func _physics_process(delta: float) -> void:
 			$DashParticles.emitting = false
 			if networked and multiplayer.is_server():
 				_rpc_set_dash_particles.rpc(Vector2.ZERO, false)
+			if not networked or multiplayer.is_server():
+				_archetype_handler.on_dash_end()
 	else:
 		if dash_cooldown > 0.0:
 			dash_cooldown -= delta
-		velocity = move_direction * SPEED * (1.0 + Constants.SHOP_SPEED_MULT_PER_LEVEL * speed_level)
+		velocity = move_direction * SPEED * (1.0 + Constants.SHOP_SPEED_MULT_PER_LEVEL * speed_level) * _archetype_handler.get_speed_mult()
 		if do_dash:
-			_dashing = true
-			_dash_timer = Constants.PLAYER_DASH_DURATION
-			dash_cooldown = Constants.PLAYER_DASH_COOLDOWN
-			$DashParticles.direction = -last_facing
-			$DashParticles.emitting = true
-			if is_multiplayer_authority():
-				$SfxDash.play()
-			if networked and multiplayer.is_server():
-				_rpc_set_dash_particles.rpc(-last_facing, true)
+			if _archetype_handler.use_dash():
+				pass  # archetype owns dash entirely (sets dash_cooldown internally)
+			else:
+				_dashing = true
+				_dash_timer = _archetype_handler.get_dash_duration()
+				dash_cooldown = Constants.PLAYER_DASH_COOLDOWN
+				$DashParticles.direction = -last_facing
+				$DashParticles.emitting = true
+				if is_multiplayer_authority():
+					$SfxDash.play()
+				if networked and multiplayer.is_server():
+					_rpc_set_dash_particles.rpc(-last_facing, true)
 
 	move_and_slide()
 
@@ -295,6 +306,7 @@ func _physics_process(delta: float) -> void:
 		if do_skill2:
 			skill2_cooldown = skill2_max_cooldown
 			$SfxSkill.play()
+			_archetype_handler.on_skill2_client_predict()
 		_archetype_handler.physics_process(delta)
 
 # --- Input helper ---
@@ -438,6 +450,50 @@ func rpc_spawn_cyber_ray(pos: Vector2, facing: Vector2) -> void:
 @rpc("any_peer", "reliable")
 func rpc_set_cyborg_ranged_mode(active: bool) -> void:
 	(_archetype_handler as ArchetypeCyborg).set_ranged_mode(active)
+
+@rpc("any_peer", "reliable")
+func rpc_shadowstep_visual(pos: Vector2) -> void:
+	(_archetype_handler as ArchetypeAssassin).spawn_visual_at(pos)
+
+@rpc("any_peer", "reliable")
+func rpc_set_berserker_rage(active: bool) -> void:
+	(_archetype_handler as ArchetypeBerserker).set_rage(active)
+
+@rpc("any_peer", "reliable")
+func rpc_spawn_ground_slam(pos: Vector2) -> void:
+	(_archetype_handler as ArchetypeBerserker).spawn_slam_local(pos, true)
+
+@rpc("any_peer", "reliable")
+func rpc_spawn_warlock_bolt(pos: Vector2, dir: Vector2) -> void:
+	if is_multiplayer_authority():
+		return
+	(_archetype_handler as ArchetypeWarlock).spawn_bolt_local(pos, dir, true)
+
+@rpc("any_peer", "reliable")
+func rpc_spawn_drain_life() -> void:
+	(_archetype_handler as ArchetypeWarlock).spawn_drain_local(true)
+
+@rpc("any_peer", "reliable")
+func rpc_spawn_void_rift(pos: Vector2) -> void:
+	(_archetype_handler as ArchetypeWarlock).spawn_rift_local(pos, true)
+
+@rpc("any_peer", "reliable")
+func rpc_spawn_fan_of_knives(pos: Vector2, facing_angle: float) -> void:
+	if is_multiplayer_authority():
+		return
+	(_archetype_handler as ArchetypeAssassin).spawn_fan_local(pos, facing_angle, true)
+
+@rpc("any_peer", "reliable")
+func rpc_place_warlock_portal(pos: Vector2) -> void:
+	(_archetype_handler as ArchetypeWarlock).place_visual_portal(pos)
+
+@rpc("any_peer", "reliable")
+func rpc_consume_warlock_portal() -> void:
+	(_archetype_handler as ArchetypeWarlock).consume_visual_portal()
+
+@rpc("any_peer", "reliable")
+func rpc_mage_force_pull(pos: Vector2) -> void:
+	(_archetype_handler as ArchetypeMage).spawn_pull_visual(pos)
 
 @rpc("any_peer", "unreliable_ordered")
 func _rpc_set_dash_particles(dir: Vector2, emitting: bool) -> void:

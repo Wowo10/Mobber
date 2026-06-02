@@ -1,0 +1,15 @@
+[gd_scene load_steps=3 format=3 uid="uid://warlockbolt01t"]
+
+[ext_resource type="Script" path="res://scripts/archetypes/warlock/warlock_bolt.gd" id="1_wbolt"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_wbolt"]
+radius = 10.0
+
+[node name="WarlockBolt" type="Area2D"]
+collision_mask = 1
+script = ExtResource("1_wbolt")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_wbolt")
+
+[node name="SfxFire" type="AudioStreamPlayer2D" parent="."]
