@@ -13,6 +13,7 @@ var _distance_traveled := 0.0
 func _ready() -> void:
 	monitoring = true
 	body_entered.connect(_on_body_entered)
+	$SfxFire.play()
 
 func _process(delta: float) -> void:
 	var step := direction * SPEED * delta

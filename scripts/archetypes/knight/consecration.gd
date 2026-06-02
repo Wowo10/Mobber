@@ -16,12 +16,14 @@ func _ready() -> void:
 	($CollisionShape2D.shape as CircleShape2D).radius = RADIUS
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)
+	$SfxAmbient.play()
 
 func _process(delta: float) -> void:
 	_duration_left -= delta
 	if _duration_left <= 0.0:
 		queue_free()
 		return
+	$SfxAmbient.volume_db = linear_to_db(clamp(_duration_left / DURATION, 0.0, 1.0))
 	_tick_timer -= delta
 	if _tick_timer <= 0.0:
 		_tick_timer = TICK_RATE

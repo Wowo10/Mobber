@@ -21,8 +21,14 @@ func get_color() -> Color:
 func get_skill1_color() -> Color:
 	return Color.WHITE
 
+func get_skill1_icon() -> Texture2D:
+	return null
+
 func get_skill2_color() -> Color:
 	return Color.WHITE
+
+func get_skill2_icon() -> Texture2D:
+	return null
 
 func get_sword_damage() -> float:
 	return Constants.SWORD_DAMAGE

@@ -5,6 +5,7 @@ const SIZE := 56.0
 @export var key_text: String = ""
 @export var icon_color: Color = Color(0.5, 0.5, 0.5)
 @export var available: bool = true
+@export var icon: Texture2D = null
 
 var _cd_remaining: float = 0.0
 var _cd_max: float = 1.0
@@ -26,7 +27,10 @@ func _draw() -> void:
 	draw_rect(Rect2(0, 0, s, s), Color(0.45, 0.45, 0.55, 0.9), false, 2.0)
 
 	var m := 9.0
-	draw_rect(Rect2(m, m, s - m * 2, s - m * 2), col)
+	if icon:
+		draw_texture_rect(icon, Rect2(m, m, s - m * 2, s - m * 2), false, col)
+	else:
+		draw_rect(Rect2(m, m, s - m * 2, s - m * 2), col)
 
 	if not available:
 		draw_string(font, Vector2(s * 0.5 - 5, s * 0.5 + 6), "?",

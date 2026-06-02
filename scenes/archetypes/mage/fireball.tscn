@@ -11,3 +11,7 @@ script = ExtResource("1_fireball")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_fireball")
+
+[node name="SfxFire" type="AudioStreamPlayer2D" parent="."]
+
+[node name="SfxExplode" type="AudioStreamPlayer2D" parent="."]

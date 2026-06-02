@@ -16,6 +16,7 @@ var _target: Node2D = null
 func _ready() -> void:
 	monitoring = true
 	body_entered.connect(_on_body_entered)
+	$SfxFire.play()
 
 func _process(delta: float) -> void:
 	if homing:
@@ -65,9 +66,18 @@ func _on_body_entered(body: Node2D) -> void:
 	if not body.has_method("take_damage"):
 		return
 	_spawn_impact()
+	_play_impact()
 	if not visual_only:
 		body.take_damage(DAMAGE, direction * KNOCKBACK, player_ref)
 	queue_free()
+
+func _play_impact() -> void:
+	var sfx := $SfxImpact
+	remove_child(sfx)
+	get_parent().add_child(sfx)
+	sfx.global_position = global_position
+	sfx.play()
+	sfx.finished.connect(sfx.queue_free)
 
 func _draw() -> void:
 	draw_circle(Vector2.ZERO, 8.0, Color(0.95, 0.7, 0.1))

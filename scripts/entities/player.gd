@@ -194,6 +194,8 @@ func _physics_process(delta: float) -> void:
 		if spin_timer <= 0.0:
 			spinning = false
 			$Sword.exit_spin()
+			if is_multiplayer_authority():
+				$SfxSpin.stop()
 			if networked and multiplayer.is_server():
 				_rpc_trigger_spin_stop.rpc()
 
@@ -216,6 +218,8 @@ func _physics_process(delta: float) -> void:
 			dash_cooldown = Constants.PLAYER_DASH_COOLDOWN
 			$DashParticles.direction = -last_facing
 			$DashParticles.emitting = true
+			if is_multiplayer_authority():
+				$SfxDash.play()
 			if networked and multiplayer.is_server():
 				_rpc_set_dash_particles.rpc(-last_facing, true)
 
@@ -239,12 +243,18 @@ func _physics_process(delta: float) -> void:
 		# Paths A & B: authoritative attack + skill spawning + position broadcast
 		if do_attack:
 			_archetype_handler.use_attack()
+			if is_multiplayer_authority():
+				$SfxSwing.play()
 			if networked:
 				_archetype_handler.broadcast_attack()
 		if do_skill1:
 			_use_skill1()
+			if is_multiplayer_authority() and archetype == Constants.ARCHETYPE_KNIGHT:
+				$SfxSpin.play()
 		if do_skill2:
 			_use_skill2()
+			if is_multiplayer_authority():
+				$SfxSkill.play()
 		_archetype_handler.physics_process(delta)
 		if networked:
 			_rpc_sync_pos.rpc(position, last_facing, move_direction)
@@ -252,17 +262,20 @@ func _physics_process(delta: float) -> void:
 		# Path C: local visual prediction — no server-authoritative spawning
 		if do_attack:
 			_archetype_handler.use_attack_visual()
+			$SfxSwing.play()
 		if do_skill1:
 			if archetype == Constants.ARCHETYPE_KNIGHT:
 				spinning = true
 				spin_timer = ArchetypeKnight.SPIN_DURATION
 				$Sword.enter_spin()
 				skill1_cooldown = skill1_max_cooldown
+				$SfxSpin.play()
 			else:
 				skill1_cooldown = skill1_max_cooldown
 				_archetype_handler.on_skill1_client_predict()
 		if do_skill2:
 			skill2_cooldown = skill2_max_cooldown
+			$SfxSkill.play()
 		_archetype_handler.physics_process(delta)
 
 # --- Input helper ---

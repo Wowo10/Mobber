@@ -11,3 +11,5 @@ script = ExtResource("1_cons")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_cons")
+
+[node name="SfxAmbient" type="AudioStreamPlayer2D" parent="."]

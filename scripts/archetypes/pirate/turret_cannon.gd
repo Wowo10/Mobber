@@ -24,6 +24,7 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 func _fire_cone() -> void:
+	$SfxFire.play()
 	var spread := deg_to_rad(SPREAD)
 	for i in range(3):
 		var angle_offset := (i - 1) * spread

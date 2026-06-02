@@ -13,6 +13,9 @@ var _elapsed := 0.0
 var _tick_timer := 0.0
 var facing := Vector2.RIGHT
 
+func _ready() -> void:
+	$SfxAmbient.play()
+
 func _process(delta: float) -> void:
 	if not player_ref or not is_instance_valid(player_ref):
 		queue_free()
@@ -22,6 +25,7 @@ func _process(delta: float) -> void:
 	if _elapsed >= DURATION:
 		queue_free()
 		return
+	$SfxAmbient.volume_db = linear_to_db(clamp(1.0 - _elapsed / DURATION, 0.0, 1.0))
 
 	global_position = player_ref.global_position
 	facing = player_ref.last_facing

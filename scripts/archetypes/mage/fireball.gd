@@ -15,6 +15,7 @@ var _exploded := false
 func _ready() -> void:
 	monitoring = true
 	body_entered.connect(_on_body_entered)
+	$SfxFire.play()
 
 func _process(delta: float) -> void:
 	var step := direction * SPEED * delta
@@ -34,9 +35,18 @@ func _explode() -> void:
 		return
 	_exploded = true
 	_spawn_explosion_visual()
+	_play_explode()
 	if not visual_only:
 		_apply_explosion_damage()
 	queue_free()
+
+func _play_explode() -> void:
+	var sfx := $SfxExplode
+	remove_child(sfx)
+	get_parent().add_child(sfx)
+	sfx.global_position = global_position
+	sfx.play()
+	sfx.finished.connect(sfx.queue_free)
 
 func _apply_explosion_damage() -> void:
 	var query := PhysicsShapeQueryParameters2D.new()

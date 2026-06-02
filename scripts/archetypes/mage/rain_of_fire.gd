@@ -49,6 +49,7 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 func _do_strike(pos: Vector2) -> void:
+	$SfxStrike.play()
 	if visual_only:
 		return
 	var query := PhysicsShapeQueryParameters2D.new()

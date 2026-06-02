@@ -15,8 +15,14 @@ func get_color() -> Color:
 func get_skill1_color() -> Color:
 	return Color(0.9, 0.2, 0.4)
 
+func get_skill1_icon() -> Texture2D:
+	return load("res://assets/icons/burning-meteor.png")
+
 func get_skill2_color() -> Color:
 	return Color(1.0, 0.45, 0.1)
+
+func get_skill2_icon() -> Texture2D:
+	return load("res://assets/icons/fireball.png")
 
 func get_skill1_max_cooldown() -> float:
 	return RAIN_COOLDOWN

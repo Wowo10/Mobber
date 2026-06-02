@@ -294,10 +294,14 @@ func _make_archetype(arch_id: int) -> ArchetypeBase:
 
 func _setup_skill_bar() -> void:
 	var bar := $HUD/SkillBar
-	bar.get_node("AttackSlot").key_text = "SPC"
-	bar.get_node("AttackSlot").icon_color = Color(0.9, 0.65, 0.15)
-	bar.get_node("DashSlot").key_text = "SHF"
-	bar.get_node("DashSlot").icon_color = Color(0.25, 0.55, 1.0)
+	var attack_slot := bar.get_node("AttackSlot")
+	attack_slot.key_text = "SPC"
+	attack_slot.icon_color = Color(0.9, 0.65, 0.15)
+	attack_slot.icon = load("res://assets/icons/broadsword.png")
+	var dash_slot := bar.get_node("DashSlot")
+	dash_slot.key_text = "SHF"
+	dash_slot.icon_color = Color(0.25, 0.55, 1.0)
+	dash_slot.icon = load("res://assets/icons/boots.png")
 	var s1 := bar.get_node("Skill1Slot")
 	var s2 := bar.get_node("Skill2Slot")
 	var s3 := bar.get_node("Skill3Slot")
@@ -309,7 +313,9 @@ func _setup_skill_bar() -> void:
 	s3.available = false
 	var arch := _make_archetype(PlayerPrefs.archetype)
 	s1.icon_color = arch.get_skill1_color()
+	s1.icon = arch.get_skill1_icon()
 	s2.icon_color = arch.get_skill2_color()
+	s2.icon = arch.get_skill2_icon()
 
 func _process(_delta: float) -> void:
 	if _leaving:
