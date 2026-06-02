@@ -149,6 +149,7 @@ func _rpc_request_archetype(arch: int) -> void:
 		return
 	var id := multiplayer.get_remote_sender_id()
 	_peer_archetypes[id] = arch
+	_rpc_peer_archetype_changed(id, arch)
 	_rpc_peer_archetype_changed.rpc(id, arch)
 
 @rpc("authority", "reliable")
@@ -160,6 +161,7 @@ func _rpc_peer_archetype_changed(peer_id: int, arch: int) -> void:
 
 func _switch_team(peer_id: int) -> void:
 	var new_team := 1 if _team_assignments.get(peer_id, 0) == 0 else 0
+	_rpc_peer_team_changed(peer_id, new_team)
 	_rpc_peer_team_changed.rpc(peer_id, new_team)
 	_refresh_start_button()
 
