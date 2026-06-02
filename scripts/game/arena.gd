@@ -7,10 +7,18 @@ const GRID_SIZE = 100
 const MOB_SCENE = preload("res://scenes/entities/mob.tscn")
 const SHOP_ZONE_RECT := Rect2(100, 1650, 300, 300)
 const MOB_SYNC_INTERVAL := 0.05  # 20 Hz
+const FLOOR_TEXTURES := [
+	preload("res://assets/textures/StoneFloorTexture1.png"),
+	preload("res://assets/textures/StoneFloorTexture2.png"),
+	preload("res://assets/textures/StoneFloorTexture3.png"),
+	preload("res://assets/textures/StoneFloorTexture4.png"),
+]
 
 var _sync_timer := 0.0
+var _floor_texture: Texture2D
 
 func _ready() -> void:
+	_floor_texture = FLOOR_TEXTURES[randi() % FLOOR_TEXTURES.size()]
 	_build_walls()
 	_build_shop_zone()
 	$MobSpawner.spawn_path = $MobContainer.get_path()
@@ -78,7 +86,11 @@ func _physics_process(delta: float) -> void:
 	_rpc_sync_mob_states.rpc(names, positions, velocities)
 
 @rpc("authority", "unreliable_ordered")
-func _rpc_sync_mob_states(names: PackedStringArray, positions: PackedVector2Array, velocities: PackedVector2Array) -> void:
+func _rpc_sync_mob_states(
+	names: PackedStringArray,
+	positions: PackedVector2Array,
+	velocities: PackedVector2Array
+) -> void:
 	for i in names.size():
 		var mob := $MobContainer.get_node_or_null(names[i])
 		if mob == null:
@@ -117,6 +129,7 @@ func get_mob_count() -> int:
 
 
 func _draw() -> void:
+	draw_texture_rect(_floor_texture, Rect2(0, 0, Constants.WORLD_SIZE_X, Constants.WORLD_SIZE_Y), true)
 	var i := 0
 	for x in range(0, Constants.WORLD_SIZE_X + 1, GRID_SIZE):
 		var col := Color(0.2, 0.4, 0.8, 0.55) if i % 3 == 0 else Color(0.5, 0.5, 0.5, 0.4)
