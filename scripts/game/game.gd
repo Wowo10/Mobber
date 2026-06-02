@@ -18,6 +18,7 @@ var _player_sword_size_levels: Dictionary = {}
 var _player_attack_speed_levels: Dictionary = {}
 var _peer_money: Dictionary = {}  # peer_id -> int
 var _in_shop_zone := false
+var _in_arena_master_zone := false
 
 func _ready() -> void:
 	_networked = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
@@ -27,6 +28,10 @@ func _ready() -> void:
 	$Arena1.player_exited_shop.connect(_on_player_exited_shop)
 	$Arena2.player_entered_shop.connect(_on_player_entered_shop)
 	$Arena2.player_exited_shop.connect(_on_player_exited_shop)
+	$Arena1.player_entered_arena_master.connect(_on_player_entered_arena_master)
+	$Arena1.player_exited_arena_master.connect(_on_player_exited_arena_master)
+	$Arena2.player_entered_arena_master.connect(_on_player_entered_arena_master)
+	$Arena2.player_exited_arena_master.connect(_on_player_exited_arena_master)
 
 	if not _networked:
 		PlayerPrefs.peer_names = {1: PlayerPrefs.player_name}
@@ -249,6 +254,7 @@ func _update_money_local(peer_money: Dictionary) -> void:
 	var my_id: int = 1 if not _networked else multiplayer.get_unique_id()
 	$HUD/MoneyLabel.text = "$%d" % _peer_money.get(my_id, 0)
 	_update_shop_ui()
+	_update_arena_master_ui()
 
 @rpc("authority", "reliable")
 func _rpc_update_money(peer_money: Dictionary) -> void:
@@ -343,19 +349,35 @@ func _on_player_exited_shop() -> void:
 	_in_shop_zone = false
 	$ShopPanel.visible = false
 
+func _on_player_entered_arena_master() -> void:
+	if _leaving:
+		return
+	_in_arena_master_zone = true
+	$ArenaMasterPanel.visible = true
+	_update_arena_master_ui()
+
+func _on_player_exited_arena_master() -> void:
+	_in_arena_master_zone = false
+	$ArenaMasterPanel.visible = false
+
 func _upgrade_cost(base: int, inc: int, current_level: int) -> int:
 	return base + current_level * inc
 
 func _setup_shop() -> void:
-	var vbox := $ShopPanel/PanelBG/VBox
-	vbox.get_node("SendMobBtn").pressed.connect(func(): _buy(0))
-	vbox.get_node("Send3MobsBtn").pressed.connect(func(): _buy(1))
-	vbox.get_node("SendFleeingBtn").pressed.connect(func(): _buy(2))
-	vbox.get_node("SendBossBtn").pressed.connect(func(): _buy(7))
-	vbox.get_node("SpeedBtn").pressed.connect(func(): _buy(3))
-	vbox.get_node("DamageBtn").pressed.connect(func(): _buy(4))
-	vbox.get_node("SwordSizeBtn").pressed.connect(func(): _buy(5))
-	vbox.get_node("AttackSpeedBtn").pressed.connect(func(): _buy(6))
+	var upgrade_vbox := $ShopPanel/PanelBG/VBox
+	upgrade_vbox.get_node("SpeedBtn").pressed.connect(func(): _buy(3))
+	upgrade_vbox.get_node("DamageBtn").pressed.connect(func(): _buy(4))
+	upgrade_vbox.get_node("SwordSizeBtn").pressed.connect(func(): _buy(5))
+	upgrade_vbox.get_node("AttackSpeedBtn").pressed.connect(func(): _buy(6))
+	var am_vbox := $ArenaMasterPanel/PanelBG/VBox
+	am_vbox.get_node("SendMobBtn").pressed.connect(func(): _buy(0))
+	am_vbox.get_node("Send3MobsBtn").pressed.connect(func(): _buy(1))
+	am_vbox.get_node("SendFleeingBtn").pressed.connect(func(): _buy(2))
+	am_vbox.get_node("SendBossBtn").pressed.connect(func(): _buy(7))
+	am_vbox.get_node("DebuffNoDashBtn").pressed.connect(func(): _buy(Constants.DEBUFF_NO_DASH))
+	am_vbox.get_node("DebuffFrenzyBtn").pressed.connect(func(): _buy(Constants.DEBUFF_FRENZY))
+	am_vbox.get_node("DebuffSilenceBtn").pressed.connect(func(): _buy(Constants.DEBUFF_SILENCE))
+	am_vbox.get_node("DebuffInvertBtn").pressed.connect(func(): _buy(Constants.DEBUFF_INVERT))
 
 
 func _update_shop_ui() -> void:
@@ -365,11 +387,6 @@ func _update_shop_ui() -> void:
 	var money: int = _peer_money.get(my_id, 0)
 	var max_lvl := Constants.SHOP_UPGRADE_MAX_LEVEL
 	var vbox := $ShopPanel/PanelBG/VBox
-	vbox.get_node("ShopMoneyLabel").text = "$%d" % money
-	vbox.get_node("SendMobBtn").disabled = money < Constants.SHOP_COST_SEND_MOB
-	vbox.get_node("Send3MobsBtn").disabled = money < Constants.SHOP_COST_SEND_3_MOBS
-	vbox.get_node("SendFleeingBtn").disabled = money < Constants.SHOP_COST_SEND_FLEEING
-	vbox.get_node("SendBossBtn").disabled = money < Constants.SHOP_COST_SEND_BOSS
 	_refresh_upgrade_btn(vbox.get_node("SpeedBtn"), "Speed",
 		_player_speed_levels.get(my_id, 0), max_lvl, money,
 		Constants.SHOP_COST_SPEED_BASE, Constants.SHOP_COST_SPEED_INC)
@@ -382,6 +399,21 @@ func _update_shop_ui() -> void:
 	_refresh_upgrade_btn(vbox.get_node("AttackSpeedBtn"), "Attack Speed",
 		_player_attack_speed_levels.get(my_id, 0), max_lvl, money,
 		Constants.SHOP_COST_ATTACK_SPEED_BASE, Constants.SHOP_COST_ATTACK_SPEED_INC)
+
+func _update_arena_master_ui() -> void:
+	if not $ArenaMasterPanel.visible:
+		return
+	var my_id: int = 1 if not _networked else multiplayer.get_unique_id()
+	var money: int = _peer_money.get(my_id, 0)
+	var vbox := $ArenaMasterPanel/PanelBG/VBox
+	vbox.get_node("SendMobBtn").disabled = money < Constants.SHOP_COST_SEND_MOB
+	vbox.get_node("Send3MobsBtn").disabled = money < Constants.SHOP_COST_SEND_3_MOBS
+	vbox.get_node("SendFleeingBtn").disabled = money < Constants.SHOP_COST_SEND_FLEEING
+	vbox.get_node("SendBossBtn").disabled = money < Constants.SHOP_COST_SEND_BOSS
+	vbox.get_node("DebuffNoDashBtn").disabled = money < Constants.DEBUFF_COST_NO_DASH
+	vbox.get_node("DebuffFrenzyBtn").disabled = money < Constants.DEBUFF_COST_FRENZY
+	vbox.get_node("DebuffSilenceBtn").disabled = money < Constants.DEBUFF_COST_SILENCE
+	vbox.get_node("DebuffInvertBtn").disabled = money < Constants.DEBUFF_COST_INVERT
 
 func _refresh_upgrade_btn(btn: Button, label: String, lvl: int, max_lvl: int, money: int, base: int, inc: int) -> void:
 	var cost := _upgrade_cost(base, inc, lvl)
@@ -491,6 +523,30 @@ func _apply_purchase(peer_id: int, item_id: int) -> void:
 				player.apply_upgrades_to_sword()
 				if _networked and peer_id != 1:
 					player.rpc_apply_attack_speed_level.rpc_id(peer_id, new_level)
+		Constants.DEBUFF_NO_DASH, Constants.DEBUFF_SILENCE, Constants.DEBUFF_INVERT:
+			var cost_map := {
+				Constants.DEBUFF_NO_DASH: Constants.DEBUFF_COST_NO_DASH,
+				Constants.DEBUFF_SILENCE: Constants.DEBUFF_COST_SILENCE,
+				Constants.DEBUFF_INVERT:  Constants.DEBUFF_COST_INVERT,
+			}
+			var dur_map := {
+				Constants.DEBUFF_NO_DASH: Constants.DEBUFF_DUR_NO_DASH,
+				Constants.DEBUFF_SILENCE: Constants.DEBUFF_DUR_SILENCE,
+				Constants.DEBUFF_INVERT:  Constants.DEBUFF_DUR_INVERT,
+			}
+			var cost: int = cost_map[item_id]
+			if money < cost:
+				return
+			money -= cost
+			var dur: float = dur_map[item_id]
+			_apply_debuff_to_opponents(peer_id, item_id, dur)
+		Constants.DEBUFF_FRENZY:
+			if money < Constants.DEBUFF_COST_FRENZY:
+				return
+			money -= Constants.DEBUFF_COST_FRENZY
+			opponent_arena.mob_speed_multiplier = Constants.DEBUFF_FRENZY_SPEED_MULT
+			opponent_arena.mob_frenzy_timer = Constants.DEBUFF_DUR_FRENZY
+			_notify_opponents_debuff_icon(peer_id, Constants.DEBUFF_FRENZY, Constants.DEBUFF_DUR_FRENZY)
 
 	_peer_money[peer_id] = money
 	_update_money_local(_peer_money)
@@ -503,3 +559,53 @@ func _rpc_sync_speed_level(level: int) -> void:
 	var my_id: int = multiplayer.get_unique_id()
 	_player_speed_levels[my_id] = level
 	_update_shop_ui()
+
+func _apply_debuff_to_opponents(buyer_id: int, item_id: int, dur: float) -> void:
+	var my_arena = _peer_to_arena.get(buyer_id)
+	for opp_id in _peer_to_player:
+		if _peer_to_arena.get(opp_id) == my_arena:
+			continue
+		var opp_player = _peer_to_player.get(opp_id)
+		if not opp_player or not is_instance_valid(opp_player):
+			continue
+		opp_player.rpc_apply_debuff(item_id, dur)
+		if _networked and opp_id != 1:
+			opp_player.rpc_apply_debuff.rpc_id(opp_id, item_id, dur)
+		_notify_debuff_icon(opp_id, item_id, dur)
+
+func _notify_opponents_debuff_icon(buyer_id: int, item_id: int, dur: float) -> void:
+	var my_arena = _peer_to_arena.get(buyer_id)
+	for opp_id in _peer_to_player:
+		if _peer_to_arena.get(opp_id) != my_arena:
+			_notify_debuff_icon(opp_id, item_id, dur)
+
+func _notify_debuff_icon(target_id: int, item_id: int, dur: float) -> void:
+	if not _networked or target_id == 1:
+		_add_debuff_icon(item_id, dur)
+	else:
+		_rpc_show_debuff_received.rpc_id(target_id, item_id, dur)
+
+@rpc("authority", "reliable")
+func _rpc_show_debuff_received(type: int, duration: float) -> void:
+	_add_debuff_icon(type, duration)
+
+func _add_debuff_icon(type: int, duration: float) -> void:
+	const DEBUFF_INDICATOR = preload("res://scripts/ui/debuff_indicator.gd")
+	const NAMES := {
+		Constants.DEBUFF_NO_DASH: "NO DASH",
+		Constants.DEBUFF_FRENZY:  "FRENZY",
+		Constants.DEBUFF_SILENCE: "SILENCE",
+		Constants.DEBUFF_INVERT:  "INVERT",
+	}
+	const COLORS := {
+		Constants.DEBUFF_NO_DASH: Color(0.2, 0.4, 0.9),
+		Constants.DEBUFF_FRENZY:  Color(0.75, 0.2, 0.1),
+		Constants.DEBUFF_SILENCE: Color(0.55, 0.1, 0.7),
+		Constants.DEBUFF_INVERT:  Color(0.85, 0.5, 0.05),
+	}
+	var bar := $HUD/DebuffBar
+	var indicator := DEBUFF_INDICATOR.new()
+	indicator.debuff_name = NAMES.get(type, "?")
+	indicator.icon_color = COLORS.get(type, Color(0.6, 0.1, 0.1))
+	indicator.time_remaining = duration
+	bar.add_child(indicator)

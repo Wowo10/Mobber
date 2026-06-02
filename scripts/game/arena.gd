@@ -2,10 +2,13 @@ extends Node2D
 
 signal player_entered_shop
 signal player_exited_shop
+signal player_entered_arena_master
+signal player_exited_arena_master
 
 const GRID_SIZE = 100
 const MOB_SCENE = preload("res://scenes/entities/mob.tscn")
 const SHOP_ZONE_RECT := Rect2(100, 1650, 300, 300)
+const ARENA_MASTER_ZONE_RECT := Rect2(2267, 1650, 300, 300)
 const MOB_SYNC_INTERVAL := 0.05  # 20 Hz
 const FLOOR_TEXTURES := [
 	preload("res://assets/textures/StoneFloorTexture1.png"),
@@ -16,11 +19,14 @@ const FLOOR_TEXTURES := [
 
 var _sync_timer := 0.0
 var _floor_texture: Texture2D
+var mob_speed_multiplier: float = 1.0
+var mob_frenzy_timer: float = 0.0
 
 func _ready() -> void:
 	_floor_texture = FLOOR_TEXTURES[randi() % FLOOR_TEXTURES.size()]
 	_build_walls()
 	_build_shop_zone()
+	_build_arena_master_zone()
 	$MobSpawner.spawn_path = $MobContainer.get_path()
 	$MobSpawner.add_spawnable_scene("res://scenes/entities/mob.tscn")
 
@@ -45,6 +51,27 @@ func _on_shop_body_exited(body: Node2D) -> void:
 	if body.is_in_group("players") and body.is_multiplayer_authority():
 		player_exited_shop.emit()
 
+func _build_arena_master_zone() -> void:
+	var area := Area2D.new()
+	area.name = "ArenaMasterZone"
+	var cs := CollisionShape2D.new()
+	var rect := RectangleShape2D.new()
+	rect.size = ARENA_MASTER_ZONE_RECT.size
+	cs.position = ARENA_MASTER_ZONE_RECT.get_center()
+	cs.shape = rect
+	area.add_child(cs)
+	area.body_entered.connect(_on_arena_master_body_entered)
+	area.body_exited.connect(_on_arena_master_body_exited)
+	add_child(area)
+
+func _on_arena_master_body_entered(body: Node2D) -> void:
+	if body.is_in_group("players") and body.is_multiplayer_authority():
+		player_entered_arena_master.emit()
+
+func _on_arena_master_body_exited(body: Node2D) -> void:
+	if body.is_in_group("players") and body.is_multiplayer_authority():
+		player_exited_arena_master.emit()
+
 func _build_walls() -> void:
 	var body := StaticBody2D.new()
 	add_child(body)
@@ -67,7 +94,13 @@ func _build_walls() -> void:
 
 func _physics_process(delta: float) -> void:
 	var networked: bool = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
-	if not networked or not multiplayer.is_server():
+	if networked and not multiplayer.is_server():
+		return
+	if mob_frenzy_timer > 0.0:
+		mob_frenzy_timer = max(0.0, mob_frenzy_timer - delta)
+		if mob_frenzy_timer == 0.0:
+			mob_speed_multiplier = 1.0
+	if not networked:
 		return
 	_sync_timer += delta
 	if _sync_timer < MOB_SYNC_INTERVAL:
@@ -143,6 +176,11 @@ func _draw() -> void:
 	draw_rect(Rect2(0, 0, Constants.WORLD_SIZE_X, Constants.WORLD_SIZE_Y), Color(0.8, 0.2, 0.2, 0.8), false, 8.0)
 	draw_rect(SHOP_ZONE_RECT, Color(0.85, 0.7, 0.1, 0.25), true)
 	draw_rect(SHOP_ZONE_RECT, Color(0.95, 0.8, 0.15, 0.9), false, 3.0)
-	var center := SHOP_ZONE_RECT.get_center()
-	draw_string(ThemeDB.fallback_font, Vector2(center.x, center.y + 14), "SHOP",
+	var shop_center := SHOP_ZONE_RECT.get_center()
+	draw_string(ThemeDB.fallback_font, Vector2(shop_center.x, shop_center.y + 14), "UPGRADES",
 		HORIZONTAL_ALIGNMENT_CENTER, SHOP_ZONE_RECT.size.x, 28, Color(1.0, 0.9, 0.3))
+	draw_rect(ARENA_MASTER_ZONE_RECT, Color(0.6, 0.1, 0.8, 0.25), true)
+	draw_rect(ARENA_MASTER_ZONE_RECT, Color(0.75, 0.2, 0.95, 0.9), false, 3.0)
+	var am_center := ARENA_MASTER_ZONE_RECT.get_center()
+	draw_string(ThemeDB.fallback_font, Vector2(am_center.x, am_center.y + 14), "ARENA MASTER",
+		HORIZONTAL_ALIGNMENT_CENTER, ARENA_MASTER_ZONE_RECT.size.x, 22, Color(0.85, 0.5, 1.0))

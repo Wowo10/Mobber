@@ -27,6 +27,10 @@ var damage_level: int = 0
 var sword_size_level: int = 0
 var attack_speed_level: int = 0
 
+var debuff_no_dash_timer := 0.0
+var debuff_silence_timer := 0.0
+var debuff_invert_timer  := 0.0
+
 # Public — accessed by archetype handlers and spin RPCs
 var spinning := false
 var spin_timer := 0.0
@@ -172,6 +176,21 @@ func _physics_process(delta: float) -> void:
 		if action_mask != 0:
 			_rpc_send_action.rpc_id(1, action_mask)
 
+	# --- Debuff timers + enforcement ---
+
+	if debuff_no_dash_timer > 0.0:
+		debuff_no_dash_timer = max(0.0, debuff_no_dash_timer - delta)
+		do_dash = false
+	if debuff_silence_timer > 0.0:
+		debuff_silence_timer = max(0.0, debuff_silence_timer - delta)
+		do_skill1 = false
+		do_skill2 = false
+	if debuff_invert_timer > 0.0:
+		debuff_invert_timer = max(0.0, debuff_invert_timer - delta)
+		var tmp := do_attack
+		do_attack = do_dash
+		do_dash = tmp
+
 	# --- Common simulation (all paths) ---
 
 	move_direction = direction
@@ -286,6 +305,8 @@ func _read_direction() -> Vector2:
 	if Input.is_action_pressed("move_right"): d.x += 1
 	if Input.is_action_pressed("move_up"):    d.y -= 1
 	if Input.is_action_pressed("move_down"):  d.y += 1
+	if debuff_invert_timer > 0.0:
+		d = -d
 	return d.normalized()
 
 # --- Input RPCs (client → server) ---
@@ -339,6 +360,13 @@ func rpc_apply_sword_size_level(level: int) -> void:
 func rpc_apply_attack_speed_level(level: int) -> void:
 	attack_speed_level = level
 	apply_upgrades_to_sword()
+
+@rpc("any_peer", "reliable")
+func rpc_apply_debuff(type: int, duration: float) -> void:
+	match type:
+		Constants.DEBUFF_NO_DASH: debuff_no_dash_timer = duration
+		Constants.DEBUFF_SILENCE: debuff_silence_timer = duration
+		Constants.DEBUFF_INVERT:  debuff_invert_timer  = duration
 
 # --- Mob pushing (server and offline only) ---
 

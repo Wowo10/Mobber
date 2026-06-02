@@ -22,6 +22,7 @@ var _wander_timer := 0.0
 var _external_velocity := Vector2.ZERO
 var _last_attacker: Node = null
 var _panicking: bool = false
+var _arena: Node = null
 
 func _apply_mob_type() -> void:
 	if mob_type == MobType.FLEEING:
@@ -42,6 +43,7 @@ func _ready() -> void:
 	add_to_group("mobs")
 	_apply_mob_type()
 	_pick_wander_dir()
+	_arena = get_parent().get_parent()
 	var networked: bool = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked and not multiplayer.is_server():
 		set_physics_process(false)
@@ -72,8 +74,9 @@ func _process_wander(delta: float) -> void:
 	_wander_timer -= delta
 	if _wander_timer <= 0.0:
 		_pick_wander_dir()
-	var spd: float = Constants.MOB_BOSS_SPEED if mob_type == MobType.BOSS else Constants.MOB_SPEED
-	velocity = _wander_dir * spd
+	var base_spd: float = Constants.MOB_BOSS_SPEED if mob_type == MobType.BOSS else Constants.MOB_SPEED
+	var spd_mult: float = _arena.mob_speed_multiplier if _arena != null else 1.0
+	velocity = _wander_dir * base_spd * spd_mult
 
 func _process_flee(delta: float) -> void:
 	var target := _get_nearest_player()
@@ -99,7 +102,8 @@ func _process_flee(delta: float) -> void:
 		flee_speed = Constants.MOB_FLEE_PANIC_SPEED if _panicking else Constants.MOB_FLEE_SPEED
 	else:
 		flee_speed = Constants.MOB_FLEE_BASIC_SPEED
-	velocity = steer * flee_speed
+	var spd_mult: float = _arena.mob_speed_multiplier if _arena != null else 1.0
+	velocity = steer * flee_speed * spd_mult
 
 func _wall_avoidance_force() -> Vector2:
 	var pos := position

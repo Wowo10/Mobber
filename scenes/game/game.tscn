@@ -157,6 +157,19 @@ custom_minimum_size = Vector2(56, 56)
 layout_mode = 2
 script = ExtResource("4_skill")
 
+[node name="DebuffBar" type="HBoxContainer" parent="HUD"]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -130.0
+offset_top = -132.0
+offset_right = 130.0
+offset_bottom = -80.0
+grow_horizontal = 2
+theme_override_constants/separation = 6
+
 [node name="MobIndicator" type="Control" parent="HUD"]
 layout_mode = 3
 anchors_preset = 15
@@ -192,52 +205,11 @@ theme_override_constants/separation = 6
 [node name="TitleLabel" type="Label" parent="ShopPanel/PanelBG/VBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
-text = "SHOP"
-horizontal_alignment = 1
-
-[node name="ShopMoneyLabel" type="Label" parent="ShopPanel/PanelBG/VBox"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 14
-text = "$0"
+text = "UPGRADES"
 horizontal_alignment = 1
 
 [node name="HSep1" type="HSeparator" parent="ShopPanel/PanelBG/VBox"]
 layout_mode = 2
-
-[node name="SectionSend" type="Label" parent="ShopPanel/PanelBG/VBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.55, 0.55, 0.6, 1)
-theme_override_font_sizes/font_size = 11
-text = "SEND TO ENEMY"
-
-[node name="SendMobBtn" type="Button" parent="ShopPanel/PanelBG/VBox"]
-custom_minimum_size = Vector2(0, 34)
-layout_mode = 2
-text = "Send Mob   $5"
-
-[node name="Send3MobsBtn" type="Button" parent="ShopPanel/PanelBG/VBox"]
-custom_minimum_size = Vector2(0, 34)
-layout_mode = 2
-text = "Send 3 Mobs   $12"
-
-[node name="SendFleeingBtn" type="Button" parent="ShopPanel/PanelBG/VBox"]
-custom_minimum_size = Vector2(0, 34)
-layout_mode = 2
-text = "Fleeing Mob   $8"
-
-[node name="SendBossBtn" type="Button" parent="ShopPanel/PanelBG/VBox"]
-custom_minimum_size = Vector2(0, 34)
-layout_mode = 2
-text = "BOSS (x10)   $50"
-
-[node name="HSep2" type="HSeparator" parent="ShopPanel/PanelBG/VBox"]
-layout_mode = 2
-
-[node name="SectionUpgrade" type="Label" parent="ShopPanel/PanelBG/VBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.55, 0.55, 0.6, 1)
-theme_override_font_sizes/font_size = 11
-text = "UPGRADES"
 
 [node name="SpeedBtn" type="Button" parent="ShopPanel/PanelBG/VBox"]
 custom_minimum_size = Vector2(0, 34)
@@ -258,5 +230,85 @@ text = "Sword Size +20% (0/3)   $15"
 custom_minimum_size = Vector2(0, 34)
 layout_mode = 2
 text = "Attack Speed +20% (0/3)   $20"
+
+[node name="ArenaMasterPanel" type="CanvasLayer" parent="."]
+layer = 8
+visible = false
+
+[node name="PanelBG" type="ColorRect" parent="ArenaMasterPanel"]
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -264.0
+color = Color(0.07, 0.04, 0.12, 0.96)
+
+[node name="VBox" type="VBoxContainer" parent="ArenaMasterPanel/PanelBG"]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+theme_override_constants/separation = 6
+
+[node name="TitleLabel" type="Label" parent="ArenaMasterPanel/PanelBG/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "ARENA MASTER"
+horizontal_alignment = 1
+
+[node name="HSep1" type="HSeparator" parent="ArenaMasterPanel/PanelBG/VBox"]
+layout_mode = 2
+
+[node name="SendMobBtn" type="Button" parent="ArenaMasterPanel/PanelBG/VBox"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+text = "Send Mob   $5"
+
+[node name="Send3MobsBtn" type="Button" parent="ArenaMasterPanel/PanelBG/VBox"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+text = "Send 3 Mobs   $12"
+
+[node name="SendFleeingBtn" type="Button" parent="ArenaMasterPanel/PanelBG/VBox"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+text = "Fleeing Mob   $8"
+
+[node name="SendBossBtn" type="Button" parent="ArenaMasterPanel/PanelBG/VBox"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+text = "BOSS (x10)   $50"
+
+[node name="HSepDebuffs" type="HSeparator" parent="ArenaMasterPanel/PanelBG/VBox"]
+layout_mode = 2
+
+[node name="SectionDebuffs" type="Label" parent="ArenaMasterPanel/PanelBG/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.4, 0.9, 1)
+theme_override_font_sizes/font_size = 11
+text = "DEBUFFS"
+
+[node name="DebuffNoDashBtn" type="Button" parent="ArenaMasterPanel/PanelBG/VBox"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+text = "No Dash (8s)   $15"
+
+[node name="DebuffFrenzyBtn" type="Button" parent="ArenaMasterPanel/PanelBG/VBox"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+text = "Mob Frenzy (10s)   $20"
+
+[node name="DebuffSilenceBtn" type="Button" parent="ArenaMasterPanel/PanelBG/VBox"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+text = "Silence (6s)   $25"
+
+[node name="DebuffInvertBtn" type="Button" parent="ArenaMasterPanel/PanelBG/VBox"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+text = "Invert (5s)   $40"
 
 [connection signal="pressed" from="GameOverOverlay/VBox/ReturnButton" to="." method="_on_return_pressed"]
