@@ -88,8 +88,23 @@ func _process_flee(delta: float) -> void:
 	var away := (global_position - target.global_position).normalized()
 	if away == Vector2.ZERO:
 		away = Vector2(randf() - 0.5, randf() - 0.5).normalized()
+	var steer := (away + _wall_avoidance_force()).normalized()
 	var flee_speed: float = Constants.MOB_FLEE_SPEED if mob_type == MobType.FLEEING else Constants.MOB_FLEE_BASIC_SPEED
-	velocity = away * flee_speed
+	velocity = steer * flee_speed
+
+func _wall_avoidance_force() -> Vector2:
+	var pos := position
+	var m := Constants.MOB_WALL_AVOID_MARGIN
+	var force := Vector2.ZERO
+	var lx := pos.x / m
+	var rx := (Constants.WORLD_SIZE_X - pos.x) / m
+	var ty := pos.y / m
+	var by := (Constants.WORLD_SIZE_Y - pos.y) / m
+	if lx < 1.0: force.x += (1.0 - lx)
+	if rx < 1.0: force.x -= (1.0 - rx)
+	if ty < 1.0: force.y += (1.0 - ty)
+	if by < 1.0: force.y -= (1.0 - by)
+	return force * Constants.MOB_WALL_AVOID_STRENGTH
 
 func _get_nearest_player() -> Node2D:
 	var players := get_tree().get_nodes_in_group("players")
