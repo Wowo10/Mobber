@@ -19,6 +19,14 @@ var _player_attack_speed_levels: Dictionary = {}
 var _peer_money: Dictionary = {}  # peer_id -> int
 var _in_shop_zone := false
 var _in_arena_master_zone := false
+var _peer_kills: Dictionary = {}
+var _peer_money_earned: Dictionary = {}
+var _peer_mobs_sent: Dictionary = {}
+var _peer_debuffs_applied: Dictionary = {}
+var _peer_stats_cache: Dictionary = {}
+var _scoreboard_panel: Control = null
+var _scoreboard_col1: VBoxContainer = null
+var _scoreboard_col2: VBoxContainer = null
 
 func _ready() -> void:
 	_networked = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
@@ -32,6 +40,7 @@ func _ready() -> void:
 	$Arena1.player_exited_arena_master.connect(_on_player_exited_arena_master)
 	$Arena2.player_entered_arena_master.connect(_on_player_entered_arena_master)
 	$Arena2.player_exited_arena_master.connect(_on_player_exited_arena_master)
+	_setup_scoreboard()
 
 	if not _networked:
 		PlayerPrefs.peer_names = {1: PlayerPrefs.player_name}
@@ -202,13 +211,20 @@ func notify_mob_killed(arena: Node2D, killer: Node = null) -> void:
 				break
 	if killer_id != -1:
 		_peer_money[killer_id] = _peer_money.get(killer_id, 0) + Constants.KILL_REWARD
+		_peer_kills[killer_id] = _peer_kills.get(killer_id, 0) + 1
+		_peer_money_earned[killer_id] = _peer_money_earned.get(killer_id, 0) + Constants.KILL_REWARD
 	else:
 		for pid in _peer_to_arena:
 			if _peer_to_arena[pid] == arena:
 				_peer_money[pid] = _peer_money.get(pid, 0) + Constants.KILL_REWARD
+				_peer_money_earned[pid] = _peer_money_earned.get(pid, 0) + Constants.KILL_REWARD
 	_update_money_local(_peer_money)
 	if _networked:
 		_rpc_update_money.rpc(_peer_money)
+	var _s := _gather_stats()
+	_peer_stats_cache = _s
+	if _networked:
+		_rpc_update_stats.rpc(_s)
 	# Accumulate kills this frame — queue_free runs after deferred calls,
 	# so every mob that died this frame is still counted by get_mob_count().
 	_pending_kills[arena] = _pending_kills.get(arena, 0) + 1
@@ -339,6 +355,12 @@ func _setup_skill_bar() -> void:
 func _process(_delta: float) -> void:
 	if _leaving:
 		return
+	if _scoreboard_panel != null:
+		var want_visible := Input.is_action_pressed("scoreboard")
+		if want_visible != _scoreboard_panel.visible:
+			_scoreboard_panel.visible = want_visible
+			if want_visible:
+				_refresh_scoreboard()
 	var my_id: int = 1 if not _networked else multiplayer.get_unique_id()
 	var player = _peer_to_player.get(my_id)
 	if player == null:
@@ -460,22 +482,26 @@ func _apply_purchase(peer_id: int, item_id: int) -> void:
 				return
 			money -= Constants.SHOP_COST_SEND_MOB
 			opponent_arena.spawn_mob()
+			_peer_mobs_sent[peer_id] = _peer_mobs_sent.get(peer_id, 0) + 1
 		1:
 			if money < Constants.SHOP_COST_SEND_3_MOBS:
 				return
 			money -= Constants.SHOP_COST_SEND_3_MOBS
 			for i in 3:
 				opponent_arena.spawn_mob()
+			_peer_mobs_sent[peer_id] = _peer_mobs_sent.get(peer_id, 0) + 3
 		2:
 			if money < Constants.SHOP_COST_SEND_FLEEING:
 				return
 			money -= Constants.SHOP_COST_SEND_FLEEING
 			opponent_arena.spawn_mob(1)
+			_peer_mobs_sent[peer_id] = _peer_mobs_sent.get(peer_id, 0) + 1
 		7:
 			if money < Constants.SHOP_COST_SEND_BOSS:
 				return
 			money -= Constants.SHOP_COST_SEND_BOSS
 			opponent_arena.spawn_mob(2)
+			_peer_mobs_sent[peer_id] = _peer_mobs_sent.get(peer_id, 0) + 1
 		3:
 			var cur_level: int = _player_speed_levels.get(peer_id, 0)
 			var cost := _upgrade_cost(Constants.SHOP_COST_SPEED_BASE, Constants.SHOP_COST_SPEED_INC, cur_level)
@@ -554,6 +580,7 @@ func _apply_purchase(peer_id: int, item_id: int) -> void:
 			money -= cost
 			var dur: float = dur_map[item_id]
 			_apply_debuff_to_opponents(peer_id, item_id, dur)
+			_peer_debuffs_applied[peer_id] = _peer_debuffs_applied.get(peer_id, 0) + 1
 		Constants.DEBUFF_FRENZY:
 			if money < Constants.DEBUFF_COST_FRENZY:
 				return
@@ -561,12 +588,17 @@ func _apply_purchase(peer_id: int, item_id: int) -> void:
 			opponent_arena.mob_speed_multiplier = Constants.DEBUFF_FRENZY_SPEED_MULT
 			opponent_arena.mob_frenzy_timer = Constants.DEBUFF_DUR_FRENZY
 			_notify_opponents_debuff_icon(peer_id, Constants.DEBUFF_FRENZY, Constants.DEBUFF_DUR_FRENZY)
+			_peer_debuffs_applied[peer_id] = _peer_debuffs_applied.get(peer_id, 0) + 1
 
 	_peer_money[peer_id] = money
 	_update_money_local(_peer_money)
 	if _networked:
 		_rpc_update_money.rpc(_peer_money)
 	_push_hud_update()
+	var _s := _gather_stats()
+	_peer_stats_cache = _s
+	if _networked:
+		_rpc_update_stats.rpc(_s)
 
 @rpc("authority", "reliable")
 func _rpc_sync_speed_level(level: int) -> void:
@@ -623,3 +655,163 @@ func _add_debuff_icon(type: int, duration: float) -> void:
 	indicator.icon_color = COLORS.get(type, Color(0.6, 0.1, 0.1))
 	indicator.time_remaining = duration
 	bar.add_child(indicator)
+
+# --- Stats ---
+
+func _gather_stats() -> Dictionary:
+	var result := {}
+	for pid in _peer_to_arena:
+		result[pid] = {
+			"kills":     _peer_kills.get(pid, 0),
+			"earned":    _peer_money_earned.get(pid, 0),
+			"mobs_sent": _peer_mobs_sent.get(pid, 0),
+			"debuffs":   _peer_debuffs_applied.get(pid, 0),
+		}
+	return result
+
+@rpc("authority", "reliable")
+func _rpc_update_stats(stats: Dictionary) -> void:
+	_peer_stats_cache = stats
+
+# --- Scoreboard overlay ---
+
+func _setup_scoreboard() -> void:
+	var panel := ColorRect.new()
+	panel.name = "ScoreboardOverlay"
+	panel.color = Color(0.05, 0.05, 0.1, 0.88)
+	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.visible = false
+
+	var outer := MarginContainer.new()
+	outer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	outer.add_theme_constant_override("margin_top", 50)
+	outer.add_theme_constant_override("margin_bottom", 50)
+	outer.add_theme_constant_override("margin_left", 80)
+	outer.add_theme_constant_override("margin_right", 80)
+	panel.add_child(outer)
+
+	var root_vbox := VBoxContainer.new()
+	root_vbox.add_theme_constant_override("separation", 10)
+	outer.add_child(root_vbox)
+
+	var title := Label.new()
+	title.text = "SCOREBOARD"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_color_override("font_color", Color(1.0, 0.88, 0.3))
+	root_vbox.add_child(title)
+
+	var sep := HSeparator.new()
+	root_vbox.add_child(sep)
+
+	var cols_hbox := HBoxContainer.new()
+	cols_hbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	cols_hbox.add_theme_constant_override("separation", 16)
+	root_vbox.add_child(cols_hbox)
+
+	var col1 := VBoxContainer.new()
+	col1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col1.add_theme_constant_override("separation", 8)
+	cols_hbox.add_child(col1)
+
+	var vsep := VSeparator.new()
+	vsep.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	cols_hbox.add_child(vsep)
+
+	var col2 := VBoxContainer.new()
+	col2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col2.add_theme_constant_override("separation", 8)
+	cols_hbox.add_child(col2)
+
+	var hint := Label.new()
+	hint.text = "Hold TAB / Select button"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_font_size_override("font_size", 11)
+	hint.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6, 0.8))
+	root_vbox.add_child(hint)
+
+	$HUD.add_child(panel)
+	_scoreboard_panel = panel
+	_scoreboard_col1 = col1
+	_scoreboard_col2 = col2
+
+func _refresh_scoreboard() -> void:
+	if not _networked or multiplayer.is_server():
+		_peer_stats_cache = _gather_stats()
+	for child in _scoreboard_col1.get_children():
+		child.free()
+	for child in _scoreboard_col2.get_children():
+		child.free()
+
+	var my_id: int = 1 if not _networked else multiplayer.get_unique_id()
+	var my_arena = _peer_to_arena.get(my_id)
+
+	_add_scoreboard_column_header(_scoreboard_col1, "YOUR ARENA", Color(0.3, 0.75, 1.0))
+	_add_scoreboard_column_header(_scoreboard_col2, "ENEMY ARENA", Color(1.0, 0.42, 0.42))
+
+	for pid in _peer_to_arena:
+		var in_my_arena: bool = my_arena != null and _peer_to_arena.get(pid) == my_arena
+		var col := _scoreboard_col1 if in_my_arena else _scoreboard_col2
+		var stats: Dictionary = _peer_stats_cache.get(pid, {})
+		var pname: String = PlayerPrefs.peer_names.get(pid, "Player")
+		if pname.is_empty():
+			pname = "Player"
+		var arch_id: int = _peer_to_archetype.get(pid, 0)
+		var arch_name: String = Constants.ARCHETYPE_NAMES[arch_id] \
+			if arch_id >= 0 and arch_id < Constants.ARCHETYPE_NAMES.size() else "?"
+		_add_scoreboard_player_row(col, pname, arch_name, stats, pid == my_id)
+
+func _add_scoreboard_column_header(col: VBoxContainer, label_text: String, col_color: Color) -> void:
+	var lbl := Label.new()
+	lbl.text = label_text
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.add_theme_font_size_override("font_size", 16)
+	lbl.add_theme_color_override("font_color", col_color)
+	col.add_child(lbl)
+	var sep := HSeparator.new()
+	col.add_child(sep)
+
+func _add_scoreboard_player_row(col: VBoxContainer, pname: String, arch_name: String, stats: Dictionary, is_local: bool) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	col.add_child(row)
+
+	var name_vbox := VBoxContainer.new()
+	name_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_child(name_vbox)
+
+	var name_lbl := Label.new()
+	name_lbl.text = pname + (" (You)" if is_local else "")
+	name_lbl.add_theme_font_size_override("font_size", 14)
+	name_lbl.add_theme_color_override("font_color", Color(1.0, 0.95, 0.5) if is_local else Color(1.0, 1.0, 1.0))
+	name_vbox.add_child(name_lbl)
+
+	var arch_lbl := Label.new()
+	arch_lbl.text = arch_name
+	arch_lbl.add_theme_font_size_override("font_size", 11)
+	arch_lbl.add_theme_color_override("font_color", Color(0.65, 0.65, 0.65))
+	name_vbox.add_child(arch_lbl)
+
+	var stat_cols := [
+		["K",       str(stats.get("kills", 0))],
+		["G",       "$%d" % stats.get("earned", 0)],
+		["Sent",    str(stats.get("mobs_sent", 0))],
+		["Debuffs", str(stats.get("debuffs", 0))],
+	]
+	for sc in stat_cols:
+		var cell := VBoxContainer.new()
+		cell.alignment = BoxContainer.ALIGNMENT_CENTER
+		cell.custom_minimum_size = Vector2(62, 0)
+		row.add_child(cell)
+		var val_lbl := Label.new()
+		val_lbl.text = sc[1]
+		val_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		val_lbl.add_theme_font_size_override("font_size", 15)
+		cell.add_child(val_lbl)
+		var key_lbl := Label.new()
+		key_lbl.text = sc[0]
+		key_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		key_lbl.add_theme_font_size_override("font_size", 10)
+		key_lbl.add_theme_color_override("font_color", Color(0.58, 0.58, 0.58))
+		cell.add_child(key_lbl)
