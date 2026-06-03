@@ -73,6 +73,12 @@ func use_dash() -> bool:
 func get_dash_duration() -> float:
 	return Constants.PLAYER_DASH_DURATION
 
+func get_dash_icon() -> Texture2D:
+	return null
+
+func get_dash_color() -> Color:
+	return Color(0.25, 0.55, 1.0)
+
 func on_dash_end() -> void:
 	pass
 

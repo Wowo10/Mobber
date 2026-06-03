@@ -30,6 +30,12 @@ func get_skill2_color() -> Color:
 func get_skill2_icon() -> Texture2D:
 	return load("res://assets/icons/vortex.png")
 
+func get_dash_icon() -> Texture2D:
+	return load("res://assets/icons/magic-portal.png")
+
+func get_dash_color() -> Color:
+	return Color(0.4, 0.1, 0.8)
+
 func get_skill1_max_cooldown() -> float:
 	return DRAIN_COOLDOWN
 

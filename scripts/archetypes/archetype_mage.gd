@@ -27,6 +27,12 @@ func get_skill2_icon() -> Texture2D:
 const PULL_RADIUS = 350.0
 const PULL_FORCE = 1500.0
 
+func get_dash_icon() -> Texture2D:
+	return load("res://assets/icons/pull.png")
+
+func get_dash_color() -> Color:
+	return Color(0.55, 0.15, 0.9)
+
 func use_dash() -> bool:
 	_player.dash_cooldown = Constants.PLAYER_DASH_COOLDOWN
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)

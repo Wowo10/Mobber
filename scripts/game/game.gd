@@ -309,10 +309,16 @@ func _setup_skill_bar() -> void:
 	attack_slot.key_text = "SPC"
 	attack_slot.icon_color = Color(0.9, 0.65, 0.15)
 	attack_slot.icon = load("res://assets/icons/broadsword.png")
+	var arch := _make_archetype(PlayerPrefs.archetype)
 	var dash_slot := bar.get_node("DashSlot")
 	dash_slot.key_text = "SHF"
-	dash_slot.icon_color = Color(0.25, 0.55, 1.0)
-	dash_slot.icon = load("res://assets/icons/boots.png")
+	var dash_icon: Texture2D = arch.get_dash_icon()
+	if dash_icon:
+		dash_slot.icon_color = arch.get_dash_color()
+		dash_slot.icon = dash_icon
+	else:
+		dash_slot.icon_color = Color(0.25, 0.55, 1.0)
+		dash_slot.icon = load("res://assets/icons/boots.png")
 	var s1 := bar.get_node("Skill1Slot")
 	var s2 := bar.get_node("Skill2Slot")
 	var s3 := bar.get_node("Skill3Slot")
@@ -322,7 +328,6 @@ func _setup_skill_bar() -> void:
 	s1.available = true
 	s2.available = true
 	s3.available = false
-	var arch := _make_archetype(PlayerPrefs.archetype)
 	s1.icon_color = arch.get_skill1_color()
 	s1.icon = arch.get_skill1_icon()
 	s2.icon_color = arch.get_skill2_color()
