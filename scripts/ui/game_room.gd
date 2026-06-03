@@ -113,7 +113,7 @@ func _update_arch_display(peer_id: int, arch: int) -> void:
 		node.text = _archetype_name(arch)
 
 func _refresh_start_button() -> void:
-	%StartButton.disabled = _count_team(0) < 1 or _count_team(1) < 1
+	%StartButton.disabled = _count_team(0) != _count_team(1) or _count_team(0) < 1
 
 func _update_status() -> void:
 	var total := _peer_rows.size()
@@ -238,6 +238,8 @@ func _rpc_peer_left(peer_id: int) -> void:
 # --- Disconnect handling ---
 
 func _on_peer_disconnected(id: int) -> void:
+	if not _peer_rows.has(id):
+		return
 	_team_assignments.erase(id)
 	_peer_names.erase(id)
 	_peer_archetypes.erase(id)
@@ -247,6 +249,12 @@ func _on_peer_disconnected(id: int) -> void:
 			_rpc_peer_left.rpc_id(remaining_id, id)
 	_refresh_start_button()
 	_update_status()
+
+@rpc("any_peer", "reliable")
+func _rpc_notify_leaving() -> void:
+	if not _is_host:
+		return
+	_on_peer_disconnected(multiplayer.get_remote_sender_id())
 
 func _on_server_disconnected() -> void:
 	multiplayer.multiplayer_peer = null
@@ -307,5 +315,8 @@ func _rpc_start_game(assignments: Dictionary) -> void:
 
 func _on_back_pressed() -> void:
 	PlayerPrefs.room_code = ""
+	if not _is_host and multiplayer.multiplayer_peer != null:
+		_rpc_notify_leaving.rpc_id(1)
+		await get_tree().process_frame
 	multiplayer.multiplayer_peer = null
 	get_tree().change_scene_to_file(LOBBY_SCENE)
