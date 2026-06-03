@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://warlock_wisp01"]
+
+[ext_resource type="Script" path="res://scripts/archetypes/warlock/wisp.gd" id="1_wisp"]
+
+[node name="Wisp" type="Node2D"]
+script = ExtResource("1_wisp")

@@ -2,6 +2,7 @@ class_name ArchetypeAssassin
 extends ArchetypeBase
 
 const FAN_KNIFE_SCENE = preload("res://scenes/archetypes/assassin/fan_knife.tscn")
+const TRAP_SCENE = preload("res://scenes/archetypes/assassin/trap.tscn")
 
 const FAN_COOLDOWN = 7.0
 const FAN_COUNT = 5
@@ -13,9 +14,22 @@ const DASH_TARGET_RANGE = 450.0
 const SHADOWSTEP_COOLDOWN = 10.0
 const SHADOWSTEP_DAMAGE = 35.0
 const SHADOWSTEP_RANGE = 350.0
+const TRAP_COOLDOWN = 1.0
+const MAX_TRAPS = 15
+
+var _trap_count := 0
 
 func get_color() -> Color:
 	return Color(0.45, 0.1, 0.6)
+
+func get_skill3_color() -> Color:
+	return Color(0.45, 0.1, 0.65)
+
+func get_skill3_icon() -> Texture2D:
+	return load("res://assets/icons/box-trap.png")
+
+func get_skill3_max_cooldown() -> float:
+	return TRAP_COOLDOWN
 
 func get_skill1_color() -> Color:
 	return Color(0.75, 0.85, 1.0)
@@ -82,6 +96,27 @@ func use_skill2() -> void:
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
 		_player.rpc_shadowstep_visual.rpc(nearest.global_position)
+
+func use_skill3() -> void:
+	if _trap_count >= MAX_TRAPS:
+		return
+	_player.skill3_cooldown = TRAP_COOLDOWN
+	spawn_trap_local(_player.global_position, false)
+	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
+	if networked:
+		_player.rpc_spawn_assassin_trap.rpc(_player.global_position)
+
+func on_trap_triggered() -> void:
+	_trap_count = max(0, _trap_count - 1)
+
+func spawn_trap_local(pos: Vector2, visual_only: bool) -> void:
+	if not visual_only:
+		_trap_count += 1
+	var trap := TRAP_SCENE.instantiate()
+	trap.player_ref = _player
+	trap.visual_only = visual_only
+	_player.get_parent().add_child(trap)
+	trap.global_position = pos
 
 func spawn_fan_local(pos: Vector2, base_angle: float, visual_only: bool) -> void:
 	for i in range(FAN_COUNT):

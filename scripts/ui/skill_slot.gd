@@ -9,10 +9,15 @@ const SIZE := 56.0
 
 var _cd_remaining: float = 0.0
 var _cd_max: float = 1.0
+var _passive_counter: int = -1  # -1 = not a passive
 
 func set_cooldown(remaining: float, max_cd: float) -> void:
 	_cd_remaining = remaining
 	_cd_max = max_cd
+	queue_redraw()
+
+func set_passive_counter(count: int) -> void:
+	_passive_counter = count
 	queue_redraw()
 
 func _get_minimum_size() -> Vector2:
@@ -36,7 +41,15 @@ func _draw() -> void:
 		draw_string(font, Vector2(s * 0.5 - 5, s * 0.5 + 6), "?",
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(0.4, 0.4, 0.4))
 
-	if available and _cd_max > 0.0 and _cd_remaining > 0.0:
+	if _passive_counter >= 0:
+		draw_rect(Rect2(0, 0, s, s), Color(0.55, 0.2, 0.05, 0.35))
+		draw_string(font, Vector2(s - 16, 14), "P",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1.0, 0.6, 0.2, 0.9))
+		var combo_text := "%d/4" % (_passive_counter % 4)
+		var tw := font.get_string_size(combo_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+		draw_string(font, Vector2((s - tw) * 0.5, s * 0.5 + 8), combo_text,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1.0, 0.75, 0.3))
+	elif available and _cd_max > 0.0 and _cd_remaining > 0.0:
 		var frac := clampf(_cd_remaining / _cd_max, 0.0, 1.0)
 		draw_rect(Rect2(m, m, s - m * 2, (s - m * 2) * frac), Color(0.0, 0.0, 0.0, 0.75))
 		draw_string(font, Vector2(s * 0.5 - 8, s * 0.5 + 6), "%.1f" % _cd_remaining,

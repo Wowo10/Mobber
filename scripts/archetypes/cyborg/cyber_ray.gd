@@ -8,6 +8,7 @@ const DAMAGE_PER_TICK = 6.0
 
 var player_ref: Node = null
 var visual_only := false
+var thick := false
 
 var _elapsed := 0.0
 var _tick_timer := 0.0
@@ -40,22 +41,29 @@ func _process(delta: float) -> void:
 func _apply_damage() -> void:
 	if visual_only:
 		return
+	var w := RAY_WIDTH * (3.0 if thick else 1.0)
 	var center := facing * (RAY_LENGTH * 0.5)
 	var query := PhysicsShapeQueryParameters2D.new()
 	var rect := RectangleShape2D.new()
-	rect.size = Vector2(RAY_LENGTH, RAY_WIDTH)
+	rect.size = Vector2(RAY_LENGTH, w)
 	query.shape = rect
 	query.transform = Transform2D(facing.angle(), global_position + center)
 	query.collision_mask = 1
+	var dmg := DAMAGE_PER_TICK * (2.0 if thick else 1.0)
 	for hit in get_world_2d().direct_space_state.intersect_shape(query, 16):
 		var body = hit["collider"]
 		if body.has_method("take_damage"):
-			body.take_damage(DAMAGE_PER_TICK, Vector2.ZERO, player_ref)
+			body.take_damage(dmg, Vector2.ZERO, player_ref)
 
 func _draw() -> void:
 	var t := 1.0 - (_elapsed / DURATION)
 	var end := facing * RAY_LENGTH
-	draw_line(Vector2.ZERO, end, Color(0.1, 0.9, 1.0, 0.85 * t), 6.0)
-	draw_line(Vector2.ZERO, end, Color(0.8, 1.0, 1.0, 0.9 * t), 2.0)
-	# muzzle flash
-	draw_circle(Vector2.ZERO, 8.0, Color(0.2, 0.95, 1.0, 0.6 * t))
+	if thick:
+		draw_line(Vector2.ZERO, end, Color(0.1, 0.9, 1.0, 0.75 * t), 22.0)
+		draw_line(Vector2.ZERO, end, Color(0.6, 1.0, 1.0, 0.9 * t), 10.0)
+		draw_line(Vector2.ZERO, end, Color(1.0, 1.0, 1.0, 0.95 * t), 3.0)
+		draw_circle(Vector2.ZERO, 16.0, Color(0.2, 0.95, 1.0, 0.7 * t))
+	else:
+		draw_line(Vector2.ZERO, end, Color(0.1, 0.9, 1.0, 0.85 * t), 6.0)
+		draw_line(Vector2.ZERO, end, Color(0.8, 1.0, 1.0, 0.9 * t), 2.0)
+		draw_circle(Vector2.ZERO, 8.0, Color(0.2, 0.95, 1.0, 0.6 * t))

@@ -7,6 +7,7 @@ const SPIN_HIT_INTERVAL = 0.4
 var swinging := false
 var spin_mode := false
 var _spin_cooldowns := {}
+var on_hit_callback: Callable
 var damage_bonus: float = 0.0
 var size_mult: float = 1.0
 var swing_duration: float = Constants.SWORD_SWING_DURATION
@@ -85,6 +86,8 @@ func _on_body_entered(body: Node2D) -> void:
 	var knockback: Vector2 = (body.global_position - get_parent().global_position).normalized() \
 		* knockback_force
 	body.take_damage(damage, knockback, get_parent())
+	if on_hit_callback.is_valid():
+		on_hit_callback.call(body, damage)
 
 func apply_upgrades(dmg_bonus: float, sz_mult: float, spd_mult: float) -> void:
 	damage_bonus = dmg_bonus

@@ -21,8 +21,10 @@ var dash_cooldown := 0.0
 var attack_cooldown := 0.0
 var skill1_cooldown := 0.0
 var skill2_cooldown := 0.0
+var skill3_cooldown := 0.0
 var skill1_max_cooldown := 1.0
 var skill2_max_cooldown := 1.0
+var skill3_max_cooldown := 1.0
 var speed_level: int = 0
 var damage_level: int = 0
 var sword_size_level: int = 0
@@ -42,6 +44,7 @@ var _pending_attack := false
 var _pending_dash := false
 var _pending_skill1 := false
 var _pending_skill2 := false
+var _pending_skill3 := false
 
 var _archetype_handler: ArchetypeBase
 
@@ -99,6 +102,7 @@ func _apply_archetype() -> void:
 	color = _archetype_handler.get_color()
 	skill1_max_cooldown = _archetype_handler.get_skill1_max_cooldown()
 	skill2_max_cooldown = _archetype_handler.get_skill2_max_cooldown()
+	skill3_max_cooldown = _archetype_handler.get_skill3_max_cooldown()
 
 func _setup_particles() -> void:
 	var p := $DashParticles
@@ -154,6 +158,7 @@ func _physics_process(delta: float) -> void:
 	var do_dash: bool
 	var do_skill1: bool
 	var do_skill2: bool
+	var do_skill3: bool
 
 	if not networked:
 		# Path A — Offline: read keyboard, full simulation, no RPCs
@@ -169,6 +174,7 @@ func _physics_process(delta: float) -> void:
 			do_dash   = Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0
 		do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0
 		do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0
+		do_skill3 = Input.is_action_just_pressed("skill3") and skill3_cooldown <= 0.0
 
 	elif multiplayer.is_server():
 		# Path B — Server: simulate all players authoritatively
@@ -185,6 +191,7 @@ func _physics_process(delta: float) -> void:
 				do_dash   = Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0
 			do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0
 			do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0
+			do_skill3 = Input.is_action_just_pressed("skill3") and skill3_cooldown <= 0.0
 		else:
 			direction = _received_direction
 			facing = _received_facing
@@ -192,10 +199,12 @@ func _physics_process(delta: float) -> void:
 			do_dash   = _pending_dash and dash_cooldown <= 0.0
 			do_skill1 = _pending_skill1 and skill1_cooldown <= 0.0
 			do_skill2 = _pending_skill2 and skill2_cooldown <= 0.0
+			do_skill3 = _pending_skill3 and skill3_cooldown <= 0.0
 			_pending_attack = false
 			_pending_dash   = false
 			_pending_skill1 = false
 			_pending_skill2 = false
+			_pending_skill3 = false
 
 	else:
 		# Path C — Client own player: predict locally and send input to server
@@ -211,6 +220,7 @@ func _physics_process(delta: float) -> void:
 			do_dash   = Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0
 		do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0
 		do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0
+		do_skill3 = Input.is_action_just_pressed("skill3") and skill3_cooldown <= 0.0
 		_rpc_send_direction.rpc_id(1, direction)
 		_rpc_send_facing.rpc_id(1, facing)
 		var action_mask := 0
@@ -218,6 +228,7 @@ func _physics_process(delta: float) -> void:
 		if do_dash:   action_mask |= 2
 		if do_skill1: action_mask |= 4
 		if do_skill2: action_mask |= 8
+		if do_skill3: action_mask |= 16
 		if action_mask != 0:
 			_rpc_send_action.rpc_id(1, action_mask)
 
@@ -230,6 +241,7 @@ func _physics_process(delta: float) -> void:
 		debuff_silence_timer = max(0.0, debuff_silence_timer - delta)
 		do_skill1 = false
 		do_skill2 = false
+		do_skill3 = false
 	if debuff_invert_timer > 0.0:
 		debuff_invert_timer = max(0.0, debuff_invert_timer - delta)
 		var tmp := do_attack
@@ -249,6 +261,8 @@ func _physics_process(delta: float) -> void:
 		skill1_cooldown = max(0.0, skill1_cooldown - delta)
 	if skill2_cooldown > 0.0:
 		skill2_cooldown = max(0.0, skill2_cooldown - delta)
+	if skill3_cooldown > 0.0:
+		skill3_cooldown = max(0.0, skill3_cooldown - delta)
 
 	# Spin tick
 	if spinning:
@@ -323,6 +337,10 @@ func _physics_process(delta: float) -> void:
 			_use_skill2()
 			if is_multiplayer_authority():
 				$SfxSkill.play()
+		if do_skill3:
+			_use_skill3()
+			if is_multiplayer_authority():
+				$SfxSkill.play()
 		_archetype_handler.physics_process(delta)
 		if networked:
 			_rpc_sync_pos.rpc(position, last_facing, move_direction)
@@ -345,6 +363,10 @@ func _physics_process(delta: float) -> void:
 			skill2_cooldown = skill2_max_cooldown
 			$SfxSkill.play()
 			_archetype_handler.on_skill2_client_predict()
+		if do_skill3:
+			skill3_cooldown = skill3_max_cooldown
+			$SfxSkill.play()
+			_archetype_handler.on_skill3_client_predict()
 		_archetype_handler.physics_process(delta)
 
 # --- Input helper ---
@@ -397,8 +419,9 @@ func _rpc_send_action(action_mask: int) -> void:
 		return
 	if action_mask & 1: _pending_attack = true
 	if action_mask & 2: _pending_dash   = true
-	if action_mask & 4: _pending_skill1 = true
-	if action_mask & 8: _pending_skill2 = true
+	if action_mask & 4:  _pending_skill1 = true
+	if action_mask & 8:  _pending_skill2 = true
+	if action_mask & 16: _pending_skill3 = true
 
 # --- Skills ---
 
@@ -407,6 +430,18 @@ func _use_skill1() -> void:
 
 func _use_skill2() -> void:
 	_archetype_handler.use_skill2()
+
+func _use_skill3() -> void:
+	_archetype_handler.use_skill3()
+
+func notify_trap_triggered() -> void:
+	if _archetype_handler.has_method("on_trap_triggered"):
+		_archetype_handler.on_trap_triggered()
+
+func get_passive_counter() -> int:
+	if _archetype_handler.has_method("get_hit_count"):
+		return _archetype_handler.get_hit_count()
+	return -1
 
 # --- Upgrade RPCs ---
 
@@ -556,6 +591,26 @@ func rpc_consume_warlock_portal() -> void:
 @rpc("any_peer", "reliable")
 func rpc_mage_force_pull(pos: Vector2) -> void:
 	(_archetype_handler as ArchetypeMage).spawn_pull_visual(pos)
+
+@rpc("any_peer", "reliable")
+func rpc_spawn_arcane_implosion(pos: Vector2) -> void:
+	(_archetype_handler as ArchetypeMage).spawn_implosion_local(pos, true)
+
+@rpc("any_peer", "reliable")
+func rpc_set_cyborg_overclock(active: bool) -> void:
+	(_archetype_handler as ArchetypeCyborg).set_overclock(active)
+
+@rpc("any_peer", "reliable")
+func rpc_spawn_berserker_mini_smash(pos: Vector2) -> void:
+	(_archetype_handler as ArchetypeBerserker).spawn_mini_smash_local(pos, true)
+
+@rpc("any_peer", "reliable")
+func rpc_spawn_assassin_trap(pos: Vector2) -> void:
+	(_archetype_handler as ArchetypeAssassin).spawn_trap_local(pos, true)
+
+@rpc("any_peer", "reliable")
+func rpc_spawn_warlock_wisp() -> void:
+	(_archetype_handler as ArchetypeWarlock).spawn_wisp_local(true)
 
 @rpc("any_peer", "unreliable_ordered")
 func _rpc_set_dash_particles(dir: Vector2, emitting: bool) -> void:

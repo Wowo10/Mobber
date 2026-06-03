@@ -88,10 +88,25 @@ func on_skill1_client_predict() -> void:
 func on_skill2_client_predict() -> void:
 	pass
 
+func get_skill3_color() -> Color:
+	return Color.WHITE
+
+func get_skill3_icon() -> Texture2D:
+	return null
+
+func get_skill3_max_cooldown() -> float:
+	return 1.0
+
 func use_skill1() -> void:
 	pass
 
 func use_skill2() -> void:
+	pass
+
+func use_skill3() -> void:
+	pass
+
+func on_skill3_client_predict() -> void:
 	pass
 
 func physics_process(_delta: float) -> void:

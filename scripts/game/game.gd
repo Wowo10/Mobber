@@ -327,11 +327,14 @@ func _setup_skill_bar() -> void:
 	s3.key_text = "3"
 	s1.available = true
 	s2.available = true
-	s3.available = false
+	s3.available = true
+	var arch := _make_archetype(PlayerPrefs.archetype)
 	s1.icon_color = arch.get_skill1_color()
 	s1.icon = arch.get_skill1_icon()
 	s2.icon_color = arch.get_skill2_color()
 	s2.icon = arch.get_skill2_icon()
+	s3.icon_color = arch.get_skill3_color()
+	s3.icon = arch.get_skill3_icon()
 
 func _process(_delta: float) -> void:
 	if _leaving:
@@ -345,6 +348,9 @@ func _process(_delta: float) -> void:
 	bar.get_node("DashSlot").set_cooldown(player.dash_cooldown, Constants.PLAYER_DASH_COOLDOWN)
 	bar.get_node("Skill1Slot").set_cooldown(player.skill1_cooldown, player.skill1_max_cooldown)
 	bar.get_node("Skill2Slot").set_cooldown(player.skill2_cooldown, player.skill2_max_cooldown)
+	var s3_node = bar.get_node("Skill3Slot")
+	s3_node.set_cooldown(player.skill3_cooldown, player.skill3_max_cooldown)
+	s3_node.set_passive_counter(player.get_passive_counter())
 
 func _on_player_entered_shop() -> void:
 	if _leaving:

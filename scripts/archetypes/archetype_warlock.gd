@@ -5,15 +5,18 @@ const BOLT_SCENE = preload("res://scenes/archetypes/warlock/warlock_bolt.tscn")
 const DRAIN_SCENE = preload("res://scenes/archetypes/warlock/drain_life.tscn")
 const RIFT_SCENE = preload("res://scenes/archetypes/warlock/void_rift.tscn")
 const PORTAL_SCENE = preload("res://scenes/archetypes/warlock/warlock_portal.tscn")
+const WISP_SCENE = preload("res://scenes/archetypes/warlock/wisp.tscn")
 
 const BOLT_COOLDOWN = 0.7
 const DRAIN_COOLDOWN = 8.0
 const RIFT_COOLDOWN = 15.0
+const WISP_COOLDOWN = 22.0
 
 var _portal_active := false
 var _portal_pos := Vector2.ZERO
 var _portal_node: Node2D = null
 var _visual_portal: Node2D = null
+var _wisp_node: Node2D = null
 
 func get_color() -> Color:
 	return Color(0.1, 0.2, 0.55)
@@ -35,12 +38,21 @@ func get_dash_icon() -> Texture2D:
 
 func get_dash_color() -> Color:
 	return Color(0.4, 0.1, 0.8)
+	
+func get_skill3_color() -> Color:
+	return Color(0.2, 0.4, 0.9)
+
+func get_skill3_icon() -> Texture2D:
+	return load("res://assets/icons/ghost-ally.png")
 
 func get_skill1_max_cooldown() -> float:
 	return DRAIN_COOLDOWN
 
 func get_skill2_max_cooldown() -> float:
 	return RIFT_COOLDOWN
+
+func get_skill3_max_cooldown() -> float:
+	return WISP_COOLDOWN
 
 func use_dash() -> bool:
 	_player.dash_cooldown = Constants.PLAYER_DASH_COOLDOWN
@@ -128,6 +140,31 @@ func spawn_drain_local(visual_only: bool) -> void:
 	drain.visual_only = visual_only
 	_player.get_parent().add_child(drain)
 	drain.global_position = _player.global_position
+
+func use_skill3() -> void:
+	if is_instance_valid(_wisp_node):
+		return
+	_player.skill3_cooldown = WISP_COOLDOWN
+	spawn_wisp_local(false)
+	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
+	if networked:
+		_player.rpc_spawn_warlock_wisp.rpc()
+
+func spawn_wisp_local(visual_only: bool) -> void:
+	if not visual_only:
+		if is_instance_valid(_wisp_node):
+			_wisp_node.queue_free()
+		_wisp_node = WISP_SCENE.instantiate()
+		_wisp_node.player_ref = _player
+		_wisp_node.visual_only = false
+		_player.get_parent().add_child(_wisp_node)
+		_wisp_node.global_position = _player.global_position
+	else:
+		var v := WISP_SCENE.instantiate()
+		v.player_ref = _player
+		v.visual_only = true
+		_player.get_parent().add_child(v)
+		v.global_position = _player.global_position
 
 func spawn_rift_local(pos: Vector2, visual_only: bool) -> void:
 	var rift := RIFT_SCENE.instantiate()

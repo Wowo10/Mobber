@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://arcane_implosion"]
+
+[ext_resource type="Script" path="res://scripts/archetypes/mage/arcane_implosion.gd" id="1_implosion"]
+
+[node name="ArcaneImplosion" type="Node2D"]
+script = ExtResource("1_implosion")

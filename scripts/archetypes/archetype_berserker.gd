@@ -9,9 +9,34 @@ const SLAM_COOLDOWN = 8.0
 
 var _rage_active := false
 var _rage_timer := 0.0
+var _hit_count := 0
+
+func setup(player: Node) -> void:
+	super.setup(player)
+	player.get_node("Sword").on_hit_callback = _on_sword_hit
+
+func _on_sword_hit(mob: Node, _damage: float) -> void:
+	_hit_count += 1
+	if _hit_count % 4 == 0:
+		spawn_mini_smash_local(mob.global_position, false)
+		var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
+		if networked:
+			_player.rpc_spawn_berserker_mini_smash.rpc(mob.global_position)
+
+func get_hit_count() -> int:
+	return _hit_count
 
 func get_color() -> Color:
 	return Color(0.85, 0.2, 0.1)
+
+func get_skill3_color() -> Color:
+	return Color(0.9, 0.4, 0.05)
+
+func get_skill3_icon() -> Texture2D:
+	return load("res://assets/icons/anvil-impact.png")
+
+func get_skill3_max_cooldown() -> float:
+	return 0.0
 
 func get_skill1_color() -> Color:
 	return Color(1.0, 0.3, 0.05)
@@ -73,6 +98,42 @@ func use_skill2() -> void:
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
 		_player.rpc_spawn_ground_slam.rpc(_player.global_position)
+
+func spawn_mini_smash_local(pos: Vector2, visual_only: bool) -> void:
+	if not visual_only:
+		var query := PhysicsShapeQueryParameters2D.new()
+		var circle := CircleShape2D.new()
+		circle.radius = 80.0
+		query.shape = circle
+		query.transform = Transform2D(0.0, pos)
+		query.collision_mask = 1
+		var sword = _player.get_node("Sword")
+		var smash_damage := (sword.base_damage + sword.damage_bonus) * 2.0
+		for hit in _player.get_world_2d().direct_space_state.intersect_shape(query, 8):
+			var body = hit["collider"]
+			if body.has_method("take_damage"):
+				var dir: Vector2 = (body.global_position - pos).normalized()
+				body.take_damage(smash_damage, dir * 6000.0, _player)
+	_spawn_mini_smash_visual(pos)
+
+func _spawn_mini_smash_visual(pos: Vector2) -> void:
+	var v := Node2D.new()
+	v.global_position = pos
+	_player.get_parent().add_child(v)
+	var p := CPUParticles2D.new()
+	p.one_shot = true
+	p.explosiveness = 1.0
+	p.amount = 20
+	p.lifetime = 0.35
+	p.gravity = Vector2.ZERO
+	p.initial_velocity_min = 60.0
+	p.initial_velocity_max = 220.0
+	p.scale_amount_min = 3.0
+	p.scale_amount_max = 7.0
+	p.color = Color(1.0, 0.5, 0.1, 1.0)
+	p.emitting = true
+	v.add_child(p)
+	_player.get_tree().create_timer(0.5).timeout.connect(v.queue_free)
 
 func spawn_slam_local(pos: Vector2, visual_only: bool) -> void:
 	var slam := GROUND_SLAM_SCENE.instantiate()

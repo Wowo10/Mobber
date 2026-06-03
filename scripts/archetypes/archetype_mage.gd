@@ -4,10 +4,12 @@ extends ArchetypeBase
 const BOLT_SCENE = preload("res://scenes/archetypes/mage/magic_bolt.tscn")
 const RAIN_SCENE = preload("res://scenes/archetypes/mage/rain_of_fire.tscn")
 const FIREBALL_SCENE = preload("res://scenes/archetypes/mage/fireball.tscn")
+const IMPLOSION_SCENE = preload("res://scenes/archetypes/mage/arcane_implosion.tscn")
 
 const BOLT_COOLDOWN = 0.6
 const RAIN_COOLDOWN = 12.0
 const FIREBALL_COOLDOWN = 8.0
+const IMPLOSION_COOLDOWN = 14.0
 
 func get_color() -> Color:
 	return Color(0.55, 0.15, 0.9)
@@ -73,11 +75,20 @@ func spawn_pull_visual(pos: Vector2) -> void:
 	_player.get_parent().add_child(p)
 	_player.get_tree().create_timer(p.lifetime + 0.1).timeout.connect(p.queue_free)
 
+func get_skill3_color() -> Color:
+	return Color(0.55, 0.05, 0.85)
+
+func get_skill3_icon() -> Texture2D:
+	return load("res://assets/icons/implosion.png")
+
 func get_skill1_max_cooldown() -> float:
 	return RAIN_COOLDOWN
 
 func get_skill2_max_cooldown() -> float:
 	return FIREBALL_COOLDOWN
+
+func get_skill3_max_cooldown() -> float:
+	return IMPLOSION_COOLDOWN
 
 func can_attack() -> bool:
 	return _player.attack_cooldown <= 0.0
@@ -126,6 +137,20 @@ func spawn_rain_local(pos: Vector2, visual_only: bool) -> void:
 	rain.visual_only = visual_only
 	_player.get_parent().add_child(rain)
 	rain.global_position = pos
+
+func use_skill3() -> void:
+	_player.skill3_cooldown = IMPLOSION_COOLDOWN
+	spawn_implosion_local(_player.global_position, false)
+	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
+	if networked:
+		_player.rpc_spawn_arcane_implosion.rpc(_player.global_position)
+
+func spawn_implosion_local(pos: Vector2, visual_only: bool) -> void:
+	var imp := IMPLOSION_SCENE.instantiate()
+	imp.player_ref = _player
+	imp.visual_only = visual_only
+	_player.get_parent().add_child(imp)
+	imp.global_position = pos
 
 func spawn_fireball_local(pos: Vector2, dir: Vector2, visual_only: bool) -> void:
 	var fb := FIREBALL_SCENE.instantiate()
