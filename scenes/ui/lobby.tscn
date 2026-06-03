@@ -36,6 +36,10 @@ layout_mode = 2
 placeholder_text = "Your name..."
 max_length = 20
 
+[node name="SchemeSelect" type="OptionButton" parent="VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
 
 [node name="HostButton" type="Button" parent="VBox"]
 custom_minimum_size = Vector2(0, 40)

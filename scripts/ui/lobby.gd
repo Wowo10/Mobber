@@ -10,14 +10,16 @@ func _ready() -> void:
 	PlayerPrefs.player_name = saved_name
 	%NameInput.text = saved_name
 	PlayerPrefs.archetype = _load_archetype()
+	PlayerPrefs.control_scheme = _load_scheme()
 
-	var win_opts := [50, 75, 100, 120]
-	var wsel := %WinCountSelect
-	for v in win_opts:
-		wsel.add_item(str(v), v)
-	var default_idx := win_opts.find(PlayerPrefs.mob_win_count)
-	wsel.select(default_idx if default_idx >= 0 else win_opts.find(50))
-	wsel.item_selected.connect(func(_i: int) -> void: PlayerPrefs.mob_win_count = wsel.get_selected_id())
+	var scheme_sel := %SchemeSelect
+	scheme_sel.add_item("Keyboard (Space/Shift)", PlayerPrefs.SCHEME_KEYBOARD)
+	scheme_sel.add_item("Mouse (LMB/RMB)", PlayerPrefs.SCHEME_MOUSE)
+	scheme_sel.add_item("Gamepad (Twin-stick)", PlayerPrefs.SCHEME_PAD)
+	scheme_sel.select(PlayerPrefs.control_scheme)
+	scheme_sel.item_selected.connect(func(_i: int) -> void:
+		PlayerPrefs.control_scheme = scheme_sel.get_selected_id()
+		_save_scheme(PlayerPrefs.control_scheme))
 
 	WebRTCSignaling.lobby_created.connect(_on_lobby_created)
 	WebRTCSignaling.game_ready.connect(_on_game_ready)
@@ -47,6 +49,24 @@ func _load_archetype() -> int:
 	if cfg.load("user://prefs.cfg") == OK:
 		return cfg.get_value("player", "archetype", 0)
 	return 0
+
+func _load_scheme() -> int:
+	if OS.get_name() == "Web":
+		var val: String = str(JavaScriptBridge.eval("localStorage.getItem('mobber_scheme') || '0'"))
+		return val.to_int()
+	var cfg := ConfigFile.new()
+	if cfg.load("user://prefs.cfg") == OK:
+		return cfg.get_value("player", "control_scheme", 0)
+	return 0
+
+func _save_scheme(scheme: int) -> void:
+	if OS.get_name() == "Web":
+		JavaScriptBridge.eval("localStorage.setItem('mobber_scheme','%d')" % scheme)
+	else:
+		var cfg := ConfigFile.new()
+		cfg.load("user://prefs.cfg")
+		cfg.set_value("player", "control_scheme", scheme)
+		cfg.save("user://prefs.cfg")
 
 func _on_name_changed(new_text: String) -> void:
 	PlayerPrefs.player_name = new_text

@@ -1,6 +1,7 @@
 extends CharacterBody2D
 
 const SPEED = 800.0
+const PAD_DEADZONE := 0.15
 
 # Client-side prediction reconciliation thresholds
 const CORRECTION_THRESHOLD := 4.0    # px — ignore errors smaller than this
@@ -46,6 +47,9 @@ var _archetype_handler: ArchetypeBase
 
 # Client-side prediction — pending position correction from server reconciliation
 var _server_correction := Vector2.ZERO
+var _received_facing := Vector2.RIGHT
+var _mouse_attack_pressed := false
+var _mouse_dash_pressed := false
 
 func _ready() -> void:
 	# MultiplayerSpawner doesn't sync authority — derive it from node name "Player_N"
@@ -128,12 +132,24 @@ func _process(delta: float) -> void:
 	if networked and not multiplayer.is_server() and not is_multiplayer_authority() and spinning:
 		$Sword.rotation += ArchetypeKnight.SPIN_SPEED * delta
 
+func _input(event: InputEvent) -> void:
+	if PlayerPrefs.control_scheme != PlayerPrefs.SCHEME_MOUSE:
+		return
+	if not is_multiplayer_authority():
+		return
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			_mouse_attack_pressed = true
+		elif event.button_index == MOUSE_BUTTON_RIGHT:
+			_mouse_dash_pressed = true
+
 # --- Simulation ---
 
 func _physics_process(delta: float) -> void:
 	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 
 	var direction: Vector2
+	var facing: Vector2
 	var do_attack: bool
 	var do_dash: bool
 	var do_skill1: bool
@@ -142,8 +158,15 @@ func _physics_process(delta: float) -> void:
 	if not networked:
 		# Path A — Offline: read keyboard, full simulation, no RPCs
 		direction = _read_direction()
-		do_attack = Input.is_action_just_pressed("attack") and _archetype_handler.can_attack()
-		do_dash   = Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0
+		facing = _read_facing(direction)
+		if PlayerPrefs.control_scheme == PlayerPrefs.SCHEME_MOUSE:
+			do_attack = _mouse_attack_pressed and _archetype_handler.can_attack()
+			do_dash   = _mouse_dash_pressed and dash_cooldown <= 0.0
+			_mouse_attack_pressed = false
+			_mouse_dash_pressed   = false
+		else:
+			do_attack = Input.is_action_just_pressed("attack") and _archetype_handler.can_attack()
+			do_dash   = Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0
 		do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0
 		do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0
 
@@ -151,12 +174,20 @@ func _physics_process(delta: float) -> void:
 		# Path B — Server: simulate all players authoritatively
 		if is_multiplayer_authority():
 			direction = _read_direction()
-			do_attack = Input.is_action_just_pressed("attack") and _archetype_handler.can_attack()
-			do_dash   = Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0
+			facing = _read_facing(direction)
+			if PlayerPrefs.control_scheme == PlayerPrefs.SCHEME_MOUSE:
+				do_attack = _mouse_attack_pressed and _archetype_handler.can_attack()
+				do_dash   = _mouse_dash_pressed and dash_cooldown <= 0.0
+				_mouse_attack_pressed = false
+				_mouse_dash_pressed   = false
+			else:
+				do_attack = Input.is_action_just_pressed("attack") and _archetype_handler.can_attack()
+				do_dash   = Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0
 			do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0
 			do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0
 		else:
 			direction = _received_direction
+			facing = _received_facing
 			do_attack = _pending_attack and _archetype_handler.can_attack()
 			do_dash   = _pending_dash and dash_cooldown <= 0.0
 			do_skill1 = _pending_skill1 and skill1_cooldown <= 0.0
@@ -169,11 +200,19 @@ func _physics_process(delta: float) -> void:
 	else:
 		# Path C — Client own player: predict locally and send input to server
 		direction = _read_direction()
-		do_attack = Input.is_action_just_pressed("attack") and _archetype_handler.can_attack()
-		do_dash   = Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0
+		facing = _read_facing(direction)
+		if PlayerPrefs.control_scheme == PlayerPrefs.SCHEME_MOUSE:
+			do_attack = _mouse_attack_pressed and _archetype_handler.can_attack()
+			do_dash   = _mouse_dash_pressed and dash_cooldown <= 0.0
+			_mouse_attack_pressed = false
+			_mouse_dash_pressed   = false
+		else:
+			do_attack = Input.is_action_just_pressed("attack") and _archetype_handler.can_attack()
+			do_dash   = Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0
 		do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0
 		do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0
 		_rpc_send_direction.rpc_id(1, direction)
+		_rpc_send_facing.rpc_id(1, facing)
 		var action_mask := 0
 		if do_attack: action_mask |= 1
 		if do_dash:   action_mask |= 2
@@ -200,9 +239,8 @@ func _physics_process(delta: float) -> void:
 	# --- Common simulation (all paths) ---
 
 	move_direction = direction
-	if move_direction != Vector2.ZERO:
-		last_facing = move_direction
-		$Sword.set_facing(last_facing.angle())
+	last_facing = facing
+	$Sword.set_facing(last_facing.angle())
 
 	# Cooldown ticks
 	if attack_cooldown > 0.0:
@@ -313,13 +351,31 @@ func _physics_process(delta: float) -> void:
 
 func _read_direction() -> Vector2:
 	var d := Vector2.ZERO
-	if Input.is_action_pressed("move_left"):  d.x -= 1
-	if Input.is_action_pressed("move_right"): d.x += 1
-	if Input.is_action_pressed("move_up"):    d.y -= 1
-	if Input.is_action_pressed("move_down"):  d.y += 1
+	if PlayerPrefs.control_scheme == PlayerPrefs.SCHEME_PAD:
+		d = Vector2(Input.get_joy_axis(0, JOY_AXIS_LEFT_X), Input.get_joy_axis(0, JOY_AXIS_LEFT_Y))
+		if d.length() < PAD_DEADZONE:
+			d = Vector2.ZERO
+	else:
+		if Input.is_action_pressed("move_left"):  d.x -= 1
+		if Input.is_action_pressed("move_right"): d.x += 1
+		if Input.is_action_pressed("move_up"):    d.y -= 1
+		if Input.is_action_pressed("move_down"):  d.y += 1
 	if debuff_invert_timer > 0.0:
 		d = -d
 	return d.normalized()
+
+func _read_facing(move_dir: Vector2) -> Vector2:
+	if PlayerPrefs.control_scheme == PlayerPrefs.SCHEME_MOUSE:
+		var d := get_global_mouse_position() - global_position
+		if not d.is_zero_approx():
+			return d.normalized()
+	elif PlayerPrefs.control_scheme == PlayerPrefs.SCHEME_PAD:
+		var d := Vector2(Input.get_joy_axis(0, JOY_AXIS_RIGHT_X), Input.get_joy_axis(0, JOY_AXIS_RIGHT_Y))
+		if d.length() >= PAD_DEADZONE:
+			return d.normalized()
+	elif move_dir != Vector2.ZERO:
+		return move_dir
+	return last_facing
 
 # --- Input RPCs (client → server) ---
 
@@ -328,6 +384,12 @@ func _rpc_send_direction(direction: Vector2) -> void:
 	if not multiplayer.is_server():
 		return
 	_received_direction = direction
+
+@rpc("any_peer", "unreliable_ordered")
+func _rpc_send_facing(f: Vector2) -> void:
+	if not multiplayer.is_server():
+		return
+	_received_facing = f
 
 @rpc("any_peer", "reliable")
 func _rpc_send_action(action_mask: int) -> void:
