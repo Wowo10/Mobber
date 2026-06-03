@@ -344,7 +344,6 @@ func _setup_skill_bar() -> void:
 	s1.available = true
 	s2.available = true
 	s3.available = true
-	var arch := _make_archetype(PlayerPrefs.archetype)
 	s1.icon_color = arch.get_skill1_color()
 	s1.icon = arch.get_skill1_icon()
 	s2.icon_color = arch.get_skill2_color()
