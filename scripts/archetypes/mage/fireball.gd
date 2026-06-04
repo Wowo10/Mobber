@@ -1,4 +1,4 @@
-extends Area2D
+extends "res://scripts/archetypes/projectile_base.gd"
 
 const SPEED = 700.0
 const RANGE = 900.0
@@ -6,28 +6,25 @@ const EXPLOSION_RADIUS = 120.0
 const DAMAGE = 60.0
 const KNOCKBACK = 8000.0
 
-var direction := Vector2.RIGHT
-var player_ref: Node = null
-var visual_only := false
-var _distance_traveled := 0.0
 var _exploded := false
 
 func _ready() -> void:
-	monitoring = true
-	body_entered.connect(_on_body_entered)
 	$SfxFire.play()
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
+	queue_redraw()
+
+func _physics_process(delta: float) -> void:
+	var prev_pos := global_position
 	var step := direction * SPEED * delta
 	global_position += step
 	_distance_traveled += step.length()
-	queue_redraw()
 	if _distance_traveled >= RANGE:
 		_explode()
-
-func _on_body_entered(body: Node2D) -> void:
-	if not body.has_method("take_damage"):
 		return
+	_check_hit(prev_pos)
+
+func _on_hit(_body: Node2D) -> void:
 	_explode()
 
 func _explode() -> void:

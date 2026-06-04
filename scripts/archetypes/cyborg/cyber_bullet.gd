@@ -1,4 +1,4 @@
-extends Area2D
+extends "res://scripts/archetypes/projectile_base.gd"
 
 const SPEED = 2200.0
 const MEGA_SPEED = 1350.0
@@ -6,32 +6,28 @@ const RANGE = 800.0
 const DAMAGE = 12.0
 const KNOCKBACK = 2500.0
 
-var direction := Vector2.RIGHT
-var player_ref: Node = null
-var visual_only := false
 var mega_mode := false
-var _distance_traveled := 0.0
 
 func _ready() -> void:
-	monitoring = true
-	body_entered.connect(_on_body_entered)
 	$SfxFire.play()
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
+	queue_redraw()
+
+func _physics_process(delta: float) -> void:
+	var prev_pos := global_position
 	var spd := MEGA_SPEED if mega_mode else SPEED
 	var step := direction * spd * delta
 	global_position += step
 	_distance_traveled += step.length()
-	queue_redraw()
 	if _distance_traveled >= RANGE:
 		queue_free()
-
-func _on_body_entered(body: Node2D) -> void:
-	if not body.has_method("take_damage"):
 		return
+	_check_hit(prev_pos)
+
+func _on_hit(body: Node2D) -> void:
 	if not visual_only:
-		var dmg := DAMAGE * (2.5 if mega_mode else 1.0)
-		body.take_damage(dmg, direction * KNOCKBACK, player_ref)
+		body.take_damage(DAMAGE * (2.5 if mega_mode else 1.0), direction * KNOCKBACK, player_ref)
 	queue_free()
 
 func _draw() -> void:
