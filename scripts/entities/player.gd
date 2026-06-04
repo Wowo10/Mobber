@@ -82,8 +82,8 @@ func _ready() -> void:
 
 func _apply_archetype() -> void:
 	match archetype:
-		Constants.ARCHETYPE_KNIGHT:
-			_archetype_handler = ArchetypeKnight.new()
+		Constants.ARCHETYPE_PALADIN:
+			_archetype_handler = ArchetypePaladin.new()
 		Constants.ARCHETYPE_PIRATE:
 			_archetype_handler = ArchetypePirate.new()
 		Constants.ARCHETYPE_MAGE:
@@ -134,7 +134,7 @@ func _setup_camera() -> void:
 func _process(delta: float) -> void:
 	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked and not multiplayer.is_server() and not is_multiplayer_authority() and spinning:
-		$Sword.rotation += ArchetypeKnight.SPIN_SPEED * delta
+		$Sword.rotation += ArchetypePaladin.SPIN_SPEED * delta
 
 func _input(event: InputEvent) -> void:
 	if PlayerPrefs.control_scheme != PlayerPrefs.SCHEME_MOUSE:
@@ -267,7 +267,7 @@ func _physics_process(delta: float) -> void:
 	# Spin tick
 	if spinning:
 		spin_timer -= delta
-		$Sword.rotation += ArchetypeKnight.SPIN_SPEED * delta
+		$Sword.rotation += ArchetypePaladin.SPIN_SPEED * delta
 		if spin_timer <= 0.0:
 			spinning = false
 			$Sword.exit_spin()
@@ -331,7 +331,7 @@ func _physics_process(delta: float) -> void:
 				_archetype_handler.broadcast_attack()
 		if do_skill1:
 			_use_skill1()
-			if is_multiplayer_authority() and archetype == Constants.ARCHETYPE_KNIGHT:
+			if is_multiplayer_authority() and archetype == Constants.ARCHETYPE_PALADIN:
 				$SfxSpin.play()
 		if do_skill2:
 			_use_skill2()
@@ -350,9 +350,9 @@ func _physics_process(delta: float) -> void:
 			_archetype_handler.use_attack_visual()
 			$SfxSwing.play()
 		if do_skill1:
-			if archetype == Constants.ARCHETYPE_KNIGHT:
+			if archetype == Constants.ARCHETYPE_PALADIN:
 				spinning = true
-				spin_timer = ArchetypeKnight.SPIN_DURATION
+				spin_timer = ArchetypePaladin.SPIN_DURATION
 				$Sword.enter_spin()
 				skill1_cooldown = skill1_max_cooldown
 				$SfxSpin.play()
@@ -517,8 +517,20 @@ func rpc_place_turret(pos: Vector2, fac: Vector2) -> void:
 	(_archetype_handler as ArchetypePirate).place_visual_turret(pos, fac)
 
 @rpc("any_peer", "reliable")
+func rpc_place_pirate_barrel(pos: Vector2) -> void:
+	(_archetype_handler as ArchetypePirate).spawn_barrel_local(pos, true)
+
+@rpc("any_peer", "reliable")
+func rpc_detonate_pirate_barrel() -> void:
+	(_archetype_handler as ArchetypePirate).detonate_visual_barrel()
+
+@rpc("any_peer", "reliable")
+func rpc_knight_shield_bash(pos: Vector2, dir: Vector2) -> void:
+	(_archetype_handler as ArchetypePaladin).spawn_bash_visual(pos, dir)
+
+@rpc("any_peer", "reliable")
 func rpc_spawn_consecration(pos: Vector2) -> void:
-	(_archetype_handler as ArchetypeKnight).spawn_consecration_local(pos, true)
+	(_archetype_handler as ArchetypePaladin).spawn_consecration_local(pos, true)
 
 @rpc("any_peer", "reliable")
 func rpc_spawn_mage_bolt(pos: Vector2, dir: Vector2) -> void:
@@ -624,7 +636,7 @@ func rpc_trigger_swing(facing_angle: float) -> void:
 @rpc("any_peer", "reliable")
 func rpc_trigger_spin_start() -> void:
 	spinning = true
-	spin_timer = ArchetypeKnight.SPIN_DURATION
+	spin_timer = ArchetypePaladin.SPIN_DURATION
 	$Sword.enter_spin()
 
 @rpc("any_peer", "reliable")

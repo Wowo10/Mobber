@@ -41,7 +41,7 @@ func _detonate() -> void:
 		var body = h["collider"]
 		if body.has_method("take_damage"):
 			mobs.append(body)
-	var damage := BASE_DAMAGE + PER_MOB_DAMAGE * max(0, mobs.size() - 1)
+	var damage: float = BASE_DAMAGE + PER_MOB_DAMAGE * max(0, mobs.size() - 1)
 	for mob in mobs:
 		var dir: Vector2 = (global_position - mob.global_position).normalized()
 		mob.take_damage(damage, dir * KNOCKBACK_FORCE, player_ref)

@@ -310,7 +310,7 @@ func _on_return_pressed() -> void:
 
 func _make_archetype(arch_id: int) -> ArchetypeBase:
 	match arch_id:
-		Constants.ARCHETYPE_KNIGHT:   return ArchetypeKnight.new()
+		Constants.ARCHETYPE_KNIGHT:   return ArchetypePaladin.new()
 		Constants.ARCHETYPE_PIRATE:   return ArchetypePirate.new()
 		Constants.ARCHETYPE_MAGE:     return ArchetypeMage.new()
 		Constants.ARCHETYPE_CYBORG:   return ArchetypeCyborg.new()

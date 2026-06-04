@@ -23,6 +23,8 @@ var _external_velocity := Vector2.ZERO
 var _last_attacker: Node = null
 var _panicking: bool = false
 var _arena: Node = null
+var _slow_timer := 0.0
+var _slow_mult := 1.0
 
 func _apply_mob_type() -> void:
 	if mob_type == MobType.FLEEING:
@@ -53,6 +55,8 @@ func _process(_delta: float) -> void:
 	queue_redraw()
 
 func _physics_process(delta: float) -> void:
+	if _slow_timer > 0.0:
+		_slow_timer = max(0.0, _slow_timer - delta)
 	_external_velocity = _external_velocity.move_toward(
 		Vector2.ZERO, Constants.MOB_FRICTION * delta)
 	match state:
@@ -76,7 +80,8 @@ func _process_wander(delta: float) -> void:
 		_pick_wander_dir()
 	var base_spd: float = Constants.MOB_BOSS_SPEED if mob_type == MobType.BOSS else Constants.MOB_SPEED
 	var spd_mult: float = _arena.mob_speed_multiplier if _arena != null else 1.0
-	velocity = _wander_dir * base_spd * spd_mult
+	var slow: float = _slow_mult if _slow_timer > 0.0 else 1.0
+	velocity = _wander_dir * base_spd * spd_mult * slow
 
 func _process_flee(delta: float) -> void:
 	var target := _get_nearest_player()
@@ -103,7 +108,8 @@ func _process_flee(delta: float) -> void:
 	else:
 		flee_speed = Constants.MOB_FLEE_BASIC_SPEED
 	var spd_mult: float = _arena.mob_speed_multiplier if _arena != null else 1.0
-	velocity = steer * flee_speed * spd_mult
+	var slow: float = _slow_mult if _slow_timer > 0.0 else 1.0
+	velocity = steer * flee_speed * spd_mult * slow
 
 func _wall_avoidance_force() -> Vector2:
 	var pos := position
@@ -145,6 +151,10 @@ func _pick_wander_dir() -> void:
 	var angle := randf_range(0.0, TAU)
 	_wander_dir = Vector2(cos(angle), sin(angle))
 	_wander_timer = Constants.MOB_WANDER_INTERVAL + randf_range(-0.5, 0.5)
+
+func apply_slow(mult: float, duration: float) -> void:
+	_slow_mult = mult
+	_slow_timer = max(_slow_timer, duration)
 
 func apply_push(impulse: Vector2) -> void:
 	_external_velocity = (_external_velocity + impulse).limit_length(Constants.MOB_MAX_EXTERNAL_SPEED)

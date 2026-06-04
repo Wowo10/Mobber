@@ -108,7 +108,7 @@ func spawn_mini_smash_local(pos: Vector2, visual_only: bool) -> void:
 		query.transform = Transform2D(0.0, pos)
 		query.collision_mask = 1
 		var sword = _player.get_node("Sword")
-		var smash_damage := (sword.base_damage + sword.damage_bonus) * 2.0
+		var smash_damage: float = (sword.base_damage + sword.damage_bonus) * 2.0
 		for hit in _player.get_world_2d().direct_space_state.intersect_shape(query, 8):
 			var body = hit["collider"]
 			if body.has_method("take_damage"):

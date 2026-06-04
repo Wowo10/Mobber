@@ -50,7 +50,7 @@ func _try_shoot() -> void:
 
 func _spawn_bolt(pos: Vector2, dir: Vector2) -> void:
 	var bolt_scene := load("res://scenes/archetypes/warlock/warlock_bolt.tscn")
-	var bolt := bolt_scene.instantiate()
+	var bolt: Node = bolt_scene.instantiate()
 	bolt.direction = dir
 	bolt.player_ref = player_ref
 	bolt.visual_only = false
