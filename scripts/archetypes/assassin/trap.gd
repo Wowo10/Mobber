@@ -47,8 +47,9 @@ func _draw() -> void:
 	if _triggered:
 		return
 	var pulse := sin(_anim_t * 4.0) * 0.15 + 0.85
-	var c := Color(0.55, 0.1, 0.75, 0.9 * pulse)
-	var r := 10.0
-	draw_line(Vector2(-r, -r), Vector2(r, r), c, 2.5)
-	draw_line(Vector2(r, -r), Vector2(-r, r), c, 2.5)
-	draw_arc(Vector2.ZERO, r * 1.1, 0.0, TAU, 16, Color(0.4, 0.05, 0.6, 0.5 * pulse), 1.0)
+	var c := Color(0.75, 0.15, 1.0, 0.95 * pulse)
+	var r := 16.0
+	draw_line(Vector2(-r, -r), Vector2(r, r), c, 4.0)
+	draw_line(Vector2(r, -r), Vector2(-r, r), c, 4.0)
+	draw_arc(Vector2.ZERO, r * 1.15, 0.0, TAU, 24, Color(0.55, 0.05, 0.8, 0.75 * pulse), 2.5)
+	draw_arc(Vector2.ZERO, r * 1.7, 0.0, TAU, 32, Color(0.4, 0.0, 0.65, 0.35 * pulse), 1.5)

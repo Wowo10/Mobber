@@ -1,6 +1,7 @@
 extends Area2D
 
 const SPEED = 2200.0
+const MEGA_SPEED = 1350.0
 const RANGE = 800.0
 const DAMAGE = 12.0
 const KNOCKBACK = 2500.0
@@ -17,7 +18,8 @@ func _ready() -> void:
 	$SfxFire.play()
 
 func _process(delta: float) -> void:
-	var step := direction * SPEED * delta
+	var spd := MEGA_SPEED if mega_mode else SPEED
+	var step := direction * spd * delta
 	global_position += step
 	_distance_traveled += step.length()
 	queue_redraw()

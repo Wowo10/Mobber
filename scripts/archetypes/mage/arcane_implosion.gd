@@ -26,6 +26,8 @@ func _process(delta: float) -> void:
 		_detonated = true
 		if not visual_only:
 			_detonate()
+		else:
+			_spawn_burst()
 		get_tree().create_timer(0.4).timeout.connect(queue_free)
 
 func _detonate() -> void:

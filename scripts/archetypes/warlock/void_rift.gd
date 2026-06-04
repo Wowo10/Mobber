@@ -1,6 +1,7 @@
 extends Area2D
 
 const RADIUS = 150.0
+const PULL_RADIUS = 230.0
 const DURATION = 5.0
 const TICK_RATE = 0.12
 const DAMAGE_PER_TICK = 4.0
@@ -15,7 +16,7 @@ var _bodies_inside := []
 
 func _ready() -> void:
 	monitoring = true
-	($CollisionShape2D.shape as CircleShape2D).radius = RADIUS
+	($CollisionShape2D.shape as CircleShape2D).radius = PULL_RADIUS
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)
 	$SfxAmbient.play()

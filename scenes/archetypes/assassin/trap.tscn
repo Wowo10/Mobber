@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://scripts/archetypes/assassin/trap.gd" id="1_trap"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_trap"]
-radius = 18.0
+radius = 28.0
 
 [node name="Trap" type="Area2D"]
 collision_mask = 1

@@ -17,14 +17,19 @@ func setup(player: Node) -> void:
 
 func _on_sword_hit(mob: Node, _damage: float) -> void:
 	_hit_count += 1
+	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
+	if networked:
+		_player.rpc_berserker_set_hit_count.rpc(_hit_count)
 	if _hit_count % 4 == 0:
 		spawn_mini_smash_local(mob.global_position, false)
-		var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 		if networked:
 			_player.rpc_spawn_berserker_mini_smash.rpc(mob.global_position)
 
 func get_hit_count() -> int:
 	return _hit_count
+
+func set_hit_count(count: int) -> void:
+	_hit_count = count
 
 func get_color() -> Color:
 	return Color(0.85, 0.2, 0.1)
@@ -75,7 +80,7 @@ func get_dash_duration() -> float:
 	return 0.06
 
 func on_dash_end() -> void:
-	spawn_slam_local(_player.global_position, false)
+	spawn_slam_local(_player.global_position, false, 20.0, 90.0)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
 		_player.rpc_spawn_ground_slam.rpc(_player.global_position)
@@ -135,10 +140,12 @@ func _spawn_mini_smash_visual(pos: Vector2) -> void:
 	v.add_child(p)
 	_player.get_tree().create_timer(0.5).timeout.connect(v.queue_free)
 
-func spawn_slam_local(pos: Vector2, visual_only: bool) -> void:
+func spawn_slam_local(pos: Vector2, visual_only: bool, damage := -1.0, radius := -1.0) -> void:
 	var slam := GROUND_SLAM_SCENE.instantiate()
 	slam.player_ref = _player
 	slam.visual_only = visual_only
+	slam.damage_override = damage
+	slam.radius_override = radius
 	_player.get_parent().add_child(slam)
 	slam.global_position = pos
 

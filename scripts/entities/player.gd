@@ -707,6 +707,13 @@ func rpc_spawn_berserker_mini_smash(pos: Vector2) -> void:
 	(_archetype_handler as ArchetypeBerserker).spawn_mini_smash_local(pos, true)
 
 @rpc("any_peer", "reliable")
+func rpc_berserker_set_hit_count(count: int) -> void:
+	var _s := multiplayer.get_remote_sender_id()
+	if _s != 0 and _s != 1:
+		return
+	(_archetype_handler as ArchetypeBerserker).set_hit_count(count)
+
+@rpc("any_peer", "reliable")
 func rpc_spawn_assassin_trap(pos: Vector2) -> void:
 	var _s := multiplayer.get_remote_sender_id()
 	if _s != 0 and _s != 1:
