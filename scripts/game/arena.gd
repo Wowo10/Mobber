@@ -6,6 +6,7 @@ signal player_entered_arena_master
 signal player_exited_arena_master
 
 const GRID_SIZE = 100
+const FLOOR_TILE_SIZE = 256.0
 const MOB_SCENE = preload("res://scenes/entities/mob.tscn")
 const SHOP_ZONE_RECT := Rect2(100, 1650, 300, 300)
 const ARENA_MASTER_ZONE_RECT := Rect2(2267, 1650, 300, 300)
@@ -23,6 +24,7 @@ var mob_speed_multiplier: float = 1.0
 var mob_frenzy_timer: float = 0.0
 
 func _ready() -> void:
+	texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
 	_floor_texture = FLOOR_TEXTURES[randi() % FLOOR_TEXTURES.size()]
 	_build_walls()
 	_build_shop_zone()
@@ -162,7 +164,11 @@ func get_mob_count() -> int:
 
 
 func _draw() -> void:
-	draw_texture_rect(_floor_texture, Rect2(0, 0, Constants.WORLD_SIZE_X, Constants.WORLD_SIZE_Y), true)
+	var tex_size := _floor_texture.get_size()
+	var src := Rect2(0, 0,
+		Constants.WORLD_SIZE_X * tex_size.x / FLOOR_TILE_SIZE,
+		Constants.WORLD_SIZE_Y * tex_size.y / FLOOR_TILE_SIZE)
+	draw_texture_rect_region(_floor_texture, Rect2(0, 0, Constants.WORLD_SIZE_X, Constants.WORLD_SIZE_Y), src)
 	var i := 0
 	for x in range(0, Constants.WORLD_SIZE_X + 1, GRID_SIZE):
 		var col := Color(0.2, 0.4, 0.8, 0.55) if i % 3 == 0 else Color(0.5, 0.5, 0.5, 0.4)
