@@ -443,6 +443,9 @@ func get_passive_counter() -> int:
 		return _archetype_handler.get_hit_count()
 	return -1
 
+func get_archetype_handler() -> ArchetypeBase:
+	return _archetype_handler
+
 # --- Upgrade RPCs ---
 
 func apply_upgrades_to_sword() -> void:

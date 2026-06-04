@@ -321,11 +321,16 @@ func _make_archetype(arch_id: int) -> ArchetypeBase:
 
 func _setup_skill_bar() -> void:
 	var bar := $HUD/SkillBar
+	var arch := _make_archetype(PlayerPrefs.archetype)
 	var attack_slot := bar.get_node("AttackSlot")
 	attack_slot.key_text = "SPC"
-	attack_slot.icon_color = Color(0.9, 0.65, 0.15)
-	attack_slot.icon = load("res://assets/icons/broadsword.png")
-	var arch := _make_archetype(PlayerPrefs.archetype)
+	var arch_attack_icon: Texture2D = arch.get_attack_icon()
+	if arch_attack_icon:
+		attack_slot.icon_color = arch.get_attack_color()
+		attack_slot.icon = arch_attack_icon
+	else:
+		attack_slot.icon_color = Color(0.9, 0.65, 0.15)
+		attack_slot.icon = load("res://assets/icons/broadsword.png")
 	var dash_slot := bar.get_node("DashSlot")
 	dash_slot.key_text = "SHF"
 	var dash_icon: Texture2D = arch.get_dash_icon()
@@ -365,7 +370,13 @@ func _process(_delta: float) -> void:
 	if player == null:
 		return
 	var bar := $HUD/SkillBar
-	bar.get_node("AttackSlot").set_cooldown(player.attack_cooldown, Constants.SWORD_SWING_DURATION)
+	var attack_node = bar.get_node("AttackSlot")
+	attack_node.set_cooldown(player.attack_cooldown, Constants.SWORD_SWING_DURATION)
+	var p_arch: ArchetypeBase = player.get_archetype_handler()
+	var dyn_icon: Texture2D = p_arch.get_attack_icon()
+	if dyn_icon:
+		attack_node.icon = dyn_icon
+		attack_node.icon_color = p_arch.get_attack_color()
 	bar.get_node("DashSlot").set_cooldown(player.dash_cooldown, Constants.PLAYER_DASH_COOLDOWN)
 	bar.get_node("Skill1Slot").set_cooldown(player.skill1_cooldown, player.skill1_max_cooldown)
 	bar.get_node("Skill2Slot").set_cooldown(player.skill2_cooldown, player.skill2_max_cooldown)

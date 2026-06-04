@@ -76,6 +76,12 @@ func get_dash_duration() -> float:
 func get_dash_icon() -> Texture2D:
 	return null
 
+func get_attack_icon() -> Texture2D:
+	return null
+
+func get_attack_color() -> Color:
+	return Color(0.9, 0.65, 0.15)
+
 func get_dash_color() -> Color:
 	return Color(0.25, 0.55, 1.0)
 

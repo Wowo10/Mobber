@@ -18,6 +18,12 @@ var _portal_node: Node2D = null
 var _visual_portal: Node2D = null
 var _wisp_node: Node2D = null
 
+func get_attack_icon() -> Texture2D:
+	return load("res://assets/icons/shadow-grasp.png")
+
+func get_attack_color() -> Color:
+	return Color(0.35, 0.05, 0.8)
+
 func get_color() -> Color:
 	return Color(0.1, 0.2, 0.55)
 

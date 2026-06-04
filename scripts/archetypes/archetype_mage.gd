@@ -11,6 +11,12 @@ const RAIN_COOLDOWN = 12.0
 const FIREBALL_COOLDOWN = 8.0
 const IMPLOSION_COOLDOWN = 14.0
 
+func get_attack_icon() -> Texture2D:
+	return load("res://assets/icons/bolt-spell-cast.png")
+
+func get_attack_color() -> Color:
+	return Color(0.75, 0.25, 1.0)
+
 func get_color() -> Color:
 	return Color(0.55, 0.15, 0.9)
 

@@ -4,6 +4,9 @@ extends ArchetypeBase
 const BULLET_SCENE = preload("res://scenes/archetypes/cyborg/cyber_bullet.tscn")
 const RAY_SCENE = preload("res://scenes/archetypes/cyborg/cyber_ray.tscn")
 
+const _MELEE_ATTACK_ICON = preload("res://assets/icons/energy-sword.png")
+const _RANGED_ATTACK_ICON = preload("res://assets/icons/cpu-shot.png")
+
 const BULLET_COOLDOWN = 0.45
 const TARGETING_COOLDOWN = 9.0
 const RAY_COOLDOWN = 10.0
@@ -14,6 +17,12 @@ var _ranged_mode := false
 var _overclock_active := false
 var _overclock_timer := 0.0
 var _extra_sword: Node = null
+
+func get_attack_icon() -> Texture2D:
+	return _RANGED_ATTACK_ICON if _ranged_mode else _MELEE_ATTACK_ICON
+
+func get_attack_color() -> Color:
+	return Color(0.1, 0.85, 1.0) if _ranged_mode else Color(0.3, 0.9, 0.6)
 
 func get_color() -> Color:
 	return Color(0.05, 0.65, 0.8)
