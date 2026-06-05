@@ -578,11 +578,11 @@ func rpc_spawn_mage_bolt(pos: Vector2, dir: Vector2) -> void:
 	(_archetype_handler as ArchetypeMage).spawn_bolt_local(pos, dir, true)
 
 @rpc("any_peer", "reliable")
-func rpc_spawn_rain(pos: Vector2) -> void:
+func rpc_spawn_rain(pos: Vector2, rs: int) -> void:
 	var _s := multiplayer.get_remote_sender_id()
 	if _s != 0 and _s != 1:
 		return
-	(_archetype_handler as ArchetypeMage).spawn_rain_local(pos, true)
+	(_archetype_handler as ArchetypeMage).spawn_rain_local(pos, true, rs)
 
 @rpc("any_peer", "reliable")
 func rpc_spawn_fireball(pos: Vector2, dir: Vector2) -> void:

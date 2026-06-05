@@ -10,13 +10,18 @@ const IMPACT_FADE = 0.25
 
 var player_ref: Node = null
 var visual_only := false
+var rain_seed: int = 0
 
+var _rng := RandomNumberGenerator.new()
 var _elapsed := 0.0
 var _next_strike := 0.0
 var _strikes_done := 0
 var _max_strikes: int = int(DURATION / INTERVAL)
 var _warnings: Array = []
 var _impacts: Array = []
+
+func _ready() -> void:
+	_rng.seed = rain_seed
 
 func _process(delta: float) -> void:
 	_elapsed += delta
@@ -37,8 +42,8 @@ func _process(delta: float) -> void:
 	if _next_strike <= 0.0 and _strikes_done < _max_strikes:
 		_next_strike = INTERVAL
 		_strikes_done += 1
-		var angle := randf() * TAU
-		var dist := sqrt(randf()) * SCATTER_RADIUS
+		var angle := _rng.randf() * TAU
+		var dist := sqrt(_rng.randf()) * SCATTER_RADIUS
 		var strike_pos := global_position + Vector2(cos(angle), sin(angle)) * dist
 		_warnings.append({"pos": strike_pos, "age": 0.0})
 

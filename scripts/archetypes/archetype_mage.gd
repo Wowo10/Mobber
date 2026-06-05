@@ -116,10 +116,11 @@ func use_attack_visual() -> void:
 
 func use_skill1() -> void:
 	_player.skill1_cooldown = RAIN_COOLDOWN
-	spawn_rain_local(_player.global_position, false)
+	var rs := randi()
+	spawn_rain_local(_player.global_position, false, rs)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
-		_player.rpc_spawn_rain.rpc(_player.global_position)
+		_player.rpc_spawn_rain.rpc(_player.global_position, rs)
 
 func use_skill2() -> void:
 	_player.skill2_cooldown = FIREBALL_COOLDOWN
@@ -137,10 +138,11 @@ func spawn_bolt_local(pos: Vector2, dir: Vector2, visual_only: bool) -> void:
 	_player.get_parent().add_child(bolt)
 	bolt.global_position = pos
 
-func spawn_rain_local(pos: Vector2, visual_only: bool) -> void:
+func spawn_rain_local(pos: Vector2, visual_only: bool, rs: int = 0) -> void:
 	var rain := RAIN_SCENE.instantiate()
 	rain.player_ref = _player
 	rain.visual_only = visual_only
+	rain.rain_seed = rs
 	_player.get_parent().add_child(rain)
 	rain.global_position = pos
 
