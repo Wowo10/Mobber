@@ -30,11 +30,20 @@ func get_skill2_color() -> Color:
 func get_skill2_icon() -> Texture2D:
 	return load("res://assets/icons/holy-symbol.png")
 
+func get_skill1_name() -> String:
+	return "Spin"
+
+func get_skill2_name() -> String:
+	return "Consecration"
+
+func get_skill3_name() -> String:
+	return "Shield Bash"
+
 func get_skill1_max_cooldown() -> float:
-	return SPIN_COOLDOWN
+	return SPIN_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill1_level)
 
 func get_skill2_max_cooldown() -> float:
-	return CONSECRATION_COOLDOWN
+	return CONSECRATION_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill2_level)
 
 func get_skill3_color() -> Color:
 	return Color(0.2, 0.55, 1.0)
@@ -43,26 +52,26 @@ func get_skill3_icon() -> Texture2D:
 	return load("res://assets/icons/shield-bash.png")
 
 func get_skill3_max_cooldown() -> float:
-	return BASH_COOLDOWN
+	return BASH_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill3_level)
 
 func use_skill1() -> void:
-	_player.skill1_cooldown = SPIN_COOLDOWN
+	_player.skill1_cooldown = get_skill1_max_cooldown()
 	_player.spinning = true
-	_player.spin_timer = SPIN_DURATION
+	_player.spin_timer = SPIN_DURATION + _player.skill1_level * 0.5
 	_player.get_node("Sword").enter_spin()
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
 		_player.rpc_trigger_spin_start.rpc()
 
 func use_skill2() -> void:
-	_player.skill2_cooldown = CONSECRATION_COOLDOWN
+	_player.skill2_cooldown = get_skill2_max_cooldown()
 	spawn_consecration_local(_player.global_position, false)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
 		_player.rpc_spawn_consecration.rpc(_player.global_position)
 
 func use_skill3() -> void:
-	_player.skill3_cooldown = BASH_COOLDOWN
+	_player.skill3_cooldown = get_skill3_max_cooldown()
 	var pos: Vector2 = _player.global_position
 	var dir: Vector2 = _player.last_facing
 	_do_bash(pos, dir)
@@ -80,7 +89,7 @@ func _do_bash(pos: Vector2, dir: Vector2) -> void:
 	for hit in _player.get_world_2d().direct_space_state.intersect_shape(query, 16):
 		var body = hit["collider"]
 		if body.has_method("take_damage"):
-			body.take_damage(BASH_DAMAGE, dir * BASH_KNOCKBACK, _player)
+			body.take_damage(BASH_DAMAGE + _player.skill3_level * 10.0, dir * BASH_KNOCKBACK, _player)
 			if body.has_method("apply_slow"):
 				body.apply_slow(BASH_SLOW_MULT, BASH_SLOW_DURATION)
 	spawn_bash_visual(pos, dir)

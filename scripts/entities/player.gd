@@ -29,6 +29,9 @@ var speed_level: int = 0
 var damage_level: int = 0
 var sword_size_level: int = 0
 var attack_speed_level: int = 0
+var skill1_level: int = 0
+var skill2_level: int = 0
+var skill3_level: int = 0
 
 var debuff_no_dash_timer := 0.0
 var debuff_silence_timer := 0.0
@@ -448,6 +451,18 @@ func get_archetype_handler() -> ArchetypeBase:
 
 # --- Upgrade RPCs ---
 
+func apply_skill_upgrades() -> void:
+	skill1_max_cooldown = _archetype_handler.get_skill1_max_cooldown()
+	skill2_max_cooldown = _archetype_handler.get_skill2_max_cooldown()
+	skill3_max_cooldown = _archetype_handler.get_skill3_max_cooldown()
+
+func get_skill_name(n: int) -> String:
+	match n:
+		1: return _archetype_handler.get_skill1_name()
+		2: return _archetype_handler.get_skill2_name()
+		3: return _archetype_handler.get_skill3_name()
+	return "Skill %d" % n
+
 func apply_upgrades_to_sword() -> void:
 	var dmg_bonus := damage_level * Constants.SHOP_DAMAGE_PER_LEVEL
 	var sz_mult := 1.0 + sword_size_level * Constants.SHOP_SWORD_SIZE_PER_LEVEL
@@ -484,6 +499,30 @@ func rpc_apply_attack_speed_level(level: int) -> void:
 		return
 	attack_speed_level = level
 	apply_upgrades_to_sword()
+
+@rpc("any_peer", "reliable")
+func rpc_apply_skill1_level(level: int) -> void:
+	var _s := multiplayer.get_remote_sender_id()
+	if _s != 0 and _s != 1:
+		return
+	skill1_level = level
+	apply_skill_upgrades()
+
+@rpc("any_peer", "reliable")
+func rpc_apply_skill2_level(level: int) -> void:
+	var _s := multiplayer.get_remote_sender_id()
+	if _s != 0 and _s != 1:
+		return
+	skill2_level = level
+	apply_skill_upgrades()
+
+@rpc("any_peer", "reliable")
+func rpc_apply_skill3_level(level: int) -> void:
+	var _s := multiplayer.get_remote_sender_id()
+	if _s != 0 and _s != 1:
+		return
+	skill3_level = level
+	apply_skill_upgrades()
 
 @rpc("any_peer", "reliable")
 func rpc_apply_debuff(type: int, duration: float) -> void:

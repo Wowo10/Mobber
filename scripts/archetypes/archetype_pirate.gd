@@ -36,17 +36,26 @@ func get_skill3_color() -> Color:
 func get_skill3_icon() -> Texture2D:
 	return load("res://assets/icons/barrel.png")
 
+func get_skill1_name() -> String:
+	return "Cannonball"
+
+func get_skill2_name() -> String:
+	return "Turret"
+
+func get_skill3_name() -> String:
+	return "Barrel"
+
 func get_skill3_max_cooldown() -> float:
-	return BARREL_COOLDOWN
+	return BARREL_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill3_level)
 
 func get_skill1_max_cooldown() -> float:
-	return CANNON_COOLDOWN
+	return CANNON_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill1_level)
 
 func get_skill2_max_cooldown() -> float:
-	return TURRET_COOLDOWN
+	return TURRET_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill2_level)
 
 func use_skill1() -> void:
-	_player.skill1_cooldown = CANNON_COOLDOWN
+	_player.skill1_cooldown = get_skill1_max_cooldown()
 	var cannonball = CANNONBALL_SCENE.instantiate()
 	cannonball.direction = _player.last_facing
 	cannonball.global_position = _player.global_position + _player.last_facing * (_player.radius + 12.0)
@@ -55,7 +64,7 @@ func use_skill1() -> void:
 	_player.broadcast_cannonball(cannonball.global_position, _player.last_facing, true)
 
 func use_skill2() -> void:
-	_player.skill2_cooldown = TURRET_COOLDOWN
+	_player.skill2_cooldown = get_skill2_max_cooldown()
 	if _turret and is_instance_valid(_turret):
 		_turret.global_position = _player.global_position
 		_turret.facing = _player.last_facing
@@ -75,7 +84,7 @@ func use_skill3() -> void:
 	if is_instance_valid(_barrel_node):
 		_barrel_node.detonate()
 		_barrel_node = null
-		_player.skill3_cooldown = BARREL_COOLDOWN
+		_player.skill3_cooldown = get_skill3_max_cooldown()
 		if networked:
 			_player.rpc_detonate_pirate_barrel.rpc()
 	else:

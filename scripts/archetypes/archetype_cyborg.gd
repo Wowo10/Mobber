@@ -45,14 +45,23 @@ func get_skill3_color() -> Color:
 func get_skill3_icon() -> Texture2D:
 	return load("res://assets/icons/cogsplosion.png")
 
+func get_skill1_name() -> String:
+	return "Targeting"
+
+func get_skill2_name() -> String:
+	return "Laser Ray"
+
+func get_skill3_name() -> String:
+	return "Overclock"
+
 func get_skill1_max_cooldown() -> float:
-	return TARGETING_COOLDOWN
+	return TARGETING_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill1_level)
 
 func get_skill2_max_cooldown() -> float:
-	return RAY_COOLDOWN
+	return RAY_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill2_level)
 
 func get_skill3_max_cooldown() -> float:
-	return OVERCLOCK_COOLDOWN
+	return OVERCLOCK_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill3_level)
 
 func get_speed_mult() -> float:
 	return 1.35 if _overclock_active else 1.0
@@ -96,21 +105,21 @@ func use_attack_visual() -> void:
 		super.use_attack_visual()
 
 func use_skill1() -> void:
-	_player.skill1_cooldown = TARGETING_COOLDOWN
+	_player.skill1_cooldown = get_skill1_max_cooldown()
 	set_ranged_mode(not _ranged_mode)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
 		_player.rpc_set_cyborg_ranged_mode.rpc(_ranged_mode)
 
 func use_skill2() -> void:
-	_player.skill2_cooldown = RAY_COOLDOWN
+	_player.skill2_cooldown = get_skill2_max_cooldown()
 	spawn_ray_local(_player.global_position, _player.last_facing, false)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
 		_player.rpc_spawn_cyber_ray.rpc(_player.global_position, _player.last_facing)
 
 func use_skill3() -> void:
-	_player.skill3_cooldown = OVERCLOCK_COOLDOWN
+	_player.skill3_cooldown = get_skill3_max_cooldown()
 	set_overclock(true)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
@@ -130,7 +139,7 @@ func set_ranged_mode(active: bool) -> void:
 func set_overclock(active: bool) -> void:
 	_overclock_active = active
 	if active:
-		_overclock_timer = OVERCLOCK_DURATION
+		_overclock_timer = OVERCLOCK_DURATION + _player.skill3_level * 1.0
 		_add_extra_sword()
 	else:
 		_remove_extra_sword()

@@ -15,12 +15,15 @@ func setup(player: Node) -> void:
 	super.setup(player)
 	player.get_node("Sword").on_hit_callback = _on_sword_hit
 
+func get_mini_smash_threshold() -> int:
+	return max(1, 4 - _player.skill3_level)
+
 func _on_sword_hit(mob: Node, _damage: float) -> void:
 	_hit_count += 1
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
 		_player.rpc_berserker_set_hit_count.rpc(_hit_count)
-	if _hit_count % 4 == 0:
+	if _hit_count % get_mini_smash_threshold() == 0:
 		spawn_mini_smash_local(mob.global_position, false)
 		if networked:
 			_player.rpc_spawn_berserker_mini_smash.rpc(mob.global_position)
@@ -39,6 +42,15 @@ func get_skill3_color() -> Color:
 
 func get_skill3_icon() -> Texture2D:
 	return load("res://assets/icons/anvil-impact.png")
+
+func get_skill1_name() -> String:
+	return "Enrage"
+
+func get_skill2_name() -> String:
+	return "Ground Slam"
+
+func get_skill3_name() -> String:
+	return "Mini Smash"
 
 func get_skill3_max_cooldown() -> float:
 	return 0.0
@@ -68,10 +80,10 @@ func get_sword_swing_duration() -> float:
 	return 0.38
 
 func get_skill1_max_cooldown() -> float:
-	return RAGE_COOLDOWN
+	return RAGE_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill1_level)
 
 func get_skill2_max_cooldown() -> float:
-	return SLAM_COOLDOWN
+	return SLAM_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill2_level)
 
 func get_speed_mult() -> float:
 	return 1.3 if _rage_active else 1.0
@@ -87,18 +99,18 @@ func on_dash_end() -> void:
 
 func on_skill1_client_predict() -> void:
 	set_rage(true)
-	_rage_timer = RAGE_DURATION
+	_rage_timer = RAGE_DURATION + _player.skill1_level * 0.5
 
 func use_skill1() -> void:
-	_player.skill1_cooldown = RAGE_COOLDOWN
+	_player.skill1_cooldown = get_skill1_max_cooldown()
 	set_rage(true)
-	_rage_timer = RAGE_DURATION
+	_rage_timer = RAGE_DURATION + _player.skill1_level * 0.5
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
 		_player.rpc_set_berserker_rage.rpc(true)
 
 func use_skill2() -> void:
-	_player.skill2_cooldown = SLAM_COOLDOWN
+	_player.skill2_cooldown = get_skill2_max_cooldown()
 	spawn_slam_local(_player.global_position, false)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:

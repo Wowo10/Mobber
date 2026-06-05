@@ -51,14 +51,23 @@ func get_skill3_color() -> Color:
 func get_skill3_icon() -> Texture2D:
 	return load("res://assets/icons/ghost-ally.png")
 
+func get_skill1_name() -> String:
+	return "Drain Life"
+
+func get_skill2_name() -> String:
+	return "Void Rift"
+
+func get_skill3_name() -> String:
+	return "Wisp"
+
 func get_skill1_max_cooldown() -> float:
-	return DRAIN_COOLDOWN
+	return DRAIN_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill1_level)
 
 func get_skill2_max_cooldown() -> float:
-	return RIFT_COOLDOWN
+	return RIFT_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill2_level)
 
 func get_skill3_max_cooldown() -> float:
-	return WISP_COOLDOWN
+	return WISP_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill3_level)
 
 func use_dash() -> bool:
 	_player.dash_cooldown = Constants.PLAYER_DASH_COOLDOWN
@@ -119,14 +128,14 @@ func use_attack_visual() -> void:
 	spawn_bolt_local(pos, _player.last_facing, true)
 
 func use_skill1() -> void:
-	_player.skill1_cooldown = DRAIN_COOLDOWN
+	_player.skill1_cooldown = get_skill1_max_cooldown()
 	spawn_drain_local(false)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
 		_player.rpc_spawn_drain_life.rpc()
 
 func use_skill2() -> void:
-	_player.skill2_cooldown = RIFT_COOLDOWN
+	_player.skill2_cooldown = get_skill2_max_cooldown()
 	spawn_rift_local(_player.global_position, false)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
@@ -150,7 +159,7 @@ func spawn_drain_local(visual_only: bool) -> void:
 func use_skill3() -> void:
 	if is_instance_valid(_wisp_node):
 		return
-	_player.skill3_cooldown = WISP_COOLDOWN
+	_player.skill3_cooldown = get_skill3_max_cooldown()
 	spawn_wisp_local(false)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:

@@ -16,6 +16,9 @@ var _player_speed_levels: Dictionary = {}   # peer_id -> int
 var _player_damage_levels: Dictionary = {}
 var _player_sword_size_levels: Dictionary = {}
 var _player_attack_speed_levels: Dictionary = {}
+var _player_skill1_levels: Dictionary = {}
+var _player_skill2_levels: Dictionary = {}
+var _player_skill3_levels: Dictionary = {}
 var _peer_money: Dictionary = {}  # peer_id -> int
 var _in_shop_zone := false
 var _in_arena_master_zone := false
@@ -415,6 +418,9 @@ func _setup_shop() -> void:
 	upgrade_vbox.get_node("DamageBtn").pressed.connect(func(): _buy(4))
 	upgrade_vbox.get_node("SwordSizeBtn").pressed.connect(func(): _buy(5))
 	upgrade_vbox.get_node("AttackSpeedBtn").pressed.connect(func(): _buy(6))
+	upgrade_vbox.get_node("Skill1Btn").pressed.connect(func(): _buy(12))
+	upgrade_vbox.get_node("Skill2Btn").pressed.connect(func(): _buy(13))
+	upgrade_vbox.get_node("Skill3Btn").pressed.connect(func(): _buy(14))
 	var am_vbox := $ArenaMasterPanel/PanelBG/VBox
 	am_vbox.get_node("SendMobBtn").pressed.connect(func(): _buy(0))
 	am_vbox.get_node("Send3MobsBtn").pressed.connect(func(): _buy(1))
@@ -445,6 +451,13 @@ func _update_shop_ui() -> void:
 	_refresh_upgrade_btn(vbox.get_node("AttackSpeedBtn"), "Attack Speed",
 		_player_attack_speed_levels.get(my_id, 0), max_lvl, money,
 		Constants.SHOP_COST_ATTACK_SPEED_BASE, Constants.SHOP_COST_ATTACK_SPEED_INC)
+	var player = _peer_to_player.get(my_id)
+	var skill_level_dicts := [_player_skill1_levels, _player_skill2_levels, _player_skill3_levels]
+	for i in range(1, 4):
+		var skill_label := player.get_skill_name(i) if player else ("Skill %d" % i)
+		_refresh_upgrade_btn(vbox.get_node("Skill%dBtn" % i), skill_label,
+			skill_level_dicts[i - 1].get(my_id, 0), max_lvl, money,
+			Constants.SHOP_COST_SKILL_BASE, Constants.SHOP_COST_SKILL_INC)
 
 func _update_arena_master_ui() -> void:
 	if not $ArenaMasterPanel.visible:
@@ -573,6 +586,54 @@ func _apply_purchase(peer_id: int, item_id: int) -> void:
 				player.apply_upgrades_to_sword()
 				if _networked and peer_id != 1:
 					player.rpc_apply_attack_speed_level.rpc_id(peer_id, new_level)
+		12:
+			var cur_level: int = _player_skill1_levels.get(peer_id, 0)
+			var cost := _upgrade_cost(Constants.SHOP_COST_SKILL_BASE, Constants.SHOP_COST_SKILL_INC, cur_level)
+			if cur_level >= Constants.SHOP_UPGRADE_MAX_LEVEL or money < cost:
+				return
+			money -= cost
+			var new_level: int = cur_level + 1
+			_player_skill1_levels[peer_id] = new_level
+			var player = _peer_to_player.get(peer_id)
+			if player and is_instance_valid(player):
+				player.skill1_level = new_level
+				player.apply_skill_upgrades()
+				if _networked and peer_id != 1:
+					player.rpc_apply_skill1_level.rpc_id(peer_id, new_level)
+			if _networked and peer_id != 1:
+				_rpc_sync_skill1_level.rpc_id(peer_id, new_level)
+		13:
+			var cur_level: int = _player_skill2_levels.get(peer_id, 0)
+			var cost := _upgrade_cost(Constants.SHOP_COST_SKILL_BASE, Constants.SHOP_COST_SKILL_INC, cur_level)
+			if cur_level >= Constants.SHOP_UPGRADE_MAX_LEVEL or money < cost:
+				return
+			money -= cost
+			var new_level: int = cur_level + 1
+			_player_skill2_levels[peer_id] = new_level
+			var player = _peer_to_player.get(peer_id)
+			if player and is_instance_valid(player):
+				player.skill2_level = new_level
+				player.apply_skill_upgrades()
+				if _networked and peer_id != 1:
+					player.rpc_apply_skill2_level.rpc_id(peer_id, new_level)
+			if _networked and peer_id != 1:
+				_rpc_sync_skill2_level.rpc_id(peer_id, new_level)
+		14:
+			var cur_level: int = _player_skill3_levels.get(peer_id, 0)
+			var cost := _upgrade_cost(Constants.SHOP_COST_SKILL_BASE, Constants.SHOP_COST_SKILL_INC, cur_level)
+			if cur_level >= Constants.SHOP_UPGRADE_MAX_LEVEL or money < cost:
+				return
+			money -= cost
+			var new_level: int = cur_level + 1
+			_player_skill3_levels[peer_id] = new_level
+			var player = _peer_to_player.get(peer_id)
+			if player and is_instance_valid(player):
+				player.skill3_level = new_level
+				player.apply_skill_upgrades()
+				if _networked and peer_id != 1:
+					player.rpc_apply_skill3_level.rpc_id(peer_id, new_level)
+			if _networked and peer_id != 1:
+				_rpc_sync_skill3_level.rpc_id(peer_id, new_level)
 		Constants.DEBUFF_NO_DASH, Constants.DEBUFF_SILENCE, Constants.DEBUFF_INVERT:
 			var cost_map := {
 				Constants.DEBUFF_NO_DASH: Constants.DEBUFF_COST_NO_DASH,
@@ -614,6 +675,24 @@ func _apply_purchase(peer_id: int, item_id: int) -> void:
 func _rpc_sync_speed_level(level: int) -> void:
 	var my_id: int = multiplayer.get_unique_id()
 	_player_speed_levels[my_id] = level
+	_update_shop_ui()
+
+@rpc("authority", "reliable")
+func _rpc_sync_skill1_level(level: int) -> void:
+	var my_id: int = multiplayer.get_unique_id()
+	_player_skill1_levels[my_id] = level
+	_update_shop_ui()
+
+@rpc("authority", "reliable")
+func _rpc_sync_skill2_level(level: int) -> void:
+	var my_id: int = multiplayer.get_unique_id()
+	_player_skill2_levels[my_id] = level
+	_update_shop_ui()
+
+@rpc("authority", "reliable")
+func _rpc_sync_skill3_level(level: int) -> void:
+	var my_id: int = multiplayer.get_unique_id()
+	_player_skill3_levels[my_id] = level
 	_update_shop_ui()
 
 func _apply_debuff_to_opponents(buyer_id: int, item_id: int, dur: float) -> void:

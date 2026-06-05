@@ -42,6 +42,15 @@ func get_sword_width() -> float:
 func get_sword_swing_duration() -> float:
 	return Constants.SWORD_SWING_DURATION
 
+func get_skill1_name() -> String:
+	return "Skill 1"
+
+func get_skill2_name() -> String:
+	return "Skill 2"
+
+func get_skill3_name() -> String:
+	return "Skill 3"
+
 func get_skill1_max_cooldown() -> float:
 	return 1.0
 

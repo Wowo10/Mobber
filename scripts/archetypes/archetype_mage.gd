@@ -87,14 +87,23 @@ func get_skill3_color() -> Color:
 func get_skill3_icon() -> Texture2D:
 	return load("res://assets/icons/implosion.png")
 
+func get_skill1_name() -> String:
+	return "Rain of Fire"
+
+func get_skill2_name() -> String:
+	return "Fireball"
+
+func get_skill3_name() -> String:
+	return "Implosion"
+
 func get_skill1_max_cooldown() -> float:
-	return RAIN_COOLDOWN
+	return RAIN_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill1_level)
 
 func get_skill2_max_cooldown() -> float:
-	return FIREBALL_COOLDOWN
+	return FIREBALL_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill2_level)
 
 func get_skill3_max_cooldown() -> float:
-	return IMPLOSION_COOLDOWN
+	return IMPLOSION_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill3_level)
 
 func can_attack() -> bool:
 	return _player.attack_cooldown <= 0.0
@@ -115,7 +124,7 @@ func use_attack_visual() -> void:
 	spawn_bolt_local(pos, _player.last_facing, true)
 
 func use_skill1() -> void:
-	_player.skill1_cooldown = RAIN_COOLDOWN
+	_player.skill1_cooldown = get_skill1_max_cooldown()
 	var rs := randi()
 	spawn_rain_local(_player.global_position, false, rs)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
@@ -123,7 +132,7 @@ func use_skill1() -> void:
 		_player.rpc_spawn_rain.rpc(_player.global_position, rs)
 
 func use_skill2() -> void:
-	_player.skill2_cooldown = FIREBALL_COOLDOWN
+	_player.skill2_cooldown = get_skill2_max_cooldown()
 	var pos: Vector2 = _player.global_position + _player.last_facing * (_player.radius + 15.0)
 	spawn_fireball_local(pos, _player.last_facing, false)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
@@ -147,7 +156,7 @@ func spawn_rain_local(pos: Vector2, visual_only: bool, rs: int = 0) -> void:
 	rain.global_position = pos
 
 func use_skill3() -> void:
-	_player.skill3_cooldown = IMPLOSION_COOLDOWN
+	_player.skill3_cooldown = get_skill3_max_cooldown()
 	spawn_implosion_local(_player.global_position, false)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:

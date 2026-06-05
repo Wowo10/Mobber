@@ -28,8 +28,17 @@ func get_skill3_color() -> Color:
 func get_skill3_icon() -> Texture2D:
 	return load("res://assets/icons/box-trap.png")
 
+func get_skill1_name() -> String:
+	return "Fan of Knives"
+
+func get_skill2_name() -> String:
+	return "Shadowstep"
+
+func get_skill3_name() -> String:
+	return "Trap"
+
 func get_skill3_max_cooldown() -> float:
-	return TRAP_COOLDOWN
+	return TRAP_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill3_level)
 
 func get_skill1_color() -> Color:
 	return Color(0.75, 0.85, 1.0)
@@ -50,10 +59,10 @@ func get_sword_swing_duration() -> float:
 	return 0.15
 
 func get_skill1_max_cooldown() -> float:
-	return FAN_COOLDOWN
+	return FAN_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill1_level)
 
 func get_skill2_max_cooldown() -> float:
-	return SHADOWSTEP_COOLDOWN
+	return SHADOWSTEP_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill2_level)
 
 func use_dash() -> bool:
 	var target := _find_mob_in_cone(DASH_CONE_HALF_DEG, DASH_TARGET_RANGE)
@@ -69,7 +78,7 @@ func on_skill1_client_predict() -> void:
 	spawn_fan_local(_player.global_position, base_angle, true)
 
 func use_skill1() -> void:
-	_player.skill1_cooldown = FAN_COOLDOWN
+	_player.skill1_cooldown = get_skill1_max_cooldown()
 	var base_angle: float = _player.last_facing.angle()
 	spawn_fan_local(_player.global_position, base_angle, false)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
@@ -85,13 +94,13 @@ func on_skill2_client_predict() -> void:
 	_spawn_blink_burst(nearest.global_position)
 
 func use_skill2() -> void:
-	_player.skill2_cooldown = SHADOWSTEP_COOLDOWN
+	_player.skill2_cooldown = get_skill2_max_cooldown()
 	var nearest := _find_nearest_mob(SHADOWSTEP_RANGE)
 	if nearest == null:
 		return
 	var to_mob: Vector2 = (nearest.global_position - _player.global_position).normalized()
 	_player.position = nearest.global_position - to_mob * (nearest.radius + _player.radius + 5.0)
-	nearest.take_damage(SHADOWSTEP_DAMAGE, to_mob * 6000.0, _player)
+	nearest.take_damage(SHADOWSTEP_DAMAGE + _player.skill2_level * 10.0, to_mob * 6000.0, _player)
 	_spawn_blink_burst(nearest.global_position)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
@@ -100,7 +109,7 @@ func use_skill2() -> void:
 func use_skill3() -> void:
 	if _trap_count >= MAX_TRAPS:
 		return
-	_player.skill3_cooldown = TRAP_COOLDOWN
+	_player.skill3_cooldown = get_skill3_max_cooldown()
 	spawn_trap_local(_player.global_position, false)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:

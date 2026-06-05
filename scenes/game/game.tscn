@@ -231,6 +231,30 @@ custom_minimum_size = Vector2(0, 34)
 layout_mode = 2
 text = "Attack Speed +20% (0/3)   $20"
 
+[node name="HSepSkills" type="HSeparator" parent="ShopPanel/PanelBG/VBox"]
+layout_mode = 2
+
+[node name="SectionSkills" type="Label" parent="ShopPanel/PanelBG/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "Skills"
+horizontal_alignment = 1
+
+[node name="Skill1Btn" type="Button" parent="ShopPanel/PanelBG/VBox"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+text = "Skill 1"
+
+[node name="Skill2Btn" type="Button" parent="ShopPanel/PanelBG/VBox"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+text = "Skill 2"
+
+[node name="Skill3Btn" type="Button" parent="ShopPanel/PanelBG/VBox"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+text = "Skill 3"
+
 [node name="ArenaMasterPanel" type="CanvasLayer" parent="."]
 layer = 8
 visible = false
