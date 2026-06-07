@@ -3,6 +3,7 @@ extends Area2D
 var direction := Vector2.RIGHT
 var player_ref: Node = null
 var visual_only := false
+var _distance_traveled := 0.0
 
 # Lateral tolerance (px) applied to server-authoritative projectiles to compensate
 # for mob position drift between client fire and server execution (~1-2 physics frames).
