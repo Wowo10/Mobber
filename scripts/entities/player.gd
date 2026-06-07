@@ -32,6 +32,7 @@ var attack_speed_level: int = 0
 var skill1_level: int = 0
 var skill2_level: int = 0
 var skill3_level: int = 0
+var skills_unlocked: Array = [false, false, false]
 
 var debuff_no_dash_timer := 0.0
 var debuff_silence_timer := 0.0
@@ -200,9 +201,9 @@ func _physics_process(delta: float) -> void:
 			facing = _received_facing
 			do_attack = _pending_attack and _archetype_handler.can_attack()
 			do_dash   = _pending_dash and dash_cooldown <= 0.0
-			do_skill1 = _pending_skill1 and skill1_cooldown <= 0.0
-			do_skill2 = _pending_skill2 and skill2_cooldown <= 0.0
-			do_skill3 = _pending_skill3 and skill3_cooldown <= 0.0
+			do_skill1 = _pending_skill1 and skill1_cooldown <= 0.0 and skills_unlocked[0]
+			do_skill2 = _pending_skill2 and skill2_cooldown <= 0.0 and skills_unlocked[1]
+			do_skill3 = _pending_skill3 and skill3_cooldown <= 0.0 and skills_unlocked[2]
 			_pending_attack = false
 			_pending_dash   = false
 			_pending_skill1 = false
@@ -221,9 +222,9 @@ func _physics_process(delta: float) -> void:
 		else:
 			do_attack = Input.is_action_just_pressed("attack") and _archetype_handler.can_attack()
 			do_dash   = Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0
-		do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0
-		do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0
-		do_skill3 = Input.is_action_just_pressed("skill3") and skill3_cooldown <= 0.0
+		do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0 and skills_unlocked[0]
+		do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0 and skills_unlocked[1]
+		do_skill3 = Input.is_action_just_pressed("skill3") and skill3_cooldown <= 0.0 and skills_unlocked[2]
 		_rpc_send_direction.rpc_id(1, direction)
 		_rpc_send_facing.rpc_id(1, facing)
 		var action_mask := 0
@@ -523,6 +524,13 @@ func rpc_apply_skill3_level(level: int) -> void:
 		return
 	skill3_level = level
 	apply_skill_upgrades()
+
+@rpc("any_peer", "reliable")
+func rpc_sync_skills_unlocked(unlocked: Array) -> void:
+	var _s := multiplayer.get_remote_sender_id()
+	if _s != 0 and _s != 1:
+		return
+	skills_unlocked = unlocked
 
 @rpc("any_peer", "reliable")
 func rpc_apply_debuff(type: int, duration: float) -> void:

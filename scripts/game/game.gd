@@ -1,6 +1,7 @@
 extends Node
 
 const PLAYER_SCENE = preload("res://scenes/entities/player.tscn")
+const SKILL_UNLOCK_THRESHOLDS := [0.10, 0.40, 0.70]
 
 var _peer_to_arena: Dictionary = {}
 var _peer_to_player: Dictionary = {}
@@ -20,6 +21,10 @@ var _player_skill1_levels: Dictionary = {}
 var _player_skill2_levels: Dictionary = {}
 var _player_skill3_levels: Dictionary = {}
 var _peer_money: Dictionary = {}  # peer_id -> int
+var _player_skills_unlocked: Dictionary = {}   # peer_id -> [false, false, false]
+var _player_unlocks_pending: Dictionary = {}   # peer_id -> int
+var _player_unlock_milestone: Dictionary = {}  # peer_id -> int (0-3)
+var _skill_unlock_panel: Control = null
 var _in_shop_zone := false
 var _in_arena_master_zone := false
 var _peer_kills: Dictionary = {}
@@ -35,6 +40,7 @@ func _ready() -> void:
 	_networked = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	_setup_skill_bar()
 	_setup_shop()
+	_setup_skill_unlock_panel()
 	$Arena1.player_entered_shop.connect(_on_player_entered_shop)
 	$Arena1.player_exited_shop.connect(_on_player_exited_shop)
 	$Arena2.player_entered_shop.connect(_on_player_entered_shop)
@@ -199,6 +205,10 @@ func _spawn_player(peer_id: int) -> void:
 	$PlayerContainer.add_child(player, true)
 	player.set_multiplayer_authority(peer_id)
 	_peer_to_player[peer_id] = player
+	if multiplayer.is_server() or not _networked:
+		_player_skills_unlocked[peer_id] = [false, false, false]
+		_player_unlocks_pending[peer_id] = 0
+		_player_unlock_milestone[peer_id] = 0
 
 func notify_mob_killed(arena: Node2D, killer: Node = null) -> void:
 	if not multiplayer.is_server() or _leaving:
@@ -237,6 +247,7 @@ func notify_mob_killed(arena: Node2D, killer: Node = null) -> void:
 	if _networked:
 		_rpc_update_hud.rpc(a1, a2)
 	_check_win(a1, a2)
+	_check_skill_unlocks(a1, a2)
 	if not _pending_kills_flush_queued:
 		_pending_kills_flush_queued = true
 		call_deferred("_clear_pending_kills")
@@ -255,6 +266,7 @@ func _push_hud_update() -> void:
 		_rpc_update_hud.rpc(a1, a2)
 	if multiplayer.is_server() or not _networked:
 		_check_win(a1, a2)
+		_check_skill_unlocks(a1, a2)
 
 func _update_hud_local(a1: int, a2: int) -> void:
 	var my_id: int = 1 if not _networked else multiplayer.get_unique_id()
@@ -287,6 +299,79 @@ func _check_win(a1: int, a2: int) -> void:
 	elif a2 >= PlayerPrefs.mob_win_count:
 		_rpc_game_over(2)
 		_rpc_game_over.rpc(2)
+
+func _check_skill_unlocks(a1: int, a2: int) -> void:
+	var win_count := PlayerPrefs.mob_win_count
+	if win_count <= 0:
+		return
+	for peer_id in _peer_to_arena:
+		var arena: Node2D = _peer_to_arena[peer_id]
+		var count := a1 if arena == $Arena1 else a2
+		var milestone: int = _player_unlock_milestone.get(peer_id, 0)
+		while milestone < SKILL_UNLOCK_THRESHOLDS.size():
+			if float(count) / float(win_count) >= SKILL_UNLOCK_THRESHOLDS[milestone]:
+				milestone += 1
+				_player_unlock_milestone[peer_id] = milestone
+				_player_unlocks_pending[peer_id] = _player_unlocks_pending.get(peer_id, 0) + 1
+				if not _networked or peer_id == 1:
+					_rpc_notify_skill_unlock_available()
+				else:
+					_rpc_notify_skill_unlock_available.rpc_id(peer_id)
+			else:
+				break
+
+func _apply_skill_unlock(peer_id: int, skill_index: int) -> void:
+	var pending: int = _player_unlocks_pending.get(peer_id, 0)
+	if pending <= 0 or skill_index < 0 or skill_index >= 3:
+		return
+	if not _player_skills_unlocked.has(peer_id):
+		_player_skills_unlocked[peer_id] = [false, false, false]
+	var unlocked: Array = _player_skills_unlocked[peer_id]
+	if unlocked[skill_index]:
+		return
+	unlocked[skill_index] = true
+	_player_unlocks_pending[peer_id] = pending - 1
+	var player = _peer_to_player.get(peer_id)
+	if player and is_instance_valid(player):
+		player.skills_unlocked = unlocked
+		if _networked and peer_id != 1:
+			player.rpc_sync_skills_unlocked.rpc_id(peer_id, unlocked)
+	if not _networked or peer_id == 1:
+		_rpc_sync_skill_unlocks(unlocked)
+	else:
+		_rpc_sync_skill_unlocks.rpc_id(peer_id, unlocked)
+	if _player_unlocks_pending[peer_id] > 0:
+		if not _networked or peer_id == 1:
+			_rpc_notify_skill_unlock_available()
+		else:
+			_rpc_notify_skill_unlock_available.rpc_id(peer_id)
+
+@rpc("authority", "reliable")
+func _rpc_notify_skill_unlock_available() -> void:
+	var my_id: int = 1 if not _networked else multiplayer.get_unique_id()
+	var player = _peer_to_player.get(my_id)
+	if player == null or _skill_unlock_panel == null:
+		return
+	_skill_unlock_panel.show_for_archetype(
+		player.get_archetype_handler(),
+		_player_skills_unlocked.get(my_id, [false, false, false])
+	)
+
+@rpc("any_peer", "reliable")
+func _rpc_request_skill_unlock(skill_index: int) -> void:
+	if not multiplayer.is_server():
+		return
+	_apply_skill_unlock(multiplayer.get_remote_sender_id(), skill_index)
+
+@rpc("authority", "reliable")
+func _rpc_sync_skill_unlocks(unlocked: Array) -> void:
+	var my_id: int = 1 if not _networked else multiplayer.get_unique_id()
+	_player_skills_unlocked[my_id] = unlocked
+	var bar := $HUD/SkillBar
+	bar.get_node("Skill1Slot").set_locked(not unlocked[0])
+	bar.get_node("Skill2Slot").set_locked(not unlocked[1])
+	bar.get_node("Skill3Slot").set_locked(not unlocked[2])
+	_update_shop_ui()
 
 @rpc("authority", "reliable")
 func _rpc_game_over(losing_arena_id: int) -> void:
@@ -352,6 +437,9 @@ func _setup_skill_bar() -> void:
 	s1.available = true
 	s2.available = true
 	s3.available = true
+	s1.set_locked(true)
+	s2.set_locked(true)
+	s3.set_locked(true)
 	s1.icon_color = arch.get_skill1_color()
 	s1.icon = arch.get_skill1_icon()
 	s2.icon_color = arch.get_skill2_color()
@@ -453,11 +541,31 @@ func _update_shop_ui() -> void:
 		Constants.SHOP_COST_ATTACK_SPEED_BASE, Constants.SHOP_COST_ATTACK_SPEED_INC)
 	var player = _peer_to_player.get(my_id)
 	var skill_level_dicts := [_player_skill1_levels, _player_skill2_levels, _player_skill3_levels]
+	var unlocked_arr: Array = _player_skills_unlocked.get(my_id, [false, false, false])
 	for i in range(1, 4):
 		var skill_label: String = player.get_skill_name(i) if player else ("Skill %d" % i)
-		_refresh_upgrade_btn(vbox.get_node("Skill%dBtn" % i), skill_label,
-			skill_level_dicts[i - 1].get(my_id, 0), max_lvl, money,
-			Constants.SHOP_COST_SKILL_BASE, Constants.SHOP_COST_SKILL_INC)
+
+		var btn: Button = vbox.get_node("Skill%dBtn" % i)
+		if not unlocked_arr[i - 1]:
+			btn.text = "%s - Locked" % skill_label
+			btn.disabled = true
+		else:
+			_refresh_upgrade_btn(btn, skill_label,
+				skill_level_dicts[i - 1].get(my_id, 0), max_lvl, money,
+				Constants.SHOP_COST_SKILL_BASE, Constants.SHOP_COST_SKILL_INC)
+
+func _setup_skill_unlock_panel() -> void:
+	var SkillUnlockPanel := preload("res://scripts/ui/skill_unlock_panel.gd")
+	_skill_unlock_panel = SkillUnlockPanel.new()
+	_skill_unlock_panel.skill_chosen.connect(_on_skill_chosen)
+	$HUD.add_child(_skill_unlock_panel)
+	_skill_unlock_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+func _on_skill_chosen(skill_index: int) -> void:
+	if _networked and not multiplayer.is_server():
+		_rpc_request_skill_unlock.rpc_id(1, skill_index)
+	else:
+		_apply_skill_unlock(1, skill_index)
 
 func _update_arena_master_ui() -> void:
 	if not $ArenaMasterPanel.visible:
@@ -587,6 +695,8 @@ func _apply_purchase(peer_id: int, item_id: int) -> void:
 				if _networked and peer_id != 1:
 					player.rpc_apply_attack_speed_level.rpc_id(peer_id, new_level)
 		12:
+			if not _player_skills_unlocked.get(peer_id, [false, false, false])[0]:
+				return
 			var cur_level: int = _player_skill1_levels.get(peer_id, 0)
 			var cost := _upgrade_cost(Constants.SHOP_COST_SKILL_BASE, Constants.SHOP_COST_SKILL_INC, cur_level)
 			if cur_level >= Constants.SHOP_UPGRADE_MAX_LEVEL or money < cost:
@@ -603,6 +713,8 @@ func _apply_purchase(peer_id: int, item_id: int) -> void:
 			if _networked and peer_id != 1:
 				_rpc_sync_skill1_level.rpc_id(peer_id, new_level)
 		13:
+			if not _player_skills_unlocked.get(peer_id, [false, false, false])[1]:
+				return
 			var cur_level: int = _player_skill2_levels.get(peer_id, 0)
 			var cost := _upgrade_cost(Constants.SHOP_COST_SKILL_BASE, Constants.SHOP_COST_SKILL_INC, cur_level)
 			if cur_level >= Constants.SHOP_UPGRADE_MAX_LEVEL or money < cost:
@@ -619,6 +731,8 @@ func _apply_purchase(peer_id: int, item_id: int) -> void:
 			if _networked and peer_id != 1:
 				_rpc_sync_skill2_level.rpc_id(peer_id, new_level)
 		14:
+			if not _player_skills_unlocked.get(peer_id, [false, false, false])[2]:
+				return
 			var cur_level: int = _player_skill3_levels.get(peer_id, 0)
 			var cost := _upgrade_cost(Constants.SHOP_COST_SKILL_BASE, Constants.SHOP_COST_SKILL_INC, cur_level)
 			if cur_level >= Constants.SHOP_UPGRADE_MAX_LEVEL or money < cost:
