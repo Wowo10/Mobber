@@ -24,7 +24,6 @@ var _peer_money: Dictionary = {}  # peer_id -> int
 var _player_skills_unlocked: Dictionary = {}   # peer_id -> [false, false, false]
 var _player_unlocks_pending: Dictionary = {}   # peer_id -> int
 var _player_unlock_milestone: Dictionary = {}  # peer_id -> int (0-3)
-var _skill_unlock_panel: Control = null
 var _in_shop_zone := false
 var _in_arena_master_zone := false
 var _peer_kills: Dictionary = {}
@@ -35,12 +34,14 @@ var _peer_stats_cache: Dictionary = {}
 var _scoreboard_panel: Control = null
 var _scoreboard_col1: VBoxContainer = null
 var _scoreboard_col2: VBoxContainer = null
+var _my_mob_bar: Control = null
+var _enemy_mob_bar: Control = null
 
 func _ready() -> void:
 	_networked = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	_setup_skill_bar()
 	_setup_shop()
-	_setup_skill_unlock_panel()
+	_setup_mob_bars()
 	$Arena1.player_entered_shop.connect(_on_player_entered_shop)
 	$Arena1.player_exited_shop.connect(_on_player_exited_shop)
 	$Arena2.player_entered_shop.connect(_on_player_entered_shop)
@@ -268,13 +269,35 @@ func _push_hud_update() -> void:
 		_check_win(a1, a2)
 		_check_skill_unlocks(a1, a2)
 
+func _setup_mob_bars() -> void:
+	$HUD/MyLabel.visible = false
+	$HUD/EnemyLabel.visible = false
+
+	var MobBar := preload("res://scripts/ui/mob_bar.gd")
+	var vp := get_viewport().get_visible_rect().size
+
+	var my_bar: Control = MobBar.new()
+	$HUD.add_child(my_bar)
+	my_bar.size = Vector2(300.0, 32.0)
+	my_bar.position = Vector2((vp.x - my_bar.size.x) * 0.5, 10.0)
+	_my_mob_bar = my_bar
+
+	var enemy_bar: Control = MobBar.new()
+	enemy_bar.label_prefix = "ENEMY  "
+	$HUD.add_child(enemy_bar)
+	enemy_bar.size = Vector2(220.0, 32.0)
+	enemy_bar.position = Vector2(vp.x - enemy_bar.size.x - 10.0, 10.0)
+	_enemy_mob_bar = enemy_bar
+
 func _update_hud_local(a1: int, a2: int) -> void:
+	if _my_mob_bar == null:
+		return
 	var my_id: int = 1 if not _networked else multiplayer.get_unique_id()
 	var my_is_arena1: bool = _peer_to_arena.get(my_id) == $Arena1
 	var my    := a1 if my_is_arena1 else a2
 	var enemy := a2 if my_is_arena1 else a1
-	$HUD/MyLabel.text    = "%d / %d" % [my, PlayerPrefs.mob_win_count]
-	$HUD/EnemyLabel.text = "ENEMY: %d / %d" % [enemy, PlayerPrefs.mob_win_count]
+	_my_mob_bar.set_count(my, PlayerPrefs.mob_win_count)
+	_enemy_mob_bar.set_count(enemy, PlayerPrefs.mob_win_count)
 
 @rpc("authority", "reliable")
 func _rpc_update_hud(a1: int, a2: int) -> void:
@@ -349,13 +372,11 @@ func _apply_skill_unlock(peer_id: int, skill_index: int) -> void:
 @rpc("authority", "reliable")
 func _rpc_notify_skill_unlock_available() -> void:
 	var my_id: int = 1 if not _networked else multiplayer.get_unique_id()
-	var player = _peer_to_player.get(my_id)
-	if player == null or _skill_unlock_panel == null:
-		return
-	_skill_unlock_panel.show_for_archetype(
-		player.get_archetype_handler(),
-		_player_skills_unlocked.get(my_id, [false, false, false])
-	)
+	var unlocked: Array = _player_skills_unlocked.get(my_id, [false, false, false])
+	var bar := $HUD/SkillBar
+	for i in 3:
+		if not unlocked[i]:
+			bar.get_node("Skill%dSlot" % (i + 1)).set_unlock_available(true)
 
 @rpc("any_peer", "reliable")
 func _rpc_request_skill_unlock(skill_index: int) -> void:
@@ -368,9 +389,11 @@ func _rpc_sync_skill_unlocks(unlocked: Array) -> void:
 	var my_id: int = 1 if not _networked else multiplayer.get_unique_id()
 	_player_skills_unlocked[my_id] = unlocked
 	var bar := $HUD/SkillBar
-	bar.get_node("Skill1Slot").set_locked(not unlocked[0])
-	bar.get_node("Skill2Slot").set_locked(not unlocked[1])
-	bar.get_node("Skill3Slot").set_locked(not unlocked[2])
+	for i in 3:
+		var slot = bar.get_node("Skill%dSlot" % (i + 1))
+		slot.set_locked(not unlocked[i])
+		if unlocked[i]:
+			slot.set_unlock_available(false)
 	_update_shop_ui()
 
 @rpc("authority", "reliable")
@@ -451,6 +474,28 @@ func _setup_skill_bar() -> void:
 	s1.tooltip_text = arch.get_skill1_name() + "\n" + arch.get_skill1_description()
 	s2.tooltip_text = arch.get_skill2_name() + "\n" + arch.get_skill2_description()
 	s3.tooltip_text = arch.get_skill3_name() + "\n" + arch.get_skill3_description()
+	for i in 3:
+		var idx := i
+		bar.get_node("Skill%dSlot" % (i + 1)).unlock_requested.connect(
+			func(): _on_skill_unlock_requested(idx)
+		)
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not event is InputEventKey or not event.pressed or event.is_echo():
+		return
+	if not event.ctrl_pressed:
+		return
+	var idx := -1
+	match event.physical_keycode:
+		KEY_1: idx = 0
+		KEY_2: idx = 1
+		KEY_3: idx = 2
+	if idx < 0:
+		return
+	var slot = $HUD/SkillBar.get_node("Skill%dSlot" % (idx + 1))
+	if slot.unlock_available:
+		get_viewport().set_input_as_handled()
+		_on_skill_unlock_requested(idx)
 
 func _process(_delta: float) -> void:
 	if _leaving:
@@ -559,14 +604,10 @@ func _update_shop_ui() -> void:
 				skill_level_dicts[i - 1].get(my_id, 0), max_lvl, money,
 				Constants.SHOP_COST_SKILL_BASE, Constants.SHOP_COST_SKILL_INC)
 
-func _setup_skill_unlock_panel() -> void:
-	var SkillUnlockPanel := preload("res://scripts/ui/skill_unlock_panel.gd")
-	_skill_unlock_panel = SkillUnlockPanel.new()
-	_skill_unlock_panel.skill_chosen.connect(_on_skill_chosen)
-	$HUD.add_child(_skill_unlock_panel)
-	_skill_unlock_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-
-func _on_skill_chosen(skill_index: int) -> void:
+func _on_skill_unlock_requested(skill_index: int) -> void:
+	var bar := $HUD/SkillBar
+	for i in 3:
+		bar.get_node("Skill%dSlot" % (i + 1)).set_unlock_available(false)
 	if _networked and not multiplayer.is_server():
 		_rpc_request_skill_unlock.rpc_id(1, skill_index)
 	else:

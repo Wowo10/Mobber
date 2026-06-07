@@ -1,6 +1,10 @@
 extends Control
 
+signal unlock_requested
+
 const SIZE := 56.0
+const PLUS_RADIUS := 11.0
+const PLUS_CENTER := Vector2(SIZE - PLUS_RADIUS - 3.0, PLUS_RADIUS + 3.0)
 
 @export var key_text: String = ""
 @export var icon_color: Color = Color(0.5, 0.5, 0.5)
@@ -11,6 +15,7 @@ var _cd_remaining: float = 0.0
 var _cd_max: float = 1.0
 var _passive_counter: int = -1  # -1 = not a passive
 var locked: bool = false
+var unlock_available: bool = false
 
 func set_cooldown(remaining: float, max_cd: float) -> void:
 	_cd_remaining = remaining
@@ -25,8 +30,21 @@ func set_locked(value: bool) -> void:
 	locked = value
 	queue_redraw()
 
+func set_unlock_available(value: bool) -> void:
+	unlock_available = value
+	mouse_filter = MOUSE_FILTER_STOP if value else MOUSE_FILTER_IGNORE
+	queue_redraw()
+
 func _get_minimum_size() -> Vector2:
 	return Vector2(SIZE, SIZE)
+
+func _gui_input(event: InputEvent) -> void:
+	if not (locked and unlock_available):
+		return
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if (event.position - PLUS_CENTER).length() <= PLUS_RADIUS:
+			accept_event()
+			unlock_requested.emit()
 
 func _draw() -> void:
 	var s := SIZE
@@ -44,8 +62,15 @@ func _draw() -> void:
 
 	if locked:
 		draw_rect(Rect2(0, 0, s, s), Color(0.0, 0.0, 0.0, 0.55))
-		draw_string(font, Vector2(s * 0.5 - 10, s * 0.5 + 6), "LCK",
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.9, 0.7, 0.1))
+		if unlock_available:
+			draw_circle(PLUS_CENTER, PLUS_RADIUS, Color(0.1, 0.65, 0.2, 0.95))
+			draw_arc(PLUS_CENTER, PLUS_RADIUS, 0, TAU, 24, Color(0.4, 1.0, 0.5, 0.9), 1.5)
+			var arm := PLUS_RADIUS * 0.55
+			draw_line(PLUS_CENTER + Vector2(-arm, 0), PLUS_CENTER + Vector2(arm, 0), Color.WHITE, 2.0)
+			draw_line(PLUS_CENTER + Vector2(0, -arm), PLUS_CENTER + Vector2(0, arm), Color.WHITE, 2.0)
+		else:
+			draw_string(font, Vector2(s * 0.5 - 10, s * 0.5 + 6), "LCK",
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.9, 0.7, 0.1))
 	else:
 		if not available:
 			draw_string(font, Vector2(s * 0.5 - 5, s * 0.5 + 6), "?",

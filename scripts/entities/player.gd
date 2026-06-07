@@ -176,9 +176,9 @@ func _physics_process(delta: float) -> void:
 		else:
 			do_attack = Input.is_action_just_pressed("attack") and _archetype_handler.can_attack()
 			do_dash   = Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0
-		do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0
-		do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0
-		do_skill3 = Input.is_action_just_pressed("skill3") and skill3_cooldown <= 0.0
+		do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0 and skills_unlocked[0]
+		do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0 and skills_unlocked[1]
+		do_skill3 = Input.is_action_just_pressed("skill3") and skill3_cooldown <= 0.0 and skills_unlocked[2]
 
 	elif multiplayer.is_server():
 		# Path B — Server: simulate all players authoritatively
@@ -193,9 +193,9 @@ func _physics_process(delta: float) -> void:
 			else:
 				do_attack = Input.is_action_just_pressed("attack") and _archetype_handler.can_attack()
 				do_dash   = Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0
-			do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0
-			do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0
-			do_skill3 = Input.is_action_just_pressed("skill3") and skill3_cooldown <= 0.0
+			do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0 and skills_unlocked[0]
+			do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0 and skills_unlocked[1]
+			do_skill3 = Input.is_action_just_pressed("skill3") and skill3_cooldown <= 0.0 and skills_unlocked[2]
 		else:
 			direction = _received_direction
 			facing = _received_facing
@@ -294,7 +294,8 @@ func _physics_process(delta: float) -> void:
 	else:
 		if dash_cooldown > 0.0:
 			dash_cooldown -= delta
-		velocity = move_direction * SPEED * (1.0 + Constants.SHOP_SPEED_MULT_PER_LEVEL * speed_level) * _archetype_handler.get_speed_mult()
+		var speed_mult := (1.0 + Constants.SHOP_SPEED_MULT_PER_LEVEL * speed_level) * _archetype_handler.get_speed_mult()
+		velocity = move_direction * SPEED * speed_mult
 		if do_dash:
 			if _archetype_handler.use_dash():
 				pass  # archetype owns dash entirely (sets dash_cooldown internally)
