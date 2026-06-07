@@ -65,6 +65,8 @@ const SHOP_COST_SEND_MOB = 5
 const SHOP_COST_SEND_3_MOBS = 12
 const SHOP_COST_SEND_FLEEING = 8
 const SHOP_COST_SEND_BOSS = 50
+const SHOP_COST_UPGRADE_MOBS = 20
+const SHOP_MOB_HEALTH_BONUS = 10.0
 const SHOP_UPGRADE_MAX_LEVEL = 3
 
 # Escalating cost formula: base + current_level * increment

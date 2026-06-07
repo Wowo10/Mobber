@@ -187,6 +187,8 @@ func _draw() -> void:
 		HORIZONTAL_ALIGNMENT_CENTER, SHOP_ZONE_RECT.size.x, 28, Color(1.0, 0.9, 0.3))
 	draw_rect(ARENA_MASTER_ZONE_RECT, Color(0.6, 0.1, 0.8, 0.25), true)
 	draw_rect(ARENA_MASTER_ZONE_RECT, Color(0.75, 0.2, 0.95, 0.9), false, 3.0)
-	var am_center := ARENA_MASTER_ZONE_RECT.get_center()
-	draw_string(ThemeDB.fallback_font, Vector2(am_center.x, am_center.y + 14), "ARENA MASTER",
-		HORIZONTAL_ALIGNMENT_CENTER, ARENA_MASTER_ZONE_RECT.size.x, 22, Color(0.85, 0.5, 1.0))
+	var am_left := Vector2(ARENA_MASTER_ZONE_RECT.position.x, ARENA_MASTER_ZONE_RECT.get_center().y)
+	draw_set_transform(am_left + Vector2(18, 0), -PI * 0.5, Vector2.ONE)
+	draw_string(ThemeDB.fallback_font, Vector2(-ARENA_MASTER_ZONE_RECT.size.y * 0.5, 0), "ARENA MASTER",
+		HORIZONTAL_ALIGNMENT_CENTER, ARENA_MASTER_ZONE_RECT.size.y, 22, Color(0.85, 0.5, 1.0))
+	draw_set_transform(Vector2.ZERO)

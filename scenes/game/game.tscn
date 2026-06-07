@@ -33,11 +33,11 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -200.0
-offset_top = -80.0
-offset_right = 200.0
-offset_bottom = 80.0
-theme_override_constants/separation = 16
+offset_left = -500.0
+offset_top = -290.0
+offset_right = 500.0
+offset_bottom = 290.0
+theme_override_constants/separation = 12
 
 [node name="TitleLabel" type="Label" parent="GameOverOverlay/VBox"]
 layout_mode = 2
@@ -48,12 +48,13 @@ horizontal_alignment = 1
 [node name="SubLabel" type="Label" parent="GameOverOverlay/VBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "You killed it!"
+text = "You kept your arena clear!"
 horizontal_alignment = 1
 
 [node name="ReturnButton" type="Button" parent="GameOverOverlay/VBox"]
-custom_minimum_size = Vector2(0, 44)
+custom_minimum_size = Vector2(200, 44)
 layout_mode = 2
+size_flags_horizontal = 4
 text = "Return to Lobby"
 
 [node name="DisconnectOverlay" type="CanvasLayer" parent="."]
@@ -311,6 +312,11 @@ text = "Fleeing Mob   $8"
 custom_minimum_size = Vector2(0, 34)
 layout_mode = 2
 text = "BOSS (x10)   $50"
+
+[node name="UpgradeMobsBtn" type="Button" parent="ArenaMasterPanel/PanelBG/VBox"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+text = "Upgrade Mobs (+10 HP ea)   $20"
 
 [node name="HSepDebuffs" type="HSeparator" parent="ArenaMasterPanel/PanelBG/VBox"]
 layout_mode = 2

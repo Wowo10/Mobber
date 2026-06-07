@@ -405,13 +405,33 @@ func _rpc_game_over(losing_arena_id: int) -> void:
 	var my_is_arena1: bool = _peer_to_arena.get(my_id) == $Arena1
 	var i_lost: bool = (losing_arena_id == 1 and my_is_arena1) or (losing_arena_id == 2 and not my_is_arena1)
 
-	var title := $GameOverOverlay/VBox/TitleLabel
+	var vbox := $GameOverOverlay/VBox
+	var title := vbox.get_node("TitleLabel")
+	var sub := vbox.get_node("SubLabel")
+	var return_btn := vbox.get_node("ReturnButton")
+
 	if i_lost:
 		title.text = "YOU LOSE!"
 		title.add_theme_color_override("font_color", Color(0.9, 0.2, 0.2))
+		sub.text = "Your arena was overrun by mobs."
+		sub.add_theme_color_override("font_color", Color(0.75, 0.4, 0.4))
 	else:
 		title.text = "YOU WIN!"
 		title.add_theme_color_override("font_color", Color(0.2, 0.9, 0.3))
+		sub.text = "You kept your arena clear!"
+		sub.add_theme_color_override("font_color", Color(0.4, 0.8, 0.5))
+
+	var existing := vbox.find_child("GameOverScoreboard", false, false)
+	if existing:
+		existing.free()
+
+	if not _networked or multiplayer.is_server():
+		_peer_stats_cache = _gather_stats()
+
+	var sb := _build_game_over_scoreboard(my_id)
+	sb.name = "GameOverScoreboard"
+	vbox.add_child(sb)
+	vbox.move_child(return_btn, vbox.get_child_count() - 1)
 
 	$GameOverOverlay.visible = true
 
@@ -564,6 +584,7 @@ func _setup_shop() -> void:
 	am_vbox.get_node("Send3MobsBtn").pressed.connect(func(): _buy(1))
 	am_vbox.get_node("SendFleeingBtn").pressed.connect(func(): _buy(2))
 	am_vbox.get_node("SendBossBtn").pressed.connect(func(): _buy(7))
+	am_vbox.get_node("UpgradeMobsBtn").pressed.connect(func(): _buy(15))
 	am_vbox.get_node("DebuffNoDashBtn").pressed.connect(func(): _buy(Constants.DEBUFF_NO_DASH))
 	am_vbox.get_node("DebuffFrenzyBtn").pressed.connect(func(): _buy(Constants.DEBUFF_FRENZY))
 	am_vbox.get_node("DebuffSilenceBtn").pressed.connect(func(): _buy(Constants.DEBUFF_SILENCE))
@@ -623,6 +644,7 @@ func _update_arena_master_ui() -> void:
 	vbox.get_node("Send3MobsBtn").disabled = money < Constants.SHOP_COST_SEND_3_MOBS
 	vbox.get_node("SendFleeingBtn").disabled = money < Constants.SHOP_COST_SEND_FLEEING
 	vbox.get_node("SendBossBtn").disabled = money < Constants.SHOP_COST_SEND_BOSS
+	vbox.get_node("UpgradeMobsBtn").disabled = money < Constants.SHOP_COST_UPGRADE_MOBS
 	vbox.get_node("DebuffNoDashBtn").disabled = money < Constants.DEBUFF_COST_NO_DASH
 	vbox.get_node("DebuffFrenzyBtn").disabled = money < Constants.DEBUFF_COST_FRENZY
 	vbox.get_node("DebuffSilenceBtn").disabled = money < Constants.DEBUFF_COST_SILENCE
@@ -679,6 +701,13 @@ func _apply_purchase(peer_id: int, item_id: int) -> void:
 			money -= Constants.SHOP_COST_SEND_BOSS
 			opponent_arena.spawn_mob(2)
 			_peer_mobs_sent[peer_id] = _peer_mobs_sent.get(peer_id, 0) + 1
+		15:
+			if money < Constants.SHOP_COST_UPGRADE_MOBS:
+				return
+			money -= Constants.SHOP_COST_UPGRADE_MOBS
+			for mob in opponent_arena.get_node("MobContainer").get_children():
+				mob.max_health += Constants.SHOP_MOB_HEALTH_BONUS
+				mob.health += Constants.SHOP_MOB_HEALTH_BONUS
 		3:
 			var cur_level: int = _player_speed_levels.get(peer_id, 0)
 			var cost := _upgrade_cost(Constants.SHOP_COST_SPEED_BASE, Constants.SHOP_COST_SPEED_INC, cur_level)
@@ -983,6 +1012,55 @@ func _setup_scoreboard() -> void:
 	_scoreboard_panel = panel
 	_scoreboard_col1 = col1
 	_scoreboard_col2 = col2
+
+func _build_game_over_scoreboard(my_id: int) -> Control:
+	var container := VBoxContainer.new()
+	container.add_theme_constant_override("separation", 8)
+	container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+	var sep_top := HSeparator.new()
+	container.add_child(sep_top)
+
+	var cols_hbox := HBoxContainer.new()
+	cols_hbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	cols_hbox.add_theme_constant_override("separation", 16)
+	container.add_child(cols_hbox)
+
+	var my_arena = _peer_to_arena.get(my_id)
+
+	var col1 := VBoxContainer.new()
+	col1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col1.add_theme_constant_override("separation", 8)
+	cols_hbox.add_child(col1)
+
+	var vsep := VSeparator.new()
+	vsep.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	cols_hbox.add_child(vsep)
+
+	var col2 := VBoxContainer.new()
+	col2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col2.add_theme_constant_override("separation", 8)
+	cols_hbox.add_child(col2)
+
+	_add_scoreboard_column_header(col1, "YOUR ARENA", Color(0.3, 0.75, 1.0))
+	_add_scoreboard_column_header(col2, "ENEMY ARENA", Color(1.0, 0.42, 0.42))
+
+	for pid in _peer_to_arena:
+		var in_my_arena: bool = my_arena != null and _peer_to_arena.get(pid) == my_arena
+		var col := col1 if in_my_arena else col2
+		var stats: Dictionary = _peer_stats_cache.get(pid, {})
+		var pname: String = PlayerPrefs.peer_names.get(pid, "Player")
+		if pname.is_empty():
+			pname = "Player"
+		var arch_id: int = _peer_to_archetype.get(pid, 0)
+		var arch_name: String = Constants.ARCHETYPE_NAMES[arch_id] \
+			if arch_id >= 0 and arch_id < Constants.ARCHETYPE_NAMES.size() else "?"
+		_add_scoreboard_player_row(col, pname, arch_name, stats, pid == my_id)
+
+	var sep_bot := HSeparator.new()
+	container.add_child(sep_bot)
+
+	return container
 
 func _refresh_scoreboard() -> void:
 	if not _networked or multiplayer.is_server():
