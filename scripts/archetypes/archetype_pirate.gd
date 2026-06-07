@@ -45,6 +45,21 @@ func get_skill2_name() -> String:
 func get_skill3_name() -> String:
 	return "Barrel"
 
+func get_attack_description() -> String:
+	return "Sword swing."
+
+func get_dash_description() -> String:
+	return "Standard dash."
+
+func get_skill1_description() -> String:
+	return "Fires a heavy cannonball that bounces off enemies.\nCooldown: 3.5s"
+
+func get_skill2_description() -> String:
+	return "Places a cannon turret that fires automatically.\nCooldown: 4s"
+
+func get_skill3_description() -> String:
+	return "First press: place a barrel (CD: 0.5s). Second press: detonate it (CD: 12s)."
+
 func get_skill3_max_cooldown() -> float:
 	return BARREL_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill3_level)
 

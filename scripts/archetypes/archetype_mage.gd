@@ -96,6 +96,21 @@ func get_skill2_name() -> String:
 func get_skill3_name() -> String:
 	return "Implosion"
 
+func get_attack_description() -> String:
+	return "Fires a magic bolt toward the cursor.\nCooldown: 0.6s"
+
+func get_dash_description() -> String:
+	return "Pulls nearby enemies toward you."
+
+func get_skill1_description() -> String:
+	return "Rains fire across a wide area around you.\nCooldown: 12s"
+
+func get_skill2_description() -> String:
+	return "Launches a slow but powerful fireball.\nCooldown: 8s"
+
+func get_skill3_description() -> String:
+	return "Creates an arcane implosion that pulls enemies inward.\nCooldown: 14s"
+
 func get_skill1_max_cooldown() -> float:
 	return RAIN_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill1_level)
 

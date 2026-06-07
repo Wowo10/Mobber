@@ -39,6 +39,21 @@ func get_skill2_name() -> String:
 func get_skill3_name() -> String:
 	return "Shield Bash"
 
+func get_attack_description() -> String:
+	return "Broad sword swing."
+
+func get_dash_description() -> String:
+	return "Standard dash."
+
+func get_skill1_description() -> String:
+	return "Spins your sword continuously for 2.5s.\nCooldown: 7s"
+
+func get_skill2_description() -> String:
+	return "Creates a holy zone that damages enemies over time.\nCooldown: 8s"
+
+func get_skill3_description() -> String:
+	return "Slams your shield forward, dealing damage and slowing enemies.\nCooldown: 7s"
+
 func get_skill1_max_cooldown() -> float:
 	return SPIN_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill1_level)
 

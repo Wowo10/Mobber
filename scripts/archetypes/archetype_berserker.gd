@@ -52,6 +52,21 @@ func get_skill2_name() -> String:
 func get_skill3_name() -> String:
 	return "Mini Smash"
 
+func get_attack_description() -> String:
+	return "Heavy sword swing. High damage."
+
+func get_dash_description() -> String:
+	return "Short dash that triggers a ground slam on landing."
+
+func get_skill1_description() -> String:
+	return "Boosts movement speed and attack speed for 3s.\nCooldown: 10s"
+
+func get_skill2_description() -> String:
+	return "Smashes the ground in a wide radius.\nCooldown: 8s"
+
+func get_skill3_description() -> String:
+	return "Passive — every 4th sword hit triggers a shockwave."
+
 func get_skill3_max_cooldown() -> float:
 	return 0.0
 

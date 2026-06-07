@@ -60,6 +60,21 @@ func get_skill2_name() -> String:
 func get_skill3_name() -> String:
 	return "Wisp"
 
+func get_attack_description() -> String:
+	return "Fires a shadow bolt toward the cursor.\nCooldown: 0.7s"
+
+func get_dash_description() -> String:
+	return "First press: place a portal. Second press: teleport to it."
+
+func get_skill1_description() -> String:
+	return "Siphons health from nearby enemies.\nCooldown: 8s"
+
+func get_skill2_description() -> String:
+	return "Creates a void rift that pulls enemies into a vortex.\nCooldown: 15s"
+
+func get_skill3_description() -> String:
+	return "Summons a wisp familiar that attacks nearby enemies.\nCooldown: 22s"
+
 func get_skill1_max_cooldown() -> float:
 	return DRAIN_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill1_level)
 

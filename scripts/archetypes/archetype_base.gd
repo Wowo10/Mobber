@@ -51,6 +51,21 @@ func get_skill2_name() -> String:
 func get_skill3_name() -> String:
 	return "Skill 3"
 
+func get_attack_description() -> String:
+	return "Melee swing."
+
+func get_dash_description() -> String:
+	return "Dash in movement direction."
+
+func get_skill1_description() -> String:
+	return ""
+
+func get_skill2_description() -> String:
+	return ""
+
+func get_skill3_description() -> String:
+	return ""
+
 func get_skill1_max_cooldown() -> float:
 	return 1.0
 

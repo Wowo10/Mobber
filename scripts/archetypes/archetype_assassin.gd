@@ -37,6 +37,21 @@ func get_skill2_name() -> String:
 func get_skill3_name() -> String:
 	return "Trap"
 
+func get_attack_description() -> String:
+	return "Fast melee strike. Low damage."
+
+func get_dash_description() -> String:
+	return "Blinks toward the nearest mob in your front cone."
+
+func get_skill1_description() -> String:
+	return "Throws 5 knives in a 60-degree cone.\nCooldown: 7s"
+
+func get_skill2_description() -> String:
+	return "Teleports behind the nearest mob and deals damage.\nCooldown: 10s"
+
+func get_skill3_description() -> String:
+	return "Places a hidden trap at your feet. Max 15 active traps.\nCooldown: 1s"
+
 func get_skill3_max_cooldown() -> float:
 	return TRAP_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill3_level)
 

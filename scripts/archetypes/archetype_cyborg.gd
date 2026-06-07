@@ -54,6 +54,21 @@ func get_skill2_name() -> String:
 func get_skill3_name() -> String:
 	return "Overclock"
 
+func get_attack_description() -> String:
+	return "Melee strike or cyber bullet depending on Targeting mode."
+
+func get_dash_description() -> String:
+	return "Standard dash."
+
+func get_skill1_description() -> String:
+	return "Toggles between melee and ranged attack mode.\nCooldown: 9s"
+
+func get_skill2_description() -> String:
+	return "Fires a piercing laser ray forward.\nCooldown: 10s"
+
+func get_skill3_description() -> String:
+	return "Overclocks for 5s: adds a second sword and halves attack delays.\nCooldown: 12s"
+
 func get_skill1_max_cooldown() -> float:
 	return TARGETING_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill1_level)
 

@@ -419,6 +419,7 @@ func _setup_skill_bar() -> void:
 	else:
 		attack_slot.icon_color = Color(0.9, 0.65, 0.15)
 		attack_slot.icon = load("res://assets/icons/broadsword.png")
+	attack_slot.tooltip_text = "Attack\n" + arch.get_attack_description()
 	var dash_slot := bar.get_node("DashSlot")
 	dash_slot.key_text = "SHF"
 	var dash_icon: Texture2D = arch.get_dash_icon()
@@ -428,6 +429,7 @@ func _setup_skill_bar() -> void:
 	else:
 		dash_slot.icon_color = Color(0.25, 0.55, 1.0)
 		dash_slot.icon = load("res://assets/icons/boots.png")
+	dash_slot.tooltip_text = "Dash\n" + arch.get_dash_description()
 	var s1 := bar.get_node("Skill1Slot")
 	var s2 := bar.get_node("Skill2Slot")
 	var s3 := bar.get_node("Skill3Slot")
@@ -446,6 +448,9 @@ func _setup_skill_bar() -> void:
 	s2.icon = arch.get_skill2_icon()
 	s3.icon_color = arch.get_skill3_color()
 	s3.icon = arch.get_skill3_icon()
+	s1.tooltip_text = arch.get_skill1_name() + "\n" + arch.get_skill1_description()
+	s2.tooltip_text = arch.get_skill2_name() + "\n" + arch.get_skill2_description()
+	s3.tooltip_text = arch.get_skill3_name() + "\n" + arch.get_skill3_description()
 
 func _process(_delta: float) -> void:
 	if _leaving:
