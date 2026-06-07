@@ -454,7 +454,7 @@ func _update_shop_ui() -> void:
 	var player = _peer_to_player.get(my_id)
 	var skill_level_dicts := [_player_skill1_levels, _player_skill2_levels, _player_skill3_levels]
 	for i in range(1, 4):
-		var skill_label := player.get_skill_name(i) if player else ("Skill %d" % i)
+		var skill_label: String = player.get_skill_name(i) if player else ("Skill %d" % i)
 		_refresh_upgrade_btn(vbox.get_node("Skill%dBtn" % i), skill_label,
 			skill_level_dicts[i - 1].get(my_id, 0), max_lvl, money,
 			Constants.SHOP_COST_SKILL_BASE, Constants.SHOP_COST_SKILL_INC)

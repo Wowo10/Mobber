@@ -181,7 +181,7 @@ func die() -> void:
 	if not networked or multiplayer.is_server():
 		var game := get_tree().root.get_node_or_null("Game")
 		if game and game.has_method("notify_mob_killed"):
-			var arena := get_parent().get_parent()
+			var arena: Node = get_parent().get_parent()
 			game.call_deferred("notify_mob_killed", arena, _last_attacker)
 	queue_free()
 

@@ -1,4 +1,3 @@
-class_name ProjectileBase
 extends Area2D
 
 var direction := Vector2.RIGHT
