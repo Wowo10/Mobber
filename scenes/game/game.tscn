@@ -95,6 +95,8 @@ grow_horizontal = 2
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 3
 theme_override_font_sizes/font_size = 28
+tooltip_text = "Your mob count / lose threshold.
+Reach the limit and you lose."
 text = "0 / 100"
 horizontal_alignment = 1
 
@@ -109,6 +111,8 @@ offset_bottom = 70.0
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 3
 theme_override_font_sizes/font_size = 20
+tooltip_text = "Enemy mob count / their lose threshold.
+Force them to reach the limit to win."
 text = "ENEMY: 0 / 100"
 horizontal_alignment = 2
 
@@ -118,6 +122,8 @@ offset_top = 15.0
 offset_right = 216.0
 offset_bottom = 53.0
 theme_override_font_sizes/font_size = 30
+tooltip_text = "Gold — earned by killing mobs.
+Spend it at the UPGRADES zone."
 text = "$0"
 
 [node name="SkillBar" type="HBoxContainer" parent="HUD"]
