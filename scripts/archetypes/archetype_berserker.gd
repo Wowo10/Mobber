@@ -107,6 +107,7 @@ func get_dash_duration() -> float:
 	return 0.06
 
 func on_dash_end() -> void:
+	_player.shake_camera(0.4, 14.0)
 	spawn_slam_local(_player.global_position, false, 20.0, 90.0)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
@@ -126,6 +127,7 @@ func use_skill1() -> void:
 
 func use_skill2() -> void:
 	_player.skill2_cooldown = get_skill2_max_cooldown()
+	_player.shake_camera(0.4, 14.0)
 	spawn_slam_local(_player.global_position, false)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:

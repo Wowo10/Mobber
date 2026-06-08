@@ -99,6 +99,7 @@ func use_skill3() -> void:
 	if is_instance_valid(_barrel_node):
 		_barrel_node.detonate()
 		_barrel_node = null
+		_player.shake_camera(0.45, 14.0)
 		_player.skill3_cooldown = get_skill3_max_cooldown()
 		if networked:
 			_player.rpc_detonate_pirate_barrel.rpc()

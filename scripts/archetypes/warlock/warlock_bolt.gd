@@ -5,6 +5,9 @@ const RANGE = 500.0
 const DAMAGE = 25.0
 const KNOCKBACK = 4000.0
 
+var color_outer := Color(0.05, 0.05, 0.45)
+var color_inner := Color(0.3, 0.4, 1.0)
+
 func _ready() -> void:
 	$SfxFire.play()
 
@@ -27,5 +30,5 @@ func _on_hit(body: Node2D) -> void:
 	queue_free()
 
 func _draw() -> void:
-	draw_circle(Vector2.ZERO, 10.0, Color(0.05, 0.05, 0.45))
-	draw_circle(Vector2.ZERO, 5.0, Color(0.3, 0.4, 1.0))
+	draw_circle(Vector2.ZERO, 10.0, color_outer)
+	draw_circle(Vector2.ZERO, 5.0, color_inner)

@@ -38,6 +38,10 @@ var debuff_no_dash_timer := 0.0
 var debuff_silence_timer := 0.0
 var debuff_invert_timer  := 0.0
 
+var _shake_duration := 0.0
+var _shake_intensity := 0.0
+var _shake_max_duration := 1.0
+
 # Public — accessed by archetype handlers and spin RPCs
 var spinning := false
 var spin_timer := 0.0
@@ -135,10 +139,21 @@ func _setup_camera() -> void:
 
 # --- Observer: keep non-authority spinning swords rotating ---
 
+func shake_camera(duration: float, intensity: float) -> void:
+	_shake_duration = duration
+	_shake_max_duration = duration
+	_shake_intensity = intensity
+
 func _process(delta: float) -> void:
 	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked and not multiplayer.is_server() and not is_multiplayer_authority() and spinning:
 		$Sword.rotation += ArchetypePaladin.SPIN_SPEED * delta
+	if _shake_duration > 0.0:
+		_shake_duration -= delta
+		var strength := _shake_intensity * (_shake_duration / _shake_max_duration)
+		$Camera2D.offset = Vector2(randf_range(-strength, strength), randf_range(-strength, strength))
+		if _shake_duration <= 0.0:
+			$Camera2D.offset = Vector2.ZERO
 
 func _input(event: InputEvent) -> void:
 	if PlayerPrefs.control_scheme != PlayerPrefs.SCHEME_MOUSE:

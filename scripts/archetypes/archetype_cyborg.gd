@@ -128,6 +128,7 @@ func use_skill1() -> void:
 
 func use_skill2() -> void:
 	_player.skill2_cooldown = get_skill2_max_cooldown()
+	_player.shake_camera(0.25, 6.0)
 	spawn_ray_local(_player.global_position, _player.last_facing, false)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:

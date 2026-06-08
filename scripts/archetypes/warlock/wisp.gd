@@ -7,6 +7,7 @@ const ORBIT_OFFSET := Vector2(40.0, -30.0)
 
 var player_ref: Node = null
 var visual_only := false
+var lifetime := -1.0
 
 var _shoot_timer := SHOOT_INTERVAL * 0.5
 var _elapsed := 0.0
@@ -17,6 +18,11 @@ func _process(delta: float) -> void:
 		return
 
 	_elapsed += delta
+	if lifetime > 0.0:
+		lifetime -= delta
+		if lifetime <= 0.0:
+			queue_free()
+			return
 	var target_pos: Vector2 = player_ref.global_position + ORBIT_OFFSET
 	global_position = global_position.lerp(target_pos, FOLLOW_SPEED * delta)
 	queue_redraw()
@@ -54,6 +60,8 @@ func _spawn_bolt(pos: Vector2, dir: Vector2) -> void:
 	bolt.direction = dir
 	bolt.player_ref = player_ref
 	bolt.visual_only = false
+	bolt.color_outer = Color(0.1, 0.55, 0.85, 0.8)
+	bolt.color_inner = Color(0.75, 0.97, 1.0)
 	get_parent().add_child(bolt)
 	bolt.global_position = pos
 

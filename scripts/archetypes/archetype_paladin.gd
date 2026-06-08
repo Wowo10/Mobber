@@ -10,7 +10,7 @@ const CONSECRATION_COOLDOWN = 8.0
 const BASH_COOLDOWN = 7.0
 const BASH_RANGE = 130.0
 const BASH_HALF_WIDTH = 55.0
-const BASH_DAMAGE = 30.0
+const BASH_DAMAGE = 6.0
 const BASH_KNOCKBACK = 4500.0
 const BASH_SLOW_MULT = 0.35
 const BASH_SLOW_DURATION = 3.0
@@ -87,6 +87,7 @@ func use_skill2() -> void:
 
 func use_skill3() -> void:
 	_player.skill3_cooldown = get_skill3_max_cooldown()
+	_player.shake_camera(0.3, 8.0)
 	var pos: Vector2 = _player.global_position
 	var dir: Vector2 = _player.last_facing
 	_do_bash(pos, dir)
@@ -104,7 +105,7 @@ func _do_bash(pos: Vector2, dir: Vector2) -> void:
 	for hit in _player.get_world_2d().direct_space_state.intersect_shape(query, 16):
 		var body = hit["collider"]
 		if body.has_method("take_damage"):
-			body.take_damage(BASH_DAMAGE + _player.skill3_level * 10.0, dir * BASH_KNOCKBACK, _player)
+			body.take_damage(BASH_DAMAGE + _player.skill3_level * 3.0, dir * BASH_KNOCKBACK, _player)
 			if body.has_method("apply_slow"):
 				body.apply_slow(BASH_SLOW_MULT, BASH_SLOW_DURATION)
 	spawn_bash_visual(pos, dir)

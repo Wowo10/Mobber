@@ -151,6 +151,7 @@ func use_skill1() -> void:
 
 func use_skill2() -> void:
 	_player.skill2_cooldown = get_skill2_max_cooldown()
+	_player.shake_camera(0.35, 10.0)
 	spawn_rift_local(_player.global_position, false)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
@@ -187,12 +188,14 @@ func spawn_wisp_local(visual_only: bool) -> void:
 		_wisp_node = WISP_SCENE.instantiate()
 		_wisp_node.player_ref = _player
 		_wisp_node.visual_only = false
+		_wisp_node.lifetime = get_skill3_max_cooldown() * 0.5
 		_player.get_parent().add_child(_wisp_node)
 		_wisp_node.global_position = _player.global_position
 	else:
 		var v := WISP_SCENE.instantiate()
 		v.player_ref = _player
 		v.visual_only = true
+		v.lifetime = WISP_COOLDOWN * 0.5
 		_player.get_parent().add_child(v)
 		v.global_position = _player.global_position
 

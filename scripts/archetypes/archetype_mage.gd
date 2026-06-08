@@ -172,6 +172,7 @@ func spawn_rain_local(pos: Vector2, visual_only: bool, rs: int = 0) -> void:
 
 func use_skill3() -> void:
 	_player.skill3_cooldown = get_skill3_max_cooldown()
+	_player.shake_camera(0.5, 12.0)
 	spawn_implosion_local(_player.global_position, false)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:

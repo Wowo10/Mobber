@@ -12,7 +12,7 @@ const DASH_CONE_HALF_DEG = 50.0
 const DASH_TARGET_RANGE = 450.0
 
 const SHADOWSTEP_COOLDOWN = 10.0
-const SHADOWSTEP_DAMAGE = 35.0
+const SHADOWSTEP_DAMAGE = 6.0
 const SHADOWSTEP_RANGE = 350.0
 const TRAP_COOLDOWN = 1.0
 const MAX_TRAPS = 15
@@ -115,7 +115,8 @@ func use_skill2() -> void:
 		return
 	var to_mob: Vector2 = (nearest.global_position - _player.global_position).normalized()
 	_player.position = nearest.global_position - to_mob * (nearest.radius + _player.radius + 5.0)
-	nearest.take_damage(SHADOWSTEP_DAMAGE + _player.skill2_level * 10.0, to_mob * 6000.0, _player)
+	_player.shake_camera(0.2, 6.0)
+	nearest.take_damage(SHADOWSTEP_DAMAGE + _player.skill2_level * 3.0, to_mob * 6000.0, _player)
 	_spawn_blink_burst(nearest.global_position)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
