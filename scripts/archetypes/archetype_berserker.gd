@@ -108,7 +108,7 @@ func get_dash_duration() -> float:
 
 func on_dash_end() -> void:
 	_player.shake_camera(0.4, 14.0)
-	spawn_slam_local(_player.global_position, false, 20.0, 90.0)
+	spawn_slam_local(_player.global_position, false, 20.0, 55.0)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
 		_player.rpc_spawn_ground_slam.rpc(_player.global_position)
