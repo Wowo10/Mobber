@@ -117,9 +117,97 @@ func _rpc_spawn_players(archetypes: Dictionary, win_count: int) -> void:
 		_spawn_player(peer_id)
 
 func _on_server_disconnected() -> void:
-	_scrub_multiplayer_hooks()
+	_begin_host_migration()
+
+func _begin_host_migration() -> void:
+	var my_old_id := multiplayer.get_unique_id()
+	var a1_count := $Arena1.get_mob_count()
+	var a2_count := $Arena2.get_mob_count()
+
+	# Disconnect tree signals to suppress SceneCacheInterface errors when the
+	# spawner stops on peer transition. MobContainer is intentionally NOT freed
+	# so spawn_mob() keeps working after we re-enable local authority below.
+	if not _scrubbed:
+		_scrubbed = true
+		for arena in [$Arena1, $Arena2]:
+			var mc: Node = arena.get_node_or_null("MobContainer")
+			if mc:
+				for mob in mc.get_children():
+					_clear_signal(mob.tree_exiting)
+			var spawner: Node = arena.get_node_or_null("MobSpawner")
+			if spawner:
+				_clear_signal(spawner.tree_exited)
+		for player in $PlayerContainer.get_children():
+			_clear_signal(player.tree_exited)
+		_clear_signal(tree_exited)
+
+	# Switching to null makes multiplayer.is_server() return true locally and
+	# causes the MultiplayerSpawner to despawn all mob nodes via _stop().
 	multiplayer.multiplayer_peer = null
-	_show_disconnect("Host disconnected. Returning to lobby...")
+	_networked = false
+
+	# Spread the ex-host's gold to their teammates before removing their data.
+	_spread_gold(1)
+
+	# Remove the ex-host's player node. In offline mode get_unique_id() == 1,
+	# so any node still carrying authority 1 would be wrongly controlled by us.
+	var host_player = _peer_to_player.get(1)
+	if host_player and is_instance_valid(host_player):
+		host_player.queue_free()
+	_peer_to_player.erase(1)
+	_peer_to_arena.erase(1)
+	_peer_to_archetype.erase(1)
+
+	# Remap our old peer ID to 1 (the local offline authority ID) across every
+	# peer-keyed dictionary so all existing HUD, shop, and win-condition logic
+	# that resolves "my_id = 1 if not _networked" keeps working.
+	if my_old_id != 1:
+		for dict in [_peer_to_player, _peer_to_arena, _peer_to_archetype,
+				_peer_money, _peer_kills, _peer_money_earned, _peer_mobs_sent,
+				_peer_debuffs_applied, _peer_stats_cache,
+				_player_speed_levels, _player_damage_levels, _player_sword_size_levels,
+				_player_attack_speed_levels, _player_skill1_levels, _player_skill2_levels,
+				_player_skill3_levels, _player_skills_unlocked, _player_unlocks_pending,
+				_player_unlock_milestone]:
+			if dict.has(my_old_id):
+				dict[1] = dict[my_old_id]
+				dict.erase(my_old_id)
+
+	# Re-assign authority so our player's is_multiplayer_authority() returns true.
+	# It was set to my_old_id at spawn; offline ID is always 1.
+	var our_player = _peer_to_player.get(1)
+	if our_player and is_instance_valid(our_player):
+		our_player.set_multiplayer_authority(1)
+
+	# Spawner cleared the mob nodes; re-spawn to match the pre-disconnect counts.
+	for i in a1_count:
+		$Arena1.spawn_mob()
+	for i in a2_count:
+		$Arena2.spawn_mob()
+
+	_rpc_show_notice("Opponent disconnected. Continuing solo.")
+	_push_hud_update()
+
+func _spread_gold(leaving_id: int) -> void:
+	var gold := _peer_money.get(leaving_id, 0)
+	if gold <= 0:
+		return
+	var leaving_arena := _peer_to_arena.get(leaving_id)
+	if leaving_arena == null:
+		return
+	var teammates: Array = []
+	for pid in _peer_to_arena:
+		if pid != leaving_id and _peer_to_arena[pid] == leaving_arena:
+			teammates.append(pid)
+	if teammates.is_empty():
+		return
+	var share := gold / teammates.size()
+	for pid in teammates:
+		_peer_money[pid] = _peer_money.get(pid, 0) + share
+	_peer_money[leaving_id] = 0
+	_update_money_local(_peer_money)
+	if _networked:
+		_rpc_update_money.rpc(_peer_money)
 
 func _on_peer_disconnected(id: int) -> void:
 	if _spectator_peer_ids.has(id):
@@ -127,6 +215,7 @@ func _on_peer_disconnected(id: int) -> void:
 		_rpc_show_notice.rpc("A spectator disconnected.")
 		return
 
+	_spread_gold(id)
 	if _peer_to_player.has(id):
 		_peer_to_player[id].queue_free()
 	_peer_to_player.erase(id)
