@@ -6,6 +6,7 @@ const EXPLOSION_RADIUS = 120.0
 const DAMAGE = 60.0
 const KNOCKBACK = 8000.0
 
+var skill_level: int = 0
 var _exploded := false
 
 func _ready() -> void:
@@ -46,9 +47,10 @@ func _play_explode() -> void:
 	sfx.finished.connect(sfx.queue_free)
 
 func _apply_explosion_damage() -> void:
+	var radius := EXPLOSION_RADIUS * (1.0 + 0.25 * skill_level)
 	var query := PhysicsShapeQueryParameters2D.new()
 	var circle := CircleShape2D.new()
-	circle.radius = EXPLOSION_RADIUS
+	circle.radius = radius
 	query.shape = circle
 	query.transform = Transform2D(0.0, global_position)
 	query.collision_mask = 1

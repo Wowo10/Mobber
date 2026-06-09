@@ -105,7 +105,7 @@ func _do_bash(pos: Vector2, dir: Vector2) -> void:
 	for hit in _player.get_world_2d().direct_space_state.intersect_shape(query, 16):
 		var body = hit["collider"]
 		if body.has_method("take_damage"):
-			body.take_damage(BASH_DAMAGE + _player.skill3_level * 3.0, dir * BASH_KNOCKBACK, _player)
+			body.take_damage(BASH_DAMAGE + _player.skill3_level * 3.0, dir * BASH_KNOCKBACK * (1.0 + 0.3 * _player.skill3_level), _player)
 			if body.has_method("apply_slow"):
 				body.apply_slow(BASH_SLOW_MULT, BASH_SLOW_DURATION)
 	spawn_bash_visual(pos, dir)
@@ -136,5 +136,6 @@ func spawn_consecration_local(pos: Vector2, visual_only: bool) -> void:
 	var c := CONSECRATION_SCENE.instantiate()
 	c.player_ref = _player
 	c.visual_only = visual_only
+	c.skill_level = _player.skill2_level
 	_player.get_parent().add_child(c)
 	c.global_position = pos

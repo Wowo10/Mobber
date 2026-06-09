@@ -71,22 +71,28 @@ func get_skill2_max_cooldown() -> float:
 
 func use_skill1() -> void:
 	_player.skill1_cooldown = get_skill1_max_cooldown()
-	var cannonball = CANNONBALL_SCENE.instantiate()
-	cannonball.direction = _player.last_facing
-	cannonball.global_position = _player.global_position + _player.last_facing * (_player.radius + 12.0)
-	cannonball.player_ref = _player
-	_player.get_parent().add_child(cannonball)
-	_player.broadcast_cannonball(cannonball.global_position, _player.last_facing, true)
+	var shot_count: int = 1 + _player.skill1_level
+	for i in range(shot_count):
+		var angle_offset := deg_to_rad((i - _player.skill1_level * 0.5) * 10.0)
+		var dir: Vector2 = _player.last_facing.rotated(angle_offset)
+		var cannonball = CANNONBALL_SCENE.instantiate()
+		cannonball.direction = dir
+		cannonball.global_position = _player.global_position + dir * (_player.radius + 12.0)
+		cannonball.player_ref = _player
+		_player.get_parent().add_child(cannonball)
+		_player.broadcast_cannonball(cannonball.global_position, dir, true)
 
 func use_skill2() -> void:
 	_player.skill2_cooldown = get_skill2_max_cooldown()
 	if _turret and is_instance_valid(_turret):
 		_turret.global_position = _player.global_position
 		_turret.facing = _player.last_facing
+		_turret.skill_level = _player.skill2_level
 		_turret.reset_fire_timer()
 	else:
 		_turret = TURRET_SCENE.instantiate()
 		_turret.facing = _player.last_facing
+		_turret.skill_level = _player.skill2_level
 		_turret.player_ref = _player
 		_player.get_parent().add_child(_turret)
 		_turret.global_position = _player.global_position
@@ -114,6 +120,7 @@ func spawn_barrel_local(pos: Vector2, visual_only: bool) -> void:
 	var b := BARREL_SCENE.instantiate()
 	b.player_ref = _player
 	b.visual_only = visual_only
+	b.skill_level = _player.skill3_level
 	_player.get_parent().add_child(b)
 	b.global_position = pos
 	if not visual_only:

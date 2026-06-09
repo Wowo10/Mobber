@@ -167,6 +167,7 @@ func spawn_rain_local(pos: Vector2, visual_only: bool, rs: int = 0) -> void:
 	rain.player_ref = _player
 	rain.visual_only = visual_only
 	rain.rain_seed = rs
+	rain.skill_level = _player.skill1_level
 	_player.get_parent().add_child(rain)
 	rain.global_position = pos
 
@@ -181,6 +182,7 @@ func spawn_implosion_local(pos: Vector2, visual_only: bool) -> void:
 	var imp := IMPLOSION_SCENE.instantiate()
 	imp.player_ref = _player
 	imp.visual_only = visual_only
+	imp.skill_level = _player.skill3_level
 	_player.get_parent().add_child(imp)
 	imp.global_position = pos
 
@@ -189,5 +191,6 @@ func spawn_fireball_local(pos: Vector2, dir: Vector2, visual_only: bool) -> void
 	fb.direction = dir
 	fb.player_ref = _player
 	fb.visual_only = visual_only
+	fb.skill_level = _player.skill2_level
 	_player.get_parent().add_child(fb)
 	fb.global_position = pos

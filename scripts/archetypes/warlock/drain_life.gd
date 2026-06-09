@@ -7,14 +7,18 @@ const DAMAGE_PER_TICK = 8.0
 
 var player_ref: Node = null
 var visual_only := false
-
+var skill_level: int = 0
 var _duration_left := DURATION
 var _tick_timer := 0.0
 var _bodies_inside := []
+var _effective_radius: float
+var _effective_damage: float
 
 func _ready() -> void:
+	_effective_radius = RADIUS * (1.0 + 0.25 * skill_level)
+	_effective_damage = DAMAGE_PER_TICK * (1.0 + 0.2 * skill_level)
 	monitoring = true
-	($CollisionShape2D.shape as CircleShape2D).radius = RADIUS
+	($CollisionShape2D.shape as CircleShape2D).radius = _effective_radius
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)
 	$SfxAmbient.play()
@@ -44,7 +48,7 @@ func _apply_damage() -> void:
 			_bodies_inside.erase(body)
 			continue
 		if not networked or multiplayer.is_server():
-			body.take_damage(DAMAGE_PER_TICK, Vector2.ZERO, player_ref)
+			body.take_damage(_effective_damage, Vector2.ZERO, player_ref)
 
 func _on_body_entered(body: Node2D) -> void:
 	if body.has_method("take_damage") and not _bodies_inside.has(body):
@@ -55,7 +59,7 @@ func _on_body_exited(body: Node2D) -> void:
 
 func _draw() -> void:
 	var t: float = clamp(_duration_left / DURATION, 0.0, 1.0)
-	draw_circle(Vector2.ZERO, RADIUS, Color(0.05, 0.3, 0.7, 0.2 * t))
-	draw_arc(Vector2.ZERO, RADIUS, 0.0, TAU, 48, Color(0.1, 0.5, 0.9, 0.85 * t), 3.0)
+	draw_circle(Vector2.ZERO, _effective_radius, Color(0.05, 0.3, 0.7, 0.2 * t))
+	draw_arc(Vector2.ZERO, _effective_radius, 0.0, TAU, 48, Color(0.1, 0.5, 0.9, 0.85 * t), 3.0)
 	var pulse := 0.5 + 0.5 * sin(_duration_left * 8.0)
-	draw_arc(Vector2.ZERO, RADIUS * 0.5, 0.0, TAU, 32, Color(0.2, 0.7, 1.0, 0.4 * t * pulse), 1.5)
+	draw_arc(Vector2.ZERO, _effective_radius * 0.5, 0.0, TAU, 32, Color(0.2, 0.7, 1.0, 0.4 * t * pulse), 1.5)

@@ -203,6 +203,7 @@ func spawn_ray_local(pos: Vector2, facing: Vector2, visual_only: bool) -> void:
 	ray.visual_only = visual_only
 	ray.facing = facing
 	ray.thick = _overclock_active
+	ray.skill_level = _player.skill2_level
 	_player.get_parent().add_child(ray)
 	ray.global_position = pos
 

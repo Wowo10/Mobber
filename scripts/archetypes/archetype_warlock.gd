@@ -169,6 +169,7 @@ func spawn_drain_local(visual_only: bool) -> void:
 	var drain := DRAIN_SCENE.instantiate()
 	drain.player_ref = _player
 	drain.visual_only = visual_only
+	drain.skill_level = _player.skill1_level
 	_player.get_parent().add_child(drain)
 	drain.global_position = _player.global_position
 
@@ -188,14 +189,14 @@ func spawn_wisp_local(visual_only: bool) -> void:
 		_wisp_node = WISP_SCENE.instantiate()
 		_wisp_node.player_ref = _player
 		_wisp_node.visual_only = false
-		_wisp_node.lifetime = get_skill3_max_cooldown() * 0.5
+		_wisp_node.lifetime = get_skill3_max_cooldown() * 0.5 + 3.0 * _player.skill3_level
 		_player.get_parent().add_child(_wisp_node)
 		_wisp_node.global_position = _player.global_position
 	else:
 		var v := WISP_SCENE.instantiate()
 		v.player_ref = _player
 		v.visual_only = true
-		v.lifetime = WISP_COOLDOWN * 0.5
+		v.lifetime = WISP_COOLDOWN * 0.5 + 3.0 * _player.skill3_level
 		_player.get_parent().add_child(v)
 		v.global_position = _player.global_position
 
@@ -203,5 +204,6 @@ func spawn_rift_local(pos: Vector2, visual_only: bool) -> void:
 	var rift := RIFT_SCENE.instantiate()
 	rift.player_ref = _player
 	rift.visual_only = visual_only
+	rift.skill_level = _player.skill2_level
 	_player.get_parent().add_child(rift)
 	rift.global_position = pos

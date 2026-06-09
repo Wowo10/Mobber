@@ -123,7 +123,7 @@ func use_skill2() -> void:
 		_player.rpc_shadowstep_visual.rpc(nearest.global_position)
 
 func use_skill3() -> void:
-	if _trap_count >= MAX_TRAPS:
+	if _trap_count >= MAX_TRAPS + 5 * _player.skill3_level:
 		return
 	_player.skill3_cooldown = get_skill3_max_cooldown()
 	spawn_trap_local(_player.global_position, false)
@@ -144,8 +144,9 @@ func spawn_trap_local(pos: Vector2, visual_only: bool) -> void:
 	trap.global_position = pos
 
 func spawn_fan_local(pos: Vector2, base_angle: float, visual_only: bool) -> void:
-	for i in range(FAN_COUNT):
-		var t := float(i) / float(FAN_COUNT - 1)
+	var fan_count: int = FAN_COUNT + 2 * _player.skill1_level
+	for i in range(fan_count):
+		var t := float(i) / float(fan_count - 1)
 		var spread := deg_to_rad(lerp(-FAN_SPREAD_DEG * 0.5, FAN_SPREAD_DEG * 0.5, t))
 		var dir := Vector2.from_angle(base_angle + spread)
 		var knife := FAN_KNIFE_SCENE.instantiate()

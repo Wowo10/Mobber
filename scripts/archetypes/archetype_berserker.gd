@@ -6,6 +6,8 @@ const GROUND_SLAM_SCENE = preload("res://scenes/archetypes/berserker/ground_slam
 const RAGE_COOLDOWN = 10.0
 const RAGE_DURATION = 3.0
 const SLAM_COOLDOWN = 8.0
+const BASE_SLAM_RADIUS = 150.0
+const BASE_SLAM_DAMAGE = 45.0
 
 var _rage_active := false
 var _rage_timer := 0.0
@@ -128,10 +130,13 @@ func use_skill1() -> void:
 func use_skill2() -> void:
 	_player.skill2_cooldown = get_skill2_max_cooldown()
 	_player.shake_camera(0.4, 14.0)
-	spawn_slam_local(_player.global_position, false)
+	var scale: float = 1.0 + 0.25 * _player.skill2_level
+	var r: float = BASE_SLAM_RADIUS * scale
+	var d: float = BASE_SLAM_DAMAGE * scale
+	spawn_slam_local(_player.global_position, false, d, r)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
-		_player.rpc_spawn_ground_slam.rpc(_player.global_position)
+		_player.rpc_spawn_ground_slam.rpc(_player.global_position, r)
 
 func spawn_mini_smash_local(pos: Vector2, visual_only: bool) -> void:
 	if not visual_only:

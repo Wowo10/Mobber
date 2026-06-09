@@ -11,17 +11,19 @@ const IMPACT_FADE = 0.25
 var player_ref: Node = null
 var visual_only := false
 var rain_seed: int = 0
+var skill_level: int = 0
 
 var _rng := RandomNumberGenerator.new()
 var _elapsed := 0.0
 var _next_strike := 0.0
 var _strikes_done := 0
-var _max_strikes: int = int(DURATION / INTERVAL)
+var _max_strikes: int = 0
 var _warnings: Array = []
 var _impacts: Array = []
 
 func _ready() -> void:
 	_rng.seed = rain_seed
+	_max_strikes = int(DURATION / INTERVAL) + 3 * skill_level
 
 func _process(delta: float) -> void:
 	_elapsed += delta

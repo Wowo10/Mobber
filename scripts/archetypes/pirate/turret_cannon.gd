@@ -7,6 +7,7 @@ const SPREAD = 18.0
 var facing := Vector2.RIGHT
 var player_ref: Node = null
 var visual_only := false
+var skill_level: int = 0
 var _fire_timer := 0.0
 
 func _ready() -> void:
@@ -26,7 +27,7 @@ func _process(delta: float) -> void:
 func _fire_cone() -> void:
 	$SfxFire.play()
 	var spread := deg_to_rad(SPREAD)
-	for i in range(3):
+	for i in range(3 + skill_level):
 		var angle_offset := (i - 1) * spread
 		var dir := facing.rotated(angle_offset)
 		var ball := CANNONBALL_SCENE.instantiate()

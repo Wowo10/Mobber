@@ -7,6 +7,7 @@ const MAX_LIFETIME = 30.0
 
 var player_ref: Node = null
 var visual_only := false
+var skill_level: int = 0
 
 var _elapsed := 0.0
 var _detonated := false
@@ -35,9 +36,10 @@ func _trigger_detonate() -> void:
 	get_tree().create_timer(0.6).timeout.connect(queue_free)
 
 func _do_damage() -> void:
+	var radius := DETONATION_RADIUS * (1.0 + 0.25 * skill_level)
 	var query := PhysicsShapeQueryParameters2D.new()
 	var circle := CircleShape2D.new()
-	circle.radius = DETONATION_RADIUS
+	circle.radius = radius
 	query.shape = circle
 	query.transform = Transform2D(0.0, global_position)
 	query.collision_mask = 1
@@ -64,10 +66,11 @@ func _spawn_explosion() -> void:
 	add_child(p)
 
 func _draw() -> void:
+	var det_radius := DETONATION_RADIUS * (1.0 + 0.25 * skill_level)
 	if _detonated:
 		var t := clampf(1.0 - _detonate_elapsed / 0.5, 0.0, 1.0)
 		if t > 0.0:
-			var ring_r := DETONATION_RADIUS * (1.0 - t)
+			var ring_r := det_radius * (1.0 - t)
 			draw_circle(Vector2.ZERO, ring_r, Color(1.0, 0.6, 0.1, 0.18 * t))
 			draw_arc(Vector2.ZERO, ring_r, 0.0, TAU, 64,
 				Color(1.0, 0.75, 0.2, 0.9 * t), 4.0)

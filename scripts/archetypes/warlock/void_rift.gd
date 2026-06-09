@@ -9,14 +9,18 @@ const PULL_FORCE_PER_SEC = 4500.0
 
 var player_ref: Node = null
 var visual_only := false
-
+var skill_level: int = 0
 var _duration_left := DURATION
 var _tick_timer := 0.0
 var _bodies_inside := []
+var _effective_pull_radius: float
+var _effective_pull_force: float
 
 func _ready() -> void:
+	_effective_pull_radius = PULL_RADIUS * (1.0 + 0.25 * skill_level)
+	_effective_pull_force = PULL_FORCE_PER_SEC * (1.0 + 0.2 * skill_level)
 	monitoring = true
-	($CollisionShape2D.shape as CircleShape2D).radius = PULL_RADIUS
+	($CollisionShape2D.shape as CircleShape2D).radius = _effective_pull_radius
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)
 	$SfxAmbient.play()
@@ -37,7 +41,7 @@ func _process(delta: float) -> void:
 				continue
 			if body.has_method("apply_push"):
 				var pull_dir: Vector2 = (global_position - (body as Node2D).global_position).normalized()
-				body.apply_push(pull_dir * PULL_FORCE_PER_SEC * delta)
+				body.apply_push(pull_dir * _effective_pull_force * delta)
 
 	_tick_timer -= delta
 	if _tick_timer <= 0.0:
