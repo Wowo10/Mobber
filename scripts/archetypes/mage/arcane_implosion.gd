@@ -47,6 +47,8 @@ func _detonate() -> void:
 	for mob in mobs:
 		var dir: Vector2 = (global_position - mob.global_position).normalized()
 		mob.take_damage(damage, dir * KNOCKBACK_FORCE, player_ref)
+	if player_ref:
+		player_ref.shake_camera(0.5, 12.0)
 	_spawn_burst()
 
 func _spawn_burst() -> void:

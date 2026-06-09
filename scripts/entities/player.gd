@@ -143,6 +143,16 @@ func shake_camera(duration: float, intensity: float) -> void:
 	_shake_duration = duration
 	_shake_max_duration = duration
 	_shake_intensity = intensity
+	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
+	if networked and multiplayer.is_server() and not is_multiplayer_authority():
+		_rpc_shake_camera.rpc_id(
+				get_multiplayer_authority(), duration, intensity)
+
+@rpc("authority", "reliable")
+func _rpc_shake_camera(duration: float, intensity: float) -> void:
+	_shake_duration = duration
+	_shake_max_duration = duration
+	_shake_intensity = intensity
 
 func _process(delta: float) -> void:
 	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
@@ -160,11 +170,10 @@ func _input(event: InputEvent) -> void:
 		return
 	if not is_multiplayer_authority():
 		return
-	if event is InputEventMouseButton and event.pressed:
-		if event.button_index == MOUSE_BUTTON_LEFT:
-			_mouse_attack_pressed = true
-		elif event.button_index == MOUSE_BUTTON_RIGHT:
-			_mouse_dash_pressed = true
+	if event.is_action_pressed("attack"):
+		_mouse_attack_pressed = true
+	elif event.is_action_pressed("dash"):
+		_mouse_dash_pressed = true
 
 # --- Simulation ---
 
@@ -191,9 +200,10 @@ func _physics_process(delta: float) -> void:
 		else:
 			do_attack = Input.is_action_just_pressed("attack") and _archetype_handler.can_attack()
 			do_dash   = Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0
-		do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0 and skills_unlocked[0]
-		do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0 and skills_unlocked[1]
-		do_skill3 = Input.is_action_just_pressed("skill3") and skill3_cooldown <= 0.0 and skills_unlocked[2]
+		var _ctrl := Input.is_key_pressed(KEY_CTRL)
+		do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0 and skills_unlocked[0] and not _ctrl
+		do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0 and skills_unlocked[1] and not _ctrl
+		do_skill3 = Input.is_action_just_pressed("skill3") and skill3_cooldown <= 0.0 and skills_unlocked[2] and not _ctrl
 
 	elif multiplayer.is_server():
 		# Path B — Server: simulate all players authoritatively
@@ -237,9 +247,10 @@ func _physics_process(delta: float) -> void:
 		else:
 			do_attack = Input.is_action_just_pressed("attack") and _archetype_handler.can_attack()
 			do_dash   = Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0
-		do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0 and skills_unlocked[0]
-		do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0 and skills_unlocked[1]
-		do_skill3 = Input.is_action_just_pressed("skill3") and skill3_cooldown <= 0.0 and skills_unlocked[2]
+		var _ctrl := Input.is_key_pressed(KEY_CTRL)
+		do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0 and skills_unlocked[0] and not _ctrl
+		do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0 and skills_unlocked[1] and not _ctrl
+		do_skill3 = Input.is_action_just_pressed("skill3") and skill3_cooldown <= 0.0 and skills_unlocked[2] and not _ctrl
 		_rpc_send_direction.rpc_id(1, direction)
 		_rpc_send_facing.rpc_id(1, facing)
 		var action_mask := 0
