@@ -36,6 +36,9 @@ var _scoreboard_col1: VBoxContainer = null
 var _scoreboard_col2: VBoxContainer = null
 var _my_mob_bar: Control = null
 var _enemy_mob_bar: Control = null
+var _ping_label: Label = null
+var _ping_timer: float = 0.0
+var _ping_send_time: float = 0.0
 
 func _ready() -> void:
 	_networked = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
@@ -51,6 +54,7 @@ func _ready() -> void:
 	$Arena2.player_entered_arena_master.connect(_on_player_entered_arena_master)
 	$Arena2.player_exited_arena_master.connect(_on_player_exited_arena_master)
 	_setup_scoreboard()
+	_ping_label = $HUD/PingLabel
 
 	if not _networked:
 		PlayerPrefs.peer_names = {1: PlayerPrefs.player_name}
@@ -143,6 +147,19 @@ func _rpc_show_notice(msg: String) -> void:
 	await get_tree().create_timer(3.0).timeout
 	if is_instance_valid(lbl):
 		lbl.queue_free()
+
+@rpc("any_peer", "unreliable")
+func _rpc_ping_request() -> void:
+	if not multiplayer.is_server():
+		return
+	_rpc_ping_response.rpc_id(multiplayer.get_remote_sender_id())
+
+@rpc("authority", "unreliable")
+func _rpc_ping_response() -> void:
+	if _ping_label == null:
+		return
+	var ms := int(Time.get_ticks_msec() - _ping_send_time)
+	_ping_label.text = "%d ms" % ms
 
 func _show_disconnect(msg: String) -> void:
 	_leaving = true
@@ -517,7 +534,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		_on_skill_unlock_requested(idx)
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if _leaving:
 		return
 	if _scoreboard_panel != null:
@@ -544,6 +561,12 @@ func _process(_delta: float) -> void:
 	var s3_node = bar.get_node("Skill3Slot")
 	s3_node.set_cooldown(player.skill3_cooldown, player.skill3_max_cooldown)
 	s3_node.set_passive_counter(player.get_passive_counter())
+	if _networked and not multiplayer.is_server() and _ping_label != null:
+		_ping_timer -= delta
+		if _ping_timer <= 0.0:
+			_ping_timer = 2.0
+			_ping_send_time = Time.get_ticks_msec()
+			_rpc_ping_request.rpc_id(1)
 
 func _on_player_entered_shop() -> void:
 	if _leaving:

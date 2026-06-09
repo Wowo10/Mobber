@@ -187,6 +187,21 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("5_indicator")
 
+[node name="PingLabel" type="Label" parent="HUD"]
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -76.0
+offset_top = -22.0
+offset_right = -8.0
+offset_bottom = -6.0
+grow_horizontal = 0
+theme_override_colors/font_color = Color(0.55, 0.55, 0.55, 0.75)
+theme_override_font_sizes/font_size = 11
+text = ""
+horizontal_alignment = 2
+
 [node name="ShopPanel" type="CanvasLayer" parent="."]
 layer = 8
 visible = false
