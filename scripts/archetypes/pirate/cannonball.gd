@@ -64,6 +64,7 @@ func _spawn_impact() -> void:
 	p.scale_amount_min = 3.0
 	p.scale_amount_max = 8.0
 	p.color = Color(1.0, 0.55, 0.1, 1.0)
+	ParticleUtils.polish(p)
 	p.emitting = true
 	get_parent().add_child(p)
 	get_tree().create_timer(p.lifetime + 0.2).timeout.connect(p.queue_free)

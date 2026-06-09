@@ -125,6 +125,7 @@ func _setup_particles() -> void:
 	p.scale_amount_min = 3.0
 	p.scale_amount_max = 7.0
 	p.color = Color(0.55, 0.50, 1.0, 0.75)
+	ParticleUtils.polish(p)
 
 func _setup_camera() -> void:
 	var my_id := multiplayer.get_unique_id()

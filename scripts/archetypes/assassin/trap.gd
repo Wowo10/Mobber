@@ -36,6 +36,7 @@ func _spawn_burst() -> void:
 	p.scale_amount_min = 2.0
 	p.scale_amount_max = 5.0
 	p.color = Color(0.6, 0.1, 0.9, 0.9)
+	ParticleUtils.polish(p)
 	p.emitting = true
 	add_child(p)
 

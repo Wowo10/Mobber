@@ -62,6 +62,7 @@ func _spawn_explosion() -> void:
 	p.scale_amount_min = 4.0
 	p.scale_amount_max = 13.0
 	p.color = Color(1.0, 0.55, 0.1, 1.0)
+	ParticleUtils.polish(p)
 	p.emitting = true
 	add_child(p)
 

@@ -45,6 +45,7 @@ func _spawn_particles() -> void:
 	p.scale_amount_min = 4.0
 	p.scale_amount_max = 10.0
 	p.color = Color(0.9, 0.3, 0.05, 1.0)
+	ParticleUtils.polish(p)
 	p.emitting = true
 	add_child(p)
 

@@ -77,6 +77,7 @@ func spawn_pull_visual(pos: Vector2) -> void:
 	p.scale_amount_min = 3.0
 	p.scale_amount_max = 9.0
 	p.color = Color(0.75, 0.2, 1.0, 0.9)
+	ParticleUtils.polish(p)
 	p.emitting = true
 	_player.get_parent().add_child(p)
 	_player.get_tree().create_timer(p.lifetime + 0.1).timeout.connect(p.queue_free)

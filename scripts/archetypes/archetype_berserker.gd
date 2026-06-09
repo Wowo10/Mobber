@@ -170,6 +170,7 @@ func _spawn_mini_smash_visual(pos: Vector2) -> void:
 	p.scale_amount_min = 3.0
 	p.scale_amount_max = 7.0
 	p.color = Color(1.0, 0.5, 0.1, 1.0)
+	ParticleUtils.polish(p)
 	p.emitting = true
 	v.add_child(p)
 	_player.get_tree().create_timer(0.5).timeout.connect(v.queue_free)

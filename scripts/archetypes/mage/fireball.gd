@@ -73,6 +73,7 @@ func _spawn_explosion_visual() -> void:
 	p.scale_amount_min = 5.0
 	p.scale_amount_max = 12.0
 	p.color = Color(1.0, 0.4, 0.05, 1.0)
+	ParticleUtils.polish(p)
 	p.emitting = true
 	get_parent().add_child(p)
 	get_tree().create_timer(p.lifetime + 0.2).timeout.connect(p.queue_free)
