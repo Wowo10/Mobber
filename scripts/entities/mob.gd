@@ -51,7 +51,10 @@ func _ready() -> void:
 		set_physics_process(false)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	var networked: bool = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
+	if networked and not multiplayer.is_server():
+		position += velocity * delta
 	queue_redraw()
 
 func _physics_process(delta: float) -> void:

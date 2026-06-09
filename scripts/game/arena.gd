@@ -10,7 +10,8 @@ const FLOOR_TILE_SIZE = 256.0
 const MOB_SCENE = preload("res://scenes/entities/mob.tscn")
 const SHOP_ZONE_RECT := Rect2(100, 1650, 300, 300)
 const ARENA_MASTER_ZONE_RECT := Rect2(2267, 1650, 300, 300)
-const MOB_SYNC_INTERVAL := 0.05  # 20 Hz
+const MOB_SYNC_INTERVAL := 0.1   # 10 Hz
+const MOVE_THRESHOLD_SQ := 4.0   # 2 px — skip mobs that haven't moved
 const FLOOR_TEXTURES := [
 	preload("res://assets/textures/StoneFloorTexture1.png"),
 	preload("res://assets/textures/StoneFloorTexture2.png"),
@@ -19,6 +20,7 @@ const FLOOR_TEXTURES := [
 ]
 
 var _sync_timer := 0.0
+var _last_sync_positions: Dictionary = {}
 var _floor_texture: Texture2D
 var mob_speed_multiplier: float = 1.0
 var mob_frenzy_timer: float = 0.0
@@ -115,9 +117,16 @@ func _physics_process(delta: float) -> void:
 	var positions := PackedVector2Array()
 	var velocities := PackedVector2Array()
 	for mob in mobs:
+		var iid := mob.get_instance_id()
+		var last_pos: Vector2 = _last_sync_positions.get(iid, Vector2(-1e9, -1e9))
+		if mob.position.distance_squared_to(last_pos) < MOVE_THRESHOLD_SQ:
+			continue
+		_last_sync_positions[iid] = mob.position
 		names.append(mob.name)
 		positions.append(mob.position)
 		velocities.append(mob.velocity)
+	if names.is_empty():
+		return
 	_rpc_sync_mob_states.rpc(names, positions, velocities)
 
 @rpc("authority", "unreliable_ordered")
