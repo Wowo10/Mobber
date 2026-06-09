@@ -77,6 +77,23 @@ custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
 theme_override_constants/separation = 4
 
+[node name="SpectatorSection" type="VBoxContainer" parent="VBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+visible = false
+
+[node name="SpectatorTitle" type="Label" parent="VBox/SpectatorSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "SPECTATORS"
+horizontal_alignment = 1
+
+[node name="SpectatorList" type="VBoxContainer" parent="VBox/SpectatorSection"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+theme_override_constants/separation = 4
+
 [node name="WinCountRow" type="HBoxContainer" parent="VBox"]
 layout_mode = 2
 theme_override_constants/separation = 8

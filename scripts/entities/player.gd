@@ -703,11 +703,11 @@ func rpc_set_berserker_rage(active: bool) -> void:
 	(_archetype_handler as ArchetypeBerserker).set_rage(active)
 
 @rpc("any_peer", "reliable")
-func rpc_spawn_ground_slam(pos: Vector2) -> void:
+func rpc_spawn_ground_slam(pos: Vector2, slam_radius: float = -1.0) -> void:
 	var _s := multiplayer.get_remote_sender_id()
 	if _s != 0 and _s != 1:
 		return
-	(_archetype_handler as ArchetypeBerserker).spawn_slam_local(pos, true)
+	(_archetype_handler as ArchetypeBerserker).spawn_slam_local(pos, true, -1.0, slam_radius)
 
 @rpc("any_peer", "reliable")
 func rpc_spawn_warlock_bolt(pos: Vector2, dir: Vector2) -> void:

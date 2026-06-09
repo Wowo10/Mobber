@@ -24,6 +24,8 @@ var _peer_money: Dictionary = {}  # peer_id -> int
 var _player_skills_unlocked: Dictionary = {}   # peer_id -> [false, false, false]
 var _player_unlocks_pending: Dictionary = {}   # peer_id -> int
 var _player_unlock_milestone: Dictionary = {}  # peer_id -> int (0-3)
+var _spectator_peer_ids: Array = []
+var _spectator_camera: Camera2D = null
 var _in_shop_zone := false
 var _in_arena_master_zone := false
 var _peer_kills: Dictionary = {}
@@ -68,9 +70,15 @@ func _ready() -> void:
 		_push_hud_update()
 		return
 
+	_spectator_peer_ids = PlayerPrefs.peer_spectators
+
 	# Populate arena assignments from the team layout decided in game_room
 	for peer_id in PlayerPrefs.peer_teams:
 		_peer_to_arena[peer_id] = $Arena1 if PlayerPrefs.peer_teams[peer_id] == 0 else $Arena2
+
+	var my_id_ready: int = multiplayer.get_unique_id()
+	if _spectator_peer_ids.has(my_id_ready):
+		_setup_spectator_camera()
 
 	if multiplayer.is_server():
 		_expected_client_count = multiplayer.get_peers().size()
@@ -114,6 +122,11 @@ func _on_server_disconnected() -> void:
 	_show_disconnect("Host disconnected. Returning to lobby...")
 
 func _on_peer_disconnected(id: int) -> void:
+	if _spectator_peer_ids.has(id):
+		_spectator_peer_ids.erase(id)
+		_rpc_show_notice.rpc("A spectator disconnected.")
+		return
+
 	if _peer_to_player.has(id):
 		_peer_to_player[id].queue_free()
 	_peer_to_player.erase(id)
@@ -205,8 +218,34 @@ func _leave_game() -> void:
 		multiplayer.multiplayer_peer = null
 	get_tree().change_scene_to_file("res://scenes/ui/lobby.tscn")
 
+func _setup_spectator_camera() -> void:
+	var cam := Camera2D.new()
+	cam.set_script(load("res://scripts/game/spectator_camera.gd"))
+	add_child(cam)
+	cam.init($Arena1, $Arena2)
+	_spectator_camera = cam
+
+	$HUD/SkillBar.visible = false
+
+	if _my_mob_bar != null:
+		_my_mob_bar.label_prefix = "A1  "
+	if _enemy_mob_bar != null:
+		_enemy_mob_bar.label_prefix = "A2  "
+
+	var hint := Label.new()
+	hint.text = "SPECTATING  |  Tab: switch arena"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_font_size_override("font_size", 13)
+	hint.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8, 0.7))
+	hint.anchors_preset = Control.PRESET_BOTTOM_WIDE
+	hint.offset_bottom = -10.0
+	hint.offset_top = -40.0
+	$HUD.add_child(hint)
+
 func _spawn_player(peer_id: int) -> void:
 	if _peer_to_player.has(peer_id):
+		return
+	if _spectator_peer_ids.has(peer_id):
 		return
 	var arena: Node2D = _peer_to_arena[peer_id]
 	var slot := 0
@@ -310,6 +349,10 @@ func _update_hud_local(a1: int, a2: int) -> void:
 	if _my_mob_bar == null:
 		return
 	var my_id: int = 1 if not _networked else multiplayer.get_unique_id()
+	if _spectator_peer_ids.has(my_id):
+		_my_mob_bar.set_count(a1, PlayerPrefs.mob_win_count)
+		_enemy_mob_bar.set_count(a2, PlayerPrefs.mob_win_count)
+		return
 	var my_is_arena1: bool = _peer_to_arena.get(my_id) == $Arena1
 	var my    := a1 if my_is_arena1 else a2
 	var enemy := a2 if my_is_arena1 else a1
@@ -419,24 +462,31 @@ func _rpc_game_over(losing_arena_id: int) -> void:
 		child.set_physics_process(false)
 
 	var my_id: int = 1 if not _networked else multiplayer.get_unique_id()
-	var my_is_arena1: bool = _peer_to_arena.get(my_id) == $Arena1
-	var i_lost: bool = (losing_arena_id == 1 and my_is_arena1) or (losing_arena_id == 2 and not my_is_arena1)
 
 	var vbox := $GameOverOverlay/VBox
 	var title := vbox.get_node("TitleLabel")
 	var sub := vbox.get_node("SubLabel")
 	var return_btn := vbox.get_node("ReturnButton")
 
-	if i_lost:
-		title.text = "YOU LOSE!"
-		title.add_theme_color_override("font_color", Color(0.9, 0.2, 0.2))
-		sub.text = "Your arena was overrun by mobs."
-		sub.add_theme_color_override("font_color", Color(0.75, 0.4, 0.4))
+	if _spectator_peer_ids.has(my_id):
+		title.text = "GAME OVER"
+		title.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
+		sub.text = "Arena %d was overrun by mobs." % losing_arena_id
+		sub.add_theme_color_override("font_color", Color(0.8, 0.8, 0.5))
 	else:
-		title.text = "YOU WIN!"
-		title.add_theme_color_override("font_color", Color(0.2, 0.9, 0.3))
-		sub.text = "You kept your arena clear!"
-		sub.add_theme_color_override("font_color", Color(0.4, 0.8, 0.5))
+		var my_is_arena1: bool = _peer_to_arena.get(my_id) == $Arena1
+		var i_lost: bool = (losing_arena_id == 1 and my_is_arena1) \
+			or (losing_arena_id == 2 and not my_is_arena1)
+		if i_lost:
+			title.text = "YOU LOSE!"
+			title.add_theme_color_override("font_color", Color(0.9, 0.2, 0.2))
+			sub.text = "Your arena was overrun by mobs."
+			sub.add_theme_color_override("font_color", Color(0.75, 0.4, 0.4))
+		else:
+			title.text = "YOU WIN!"
+			title.add_theme_color_override("font_color", Color(0.2, 0.9, 0.3))
+			sub.text = "You kept your arena clear!"
+			sub.add_theme_color_override("font_color", Color(0.4, 0.8, 0.5))
 
 	var existing := vbox.find_child("GameOverScoreboard", false, false)
 	if existing:
@@ -537,7 +587,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if _leaving:
 		return
-	if _scoreboard_panel != null:
+	if _scoreboard_panel != null and _spectator_camera == null:
 		var want_visible := Input.is_action_pressed("scoreboard")
 		if want_visible != _scoreboard_panel.visible:
 			_scoreboard_panel.visible = want_visible

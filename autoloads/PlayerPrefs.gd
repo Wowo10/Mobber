@@ -11,3 +11,4 @@ var peer_teams: Dictionary = {}  # peer_id -> 0 (Arena1/Team1) or 1 (Arena2/Team
 var room_code: String = ""
 var player_name: String = ""
 var peer_names: Dictionary = {}  # peer_id -> String
+var peer_spectators: Array = []  # peer_ids of spectating peers

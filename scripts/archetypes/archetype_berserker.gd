@@ -111,7 +111,7 @@ func on_dash_end() -> void:
 	spawn_slam_local(_player.global_position, false, 20.0, 55.0)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
-		_player.rpc_spawn_ground_slam.rpc(_player.global_position)
+		_player.rpc_spawn_ground_slam.rpc(_player.global_position, 55.0)
 
 func on_skill1_client_predict() -> void:
 	set_rage(true)
