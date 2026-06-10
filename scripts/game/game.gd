@@ -120,9 +120,14 @@ func _on_server_disconnected() -> void:
 	_begin_host_migration()
 
 func _begin_host_migration() -> void:
+	if _peer_to_player.is_empty():
+		_scrub_multiplayer_hooks()
+		multiplayer.multiplayer_peer = null
+		_show_disconnect("Host disconnected. Returning to lobby...")
+		return
 	var my_old_id := multiplayer.get_unique_id()
-	var a1_count := $Arena1.get_mob_count()
-	var a2_count := $Arena2.get_mob_count()
+	var a1_count: int = $Arena1.get_mob_count()
+	var a2_count: int = $Arena2.get_mob_count()
 
 	# Disconnect tree signals to suppress SceneCacheInterface errors when the
 	# spawner stops on peer transition. MobContainer is intentionally NOT freed
@@ -189,10 +194,10 @@ func _begin_host_migration() -> void:
 	_push_hud_update()
 
 func _spread_gold(leaving_id: int) -> void:
-	var gold := _peer_money.get(leaving_id, 0)
+	var gold: int = _peer_money.get(leaving_id, 0)
 	if gold <= 0:
 		return
-	var leaving_arena := _peer_to_arena.get(leaving_id)
+	var leaving_arena: Node2D = _peer_to_arena.get(leaving_id)
 	if leaving_arena == null:
 		return
 	var teammates: Array = []
