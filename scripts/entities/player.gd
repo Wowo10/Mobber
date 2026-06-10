@@ -219,9 +219,10 @@ func _physics_process(delta: float) -> void:
 			else:
 				do_attack = Input.is_action_just_pressed("attack") and _archetype_handler.can_attack()
 				do_dash   = Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0
-			do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0 and skills_unlocked[0]
-			do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0 and skills_unlocked[1]
-			do_skill3 = Input.is_action_just_pressed("skill3") and skill3_cooldown <= 0.0 and skills_unlocked[2]
+			var _ctrl2 := Input.is_key_pressed(KEY_CTRL)
+			do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0 and skills_unlocked[0] and not _ctrl2
+			do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0 and skills_unlocked[1] and not _ctrl2
+			do_skill3 = Input.is_action_just_pressed("skill3") and skill3_cooldown <= 0.0 and skills_unlocked[2] and not _ctrl2
 		else:
 			direction = _received_direction
 			facing = _received_facing
