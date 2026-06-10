@@ -65,13 +65,13 @@ func _spawn_explosion_visual() -> void:
 	p.global_position = global_position
 	p.one_shot = true
 	p.explosiveness = 1.0
-	p.amount = 48
-	p.lifetime = 0.55
+	p.amount = 28
+	p.lifetime = 0.45
 	p.gravity = Vector2.ZERO
 	p.initial_velocity_min = 220.0
 	p.initial_velocity_max = 520.0
-	p.scale_amount_min = 5.0
-	p.scale_amount_max = 12.0
+	p.scale_amount_min = 2.5
+	p.scale_amount_max = 6.0
 	p.color = Color(1.0, 0.4, 0.05, 1.0)
 	ParticleUtils.polish(p)
 	p.emitting = true

@@ -162,13 +162,13 @@ func _spawn_mini_smash_visual(pos: Vector2) -> void:
 	var p := CPUParticles2D.new()
 	p.one_shot = true
 	p.explosiveness = 1.0
-	p.amount = 20
-	p.lifetime = 0.35
+	p.amount = 12
+	p.lifetime = 0.3
 	p.gravity = Vector2.ZERO
 	p.initial_velocity_min = 60.0
 	p.initial_velocity_max = 220.0
-	p.scale_amount_min = 3.0
-	p.scale_amount_max = 7.0
+	p.scale_amount_min = 1.5
+	p.scale_amount_max = 3.5
 	p.color = Color(1.0, 0.5, 0.1, 1.0)
 	ParticleUtils.polish(p)
 	p.emitting = true

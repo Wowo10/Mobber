@@ -115,15 +115,15 @@ func spawn_bash_visual(pos: Vector2, dir: Vector2) -> void:
 	p.global_position = pos + dir * _player.radius
 	p.one_shot = true
 	p.explosiveness = 0.9
-	p.amount = 28
-	p.lifetime = 0.35
+	p.amount = 16
+	p.lifetime = 0.3
 	p.direction = Vector2(dir.x, dir.y)
 	p.spread = 40.0
 	p.gravity = Vector2.ZERO
 	p.initial_velocity_min = 200.0
 	p.initial_velocity_max = 520.0
-	p.scale_amount_min = 3.0
-	p.scale_amount_max = 9.0
+	p.scale_amount_min = 1.5
+	p.scale_amount_max = 4.5
 	p.color = Color(0.88, 0.93, 1.0, 0.95)
 	ParticleUtils.polish(p)
 	p.emitting = true

@@ -28,13 +28,13 @@ func _spawn_burst() -> void:
 	var p := CPUParticles2D.new()
 	p.one_shot = true
 	p.explosiveness = 1.0
-	p.amount = 16
-	p.lifetime = 0.3
+	p.amount = 9
+	p.lifetime = 0.25
 	p.gravity = Vector2.ZERO
 	p.initial_velocity_min = 50.0
 	p.initial_velocity_max = 180.0
-	p.scale_amount_min = 2.0
-	p.scale_amount_max = 5.0
+	p.scale_amount_min = 1.0
+	p.scale_amount_max = 2.5
 	p.color = Color(0.6, 0.1, 0.9, 0.9)
 	ParticleUtils.polish(p)
 	p.emitting = true

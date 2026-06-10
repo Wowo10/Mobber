@@ -189,13 +189,13 @@ func _spawn_blink_burst(pos: Vector2) -> void:
 	p.global_position = pos
 	p.one_shot = true
 	p.explosiveness = 1.0
-	p.amount = 18
-	p.lifetime = 0.3
+	p.amount = 10
+	p.lifetime = 0.25
 	p.gravity = Vector2.ZERO
 	p.initial_velocity_min = 60.0
 	p.initial_velocity_max = 220.0
-	p.scale_amount_min = 2.0
-	p.scale_amount_max = 5.0
+	p.scale_amount_min = 1.0
+	p.scale_amount_max = 2.5
 	p.color = Color(0.75, 0.2, 1.0, 0.85)
 	ParticleUtils.polish(p)
 	p.emitting = true

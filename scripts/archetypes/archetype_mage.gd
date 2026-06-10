@@ -68,14 +68,14 @@ func spawn_pull_visual(pos: Vector2) -> void:
 	p.global_position = pos
 	p.one_shot = true
 	p.explosiveness = 1.0
-	p.amount = 48
-	p.lifetime = 0.5
+	p.amount = 28
+	p.lifetime = 0.4
 	p.spread = 180.0
 	p.gravity = Vector2.ZERO
 	p.initial_velocity_min = 100.0
 	p.initial_velocity_max = 380.0
-	p.scale_amount_min = 3.0
-	p.scale_amount_max = 9.0
+	p.scale_amount_min = 1.5
+	p.scale_amount_max = 4.5
 	p.color = Color(0.75, 0.2, 1.0, 0.9)
 	ParticleUtils.polish(p)
 	p.emitting = true

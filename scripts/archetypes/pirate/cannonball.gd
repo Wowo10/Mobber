@@ -56,13 +56,13 @@ func _spawn_impact() -> void:
 	p.global_position = global_position
 	p.one_shot = true
 	p.explosiveness = 1.0
-	p.amount = 20
-	p.lifetime = 0.4
+	p.amount = 12
+	p.lifetime = 0.35
 	p.gravity = Vector2.ZERO
 	p.initial_velocity_min = 120.0
 	p.initial_velocity_max = 300.0
-	p.scale_amount_min = 3.0
-	p.scale_amount_max = 8.0
+	p.scale_amount_min = 1.5
+	p.scale_amount_max = 4.0
 	p.color = Color(1.0, 0.55, 0.1, 1.0)
 	ParticleUtils.polish(p)
 	p.emitting = true

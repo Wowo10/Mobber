@@ -114,16 +114,16 @@ func _apply_archetype() -> void:
 
 func _setup_particles() -> void:
 	var p := $DashParticles
-	p.amount = 24
-	p.lifetime = 0.35
+	p.amount = 14
+	p.lifetime = 0.3
 	p.one_shot = false
 	p.explosiveness = 0.3
 	p.spread = 40.0
 	p.gravity = Vector2.ZERO
 	p.initial_velocity_min = 80.0
 	p.initial_velocity_max = 200.0
-	p.scale_amount_min = 3.0
-	p.scale_amount_max = 7.0
+	p.scale_amount_min = 1.5
+	p.scale_amount_max = 3.5
 	p.color = Color(0.55, 0.50, 1.0, 0.75)
 	ParticleUtils.polish(p)
 

@@ -37,13 +37,13 @@ func _spawn_particles() -> void:
 	var p := CPUParticles2D.new()
 	p.one_shot = true
 	p.explosiveness = 1.0
-	p.amount = 36
-	p.lifetime = 0.5
+	p.amount = 20
+	p.lifetime = 0.4
 	p.gravity = Vector2.ZERO
 	p.initial_velocity_min = 100.0
 	p.initial_velocity_max = 350.0
-	p.scale_amount_min = 4.0
-	p.scale_amount_max = 10.0
+	p.scale_amount_min = 2.0
+	p.scale_amount_max = 5.0
 	p.color = Color(0.9, 0.3, 0.05, 1.0)
 	ParticleUtils.polish(p)
 	p.emitting = true
