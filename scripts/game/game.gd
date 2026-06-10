@@ -33,6 +33,7 @@ var _peer_money_earned: Dictionary = {}
 var _peer_mobs_sent: Dictionary = {}
 var _peer_debuffs_applied: Dictionary = {}
 var _peer_stats_cache: Dictionary = {}
+var _ghost_players: Array = []  # snapshots of disconnected peers kept for scoreboard display
 var _scoreboard_panel: Control = null
 var _scoreboard_col1: VBoxContainer = null
 var _scoreboard_col2: VBoxContainer = null
@@ -153,6 +154,7 @@ func _begin_host_migration() -> void:
 
 	# Spread the ex-host's gold to their teammates before removing their data.
 	_spread_gold(1)
+	_snapshot_disconnected_peer(1)
 
 	# Remove the ex-host's player node. In offline mode get_unique_id() == 1,
 	# so any node still carrying authority 1 would be wrongly controlled by us.
@@ -184,14 +186,36 @@ func _begin_host_migration() -> void:
 	if our_player and is_instance_valid(our_player):
 		our_player.set_multiplayer_authority(1)
 
+	# If the opponent arena is now empty, the local player won — show the end screen.
+	var our_arena: Node2D = _peer_to_arena.get(1)
+	var opponent_arena: Node2D = $Arena2 if our_arena == $Arena1 else $Arena1
+	if _count_players_in_arena(opponent_arena) == 0:
+		_rpc_game_over(1 if opponent_arena == $Arena1 else 2)
+		return
+
 	# Spawner cleared the mob nodes; re-spawn to match the pre-disconnect counts.
 	for i in a1_count:
 		$Arena1.spawn_mob()
 	for i in a2_count:
 		$Arena2.spawn_mob()
 
-	_rpc_show_notice("Opponent disconnected. Continuing solo.")
 	_push_hud_update()
+
+func _snapshot_disconnected_peer(id: int) -> void:
+	var arena: Node2D = _peer_to_arena.get(id)
+	if arena == null:
+		return
+	_ghost_players.append({
+		"name":     PlayerPrefs.peer_names.get(id, "Player"),
+		"arch_id":  _peer_to_archetype.get(id, 0),
+		"arena":    arena,
+		"stats": {
+			"kills":     _peer_kills.get(id, 0),
+			"earned":    _peer_money_earned.get(id, 0),
+			"mobs_sent": _peer_mobs_sent.get(id, 0),
+			"debuffs":   _peer_debuffs_applied.get(id, 0),
+		},
+	})
 
 func _spread_gold(leaving_id: int) -> void:
 	var gold: int = _peer_money.get(leaving_id, 0)
@@ -221,6 +245,7 @@ func _on_peer_disconnected(id: int) -> void:
 		return
 
 	_spread_gold(id)
+	_snapshot_disconnected_peer(id)
 	if _peer_to_player.has(id):
 		_peer_to_player[id].queue_free()
 	_peer_to_player.erase(id)
@@ -1223,6 +1248,16 @@ func _build_game_over_scoreboard(my_id: int) -> Control:
 		var arch_name: String = Constants.ARCHETYPE_NAMES[arch_id] \
 			if arch_id >= 0 and arch_id < Constants.ARCHETYPE_NAMES.size() else "?"
 		_add_scoreboard_player_row(col, pname, arch_name, stats, pid == my_id)
+	for ghost in _ghost_players:
+		var in_my_arena: bool = my_arena != null and ghost["arena"] == my_arena
+		var col := col1 if in_my_arena else col2
+		var pname: String = ghost["name"]
+		if pname.is_empty():
+			pname = "Player"
+		var arch_id: int = ghost["arch_id"]
+		var arch_name: String = Constants.ARCHETYPE_NAMES[arch_id] \
+			if arch_id >= 0 and arch_id < Constants.ARCHETYPE_NAMES.size() else "?"
+		_add_scoreboard_player_row(col, pname + " (left)", arch_name, ghost["stats"], false)
 
 	var sep_bot := HSeparator.new()
 	container.add_child(sep_bot)
@@ -1254,6 +1289,16 @@ func _refresh_scoreboard() -> void:
 		var arch_name: String = Constants.ARCHETYPE_NAMES[arch_id] \
 			if arch_id >= 0 and arch_id < Constants.ARCHETYPE_NAMES.size() else "?"
 		_add_scoreboard_player_row(col, pname, arch_name, stats, pid == my_id)
+	for ghost in _ghost_players:
+		var in_my_arena: bool = my_arena != null and ghost["arena"] == my_arena
+		var col := _scoreboard_col1 if in_my_arena else _scoreboard_col2
+		var pname: String = ghost["name"]
+		if pname.is_empty():
+			pname = "Player"
+		var arch_id: int = ghost["arch_id"]
+		var arch_name: String = Constants.ARCHETYPE_NAMES[arch_id] \
+			if arch_id >= 0 and arch_id < Constants.ARCHETYPE_NAMES.size() else "?"
+		_add_scoreboard_player_row(col, pname + " (left)", arch_name, ghost["stats"], false)
 
 func _add_scoreboard_column_header(col: VBoxContainer, label_text: String, col_color: Color) -> void:
 	var lbl := Label.new()
