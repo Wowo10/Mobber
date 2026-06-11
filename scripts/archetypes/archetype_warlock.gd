@@ -165,6 +165,16 @@ func spawn_bolt_local(pos: Vector2, dir: Vector2, visual_only: bool) -> void:
 	_player.get_parent().add_child(bolt)
 	bolt.global_position = pos
 
+func spawn_wisp_bolt_visual(pos: Vector2, dir: Vector2) -> void:
+	var bolt := BOLT_SCENE.instantiate()
+	bolt.set("direction", dir)
+	bolt.set("player_ref", _player)
+	bolt.set("visual_only", true)
+	bolt.set("color_outer", Color(0.1, 0.55, 0.85, 0.8))
+	bolt.set("color_inner", Color(0.75, 0.97, 1.0))
+	_player.get_parent().add_child(bolt)
+	bolt.global_position = pos
+
 func spawn_drain_local(visual_only: bool) -> void:
 	var drain := DRAIN_SCENE.instantiate()
 	drain.player_ref = _player

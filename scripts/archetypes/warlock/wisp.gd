@@ -1,5 +1,6 @@
 extends Node2D
 
+const BOLT_SCENE = preload("res://scenes/archetypes/warlock/warlock_bolt.tscn")
 const SHOOT_INTERVAL = 2.5
 const SEARCH_RADIUS = 300.0
 const FOLLOW_SPEED = 4.0
@@ -52,16 +53,15 @@ func _try_shoot() -> void:
 	_spawn_bolt(global_position, dir)
 	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
-		player_ref.rpc_spawn_warlock_bolt.rpc(global_position, dir)
+		player_ref.rpc_spawn_wisp_bolt.rpc(global_position, dir)
 
 func _spawn_bolt(pos: Vector2, dir: Vector2) -> void:
-	var bolt_scene := load("res://scenes/archetypes/warlock/warlock_bolt.tscn")
-	var bolt: Node = bolt_scene.instantiate()
-	bolt.direction = dir
-	bolt.player_ref = player_ref
-	bolt.visual_only = false
-	bolt.color_outer = Color(0.1, 0.55, 0.85, 0.8)
-	bolt.color_inner = Color(0.75, 0.97, 1.0)
+	var bolt := BOLT_SCENE.instantiate()
+	bolt.set("direction", dir)
+	bolt.set("player_ref", player_ref)
+	bolt.set("visual_only", false)
+	bolt.set("color_outer", Color(0.1, 0.55, 0.85, 0.8))
+	bolt.set("color_inner", Color(0.75, 0.97, 1.0))
 	get_parent().add_child(bolt)
 	bolt.global_position = pos
 

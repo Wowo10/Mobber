@@ -16,6 +16,7 @@ var _cd_max: float = 1.0
 var _passive_counter: int = -1  # -1 = not a passive
 var locked: bool = false
 var unlock_available: bool = false
+var disabled: bool = false
 
 func set_cooldown(remaining: float, max_cd: float) -> void:
 	_cd_remaining = remaining
@@ -89,6 +90,14 @@ func _draw() -> void:
 			draw_rect(Rect2(m, m, s - m * 2, (s - m * 2) * frac), Color(0.0, 0.0, 0.0, 0.75))
 			draw_string(font, Vector2(s * 0.5 - 8, s * 0.5 + 6), "%.1f" % _cd_remaining,
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+
+	if disabled:
+		draw_rect(Rect2(0, 0, s, s), Color(0.7, 0.1, 0.1, 0.45))
+		var c := Vector2(s * 0.5, s * 0.5)
+		var r := s * 0.28
+		draw_arc(c, r, 0, TAU, 32, Color(0.95, 0.2, 0.2, 0.95), 2.5)
+		var off := r * 0.707
+		draw_line(c + Vector2(-off, -off), c + Vector2(off, off), Color(0.95, 0.2, 0.2, 0.95), 2.5)
 
 	draw_string(font, Vector2(4, s - 5), key_text,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.82, 0.82, 0.82))

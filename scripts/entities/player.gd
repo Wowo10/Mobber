@@ -253,6 +253,12 @@ func _physics_process(delta: float) -> void:
 		do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0 and skills_unlocked[0] and not _ctrl
 		do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0 and skills_unlocked[1] and not _ctrl
 		do_skill3 = Input.is_action_just_pressed("skill3") and skill3_cooldown <= 0.0 and skills_unlocked[2] and not _ctrl
+		if debuff_no_dash_timer > 0.0:
+			do_dash = false
+		if debuff_silence_timer > 0.0:
+			do_skill1 = false
+			do_skill2 = false
+			do_skill3 = false
 		_rpc_send_direction.rpc_id(1, direction)
 		_rpc_send_facing.rpc_id(1, facing)
 		var action_mask := 0
@@ -719,6 +725,15 @@ func rpc_spawn_warlock_bolt(pos: Vector2, dir: Vector2) -> void:
 	if is_multiplayer_authority():
 		return
 	(_archetype_handler as ArchetypeWarlock).spawn_bolt_local(pos, dir, true)
+
+@rpc("any_peer", "reliable")
+func rpc_spawn_wisp_bolt(pos: Vector2, dir: Vector2) -> void:
+	var _s := multiplayer.get_remote_sender_id()
+	if _s != 0 and _s != 1:
+		return
+	if is_multiplayer_authority():
+		return
+	(_archetype_handler as ArchetypeWarlock).spawn_wisp_bolt_visual(pos, dir)
 
 @rpc("any_peer", "reliable")
 func rpc_spawn_drain_life() -> void:

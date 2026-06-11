@@ -25,7 +25,7 @@ func _on_sword_hit(mob: Node, _damage: float) -> void:
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
 		_player.rpc_berserker_set_hit_count.rpc(_hit_count)
-	if _hit_count % get_mini_smash_threshold() == 0:
+	if _player.skills_unlocked[2] and _hit_count % get_mini_smash_threshold() == 0:
 		spawn_mini_smash_local(mob.global_position, false)
 		if networked:
 			_player.rpc_spawn_berserker_mini_smash.rpc(mob.global_position)

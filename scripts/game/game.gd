@@ -246,6 +246,20 @@ func _on_peer_disconnected(id: int) -> void:
 
 	_spread_gold(id)
 	_snapshot_disconnected_peer(id)
+	if _networked:
+		var arena_idx := 1 if _peer_to_arena.get(id) == $Arena1 else 2
+		_rpc_notify_player_left.rpc(
+			id,
+			PlayerPrefs.peer_names.get(id, "Player"),
+			_peer_to_archetype.get(id, 0),
+			arena_idx,
+			{
+				"kills":     _peer_kills.get(id, 0),
+				"earned":    _peer_money_earned.get(id, 0),
+				"mobs_sent": _peer_mobs_sent.get(id, 0),
+				"debuffs":   _peer_debuffs_applied.get(id, 0),
+			}
+		)
 	if _peer_to_player.has(id):
 		_peer_to_player[id].queue_free()
 	_peer_to_player.erase(id)
@@ -279,6 +293,20 @@ func _rpc_show_notice(msg: String) -> void:
 	await get_tree().create_timer(3.0).timeout
 	if is_instance_valid(lbl):
 		lbl.queue_free()
+
+@rpc("authority", "reliable")
+func _rpc_notify_player_left(peer_id: int, ghost_name: String, arch_id: int, arena_idx: int, stats: Dictionary) -> void:
+	if _peer_to_player.has(peer_id):
+		_peer_to_player[peer_id].queue_free()
+	_peer_to_player.erase(peer_id)
+	var arena: Node2D = $Arena1 if arena_idx == 1 else $Arena2
+	_ghost_players.append({
+		"name":    ghost_name,
+		"arch_id": arch_id,
+		"arena":   arena,
+		"stats":   stats,
+	})
+	_peer_to_arena.erase(peer_id)
 
 @rpc("any_peer", "unreliable")
 func _rpc_ping_request() -> void:
@@ -724,12 +752,29 @@ func _process(delta: float) -> void:
 	if dyn_icon:
 		attack_node.icon = dyn_icon
 		attack_node.icon_color = p_arch.get_attack_color()
-	bar.get_node("DashSlot").set_cooldown(player.dash_cooldown, Constants.PLAYER_DASH_COOLDOWN)
-	bar.get_node("Skill1Slot").set_cooldown(player.skill1_cooldown, player.skill1_max_cooldown)
-	bar.get_node("Skill2Slot").set_cooldown(player.skill2_cooldown, player.skill2_max_cooldown)
+	var dash_slot = bar.get_node("DashSlot")
+	dash_slot.set_cooldown(player.dash_cooldown, Constants.PLAYER_DASH_COOLDOWN)
+	var no_dash_active: bool = player.debuff_no_dash_timer > 0.0
+	if dash_slot.debuffed != no_dash_active:
+		dash_slot.debuffed = no_dash_active
+		dash_slot.queue_redraw()
+	var silence_active: bool = player.debuff_silence_timer > 0.0
+	var s1_node = bar.get_node("Skill1Slot")
+	var s2_node = bar.get_node("Skill2Slot")
+	s1_node.set_cooldown(player.skill1_cooldown, player.skill1_max_cooldown)
+	s2_node.set_cooldown(player.skill2_cooldown, player.skill2_max_cooldown)
+	if s1_node.debuffed != silence_active:
+		s1_node.debuffed = silence_active
+		s1_node.queue_redraw()
+	if s2_node.debuffed != silence_active:
+		s2_node.debuffed = silence_active
+		s2_node.queue_redraw()
 	var s3_node = bar.get_node("Skill3Slot")
 	s3_node.set_cooldown(player.skill3_cooldown, player.skill3_max_cooldown)
 	s3_node.set_passive_counter(player.get_passive_counter())
+	if s3_node.debuffed != silence_active:
+		s3_node.debuffed = silence_active
+		s3_node.queue_redraw()
 	if _networked and not multiplayer.is_server() and _ping_label != null:
 		_ping_timer -= delta
 		if _ping_timer <= 0.0:
