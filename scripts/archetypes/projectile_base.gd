@@ -1,4 +1,5 @@
 extends Area2D
+class_name ProjectileBase
 
 var direction := Vector2.RIGHT
 var player_ref: Node = null
@@ -43,3 +44,20 @@ func _check_hit(from: Vector2) -> void:
 
 func _on_hit(_body: Node2D) -> void:
 	pass
+
+func _add_trail(color: Color, scale_min: float = 0.3, scale_max: float = 0.8, amount: int = 10, lifetime: float = 0.20) -> void:
+	var p := CPUParticles2D.new()
+	p.emitting = true
+	p.one_shot = false
+	p.amount = amount
+	p.lifetime = lifetime
+	p.explosiveness = 0.0
+	p.spread = 180.0
+	p.initial_velocity_min = 5.0
+	p.initial_velocity_max = 20.0
+	p.gravity = Vector2.ZERO
+	p.scale_amount_min = scale_min
+	p.scale_amount_max = scale_max
+	p.color = color
+	ParticleUtils.polish(p)
+	add_child(p)

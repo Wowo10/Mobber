@@ -10,6 +10,7 @@ var mega_mode := false
 
 func _ready() -> void:
 	$SfxFire.play()
+	_add_trail(Color(0.1, 0.85, 1.0, 0.75), 0.15, 0.45, 10, 0.13)
 
 func _process(_delta: float) -> void:
 	queue_redraw()

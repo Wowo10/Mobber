@@ -11,6 +11,7 @@ var _target: Node2D = null
 
 func _ready() -> void:
 	$SfxFire.play()
+	_add_trail(Color(1.0, 0.55, 0.1, 0.75), 0.2, 0.55, 10, 0.20)
 
 func _process(_delta: float) -> void:
 	queue_redraw()

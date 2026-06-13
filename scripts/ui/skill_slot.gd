@@ -87,7 +87,17 @@ func _draw() -> void:
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1.0, 0.75, 0.3))
 		elif available and _cd_max > 0.0 and _cd_remaining > 0.0:
 			var frac := clampf(_cd_remaining / _cd_max, 0.0, 1.0)
-			draw_rect(Rect2(m, m, s - m * 2, (s - m * 2) * frac), Color(0.0, 0.0, 0.0, 0.75))
+			var center := Vector2(s * 0.5, s * 0.5)
+			var r := s * 0.5 - 1.0
+			var start_a := -PI * 0.5
+			var sweep := frac * TAU
+			var segs: int = max(3, int(sweep / (PI / 12.0)))
+			var pts := PackedVector2Array()
+			pts.append(center)
+			for i in range(segs + 1):
+				var a := start_a + float(i) / float(segs) * sweep
+				pts.append(center + Vector2(cos(a), sin(a)) * r)
+			draw_colored_polygon(pts, Color(0.0, 0.0, 0.0, 0.72))
 			draw_string(font, Vector2(s * 0.5 - 8, s * 0.5 + 6), "%.1f" % _cd_remaining,
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
 

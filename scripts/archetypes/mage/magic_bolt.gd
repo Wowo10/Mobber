@@ -7,6 +7,7 @@ const KNOCKBACK = 3000.0
 
 func _ready() -> void:
 	$SfxFire.play()
+	_add_trail(Color(0.8, 0.3, 1.0, 0.75), 0.2, 0.6, 10, 0.18)
 
 func _process(_delta: float) -> void:
 	queue_redraw()

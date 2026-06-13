@@ -14,6 +14,7 @@ var _current_speed := SPEED
 
 func _ready() -> void:
 	$SfxFire.play()
+	_add_trail(Color(1.0, 0.45, 0.08, 0.85), 0.4, 1.1, 14, 0.22)
 
 func _process(_delta: float) -> void:
 	queue_redraw()

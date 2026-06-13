@@ -10,6 +10,7 @@ var color_inner := Color(0.3, 0.4, 1.0)
 
 func _ready() -> void:
 	$SfxFire.play()
+	_add_trail(Color(0.3, 0.4, 1.0, 0.75), 0.2, 0.6, 10, 0.18)
 
 func _process(_delta: float) -> void:
 	queue_redraw()
