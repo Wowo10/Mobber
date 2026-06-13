@@ -50,7 +50,7 @@ func _apply_damage() -> void:
 	rect.size = Vector2(RAY_LENGTH, w)
 	query.shape = rect
 	query.transform = Transform2D(facing.angle(), global_position + center)
-	query.collision_mask = 1
+	query.collision_mask = 1 | Constants.MOB_COLLISION_LAYER
 	var dmg := DAMAGE_PER_TICK * level_mult * (2.0 if thick else 1.0)
 	for hit in get_world_2d().direct_space_state.intersect_shape(query, 16):
 		var body = hit["collider"]

@@ -24,6 +24,7 @@ const SWORD_WIDTH = 8.0
 const SWORD_SWING_DURATION = 0.25
 const SWORD_ARC_HALF = 70.0
 
+const MOB_COLLISION_LAYER = 4     # physics layer for mob bodies — player mask=1 excludes this
 const MOB_PUSH_FORCE = 80.0       # gentle contact push — friction wins quickly once player passes
 const MOB_KNOCKBACK = 5000.0
 const MOB_FRICTION = 3000.0      # higher = faster stop after knockback

@@ -8,6 +8,7 @@ var _anim_t := 0.0
 
 func _ready() -> void:
 	monitoring = not visual_only
+	collision_mask = 1 | Constants.MOB_COLLISION_LAYER
 	body_entered.connect(_on_body_entered)
 
 func _on_body_entered(body: Node2D) -> void:

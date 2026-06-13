@@ -18,6 +18,7 @@ func _ready() -> void:
 	_effective_radius = RADIUS * (1.0 + 0.25 * skill_level)
 	_effective_damage = DAMAGE_PER_TICK * (1.0 + 0.2 * skill_level)
 	monitoring = true
+	collision_mask = 1 | Constants.MOB_COLLISION_LAYER
 	($CollisionShape2D.shape as CircleShape2D).radius = _effective_radius
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)

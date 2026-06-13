@@ -69,7 +69,7 @@ func _apply_explosion_damage() -> void:
 	circle.radius = radius
 	query.shape = circle
 	query.transform = Transform2D(0.0, global_position)
-	query.collision_mask = 1
+	query.collision_mask = 1 | Constants.MOB_COLLISION_LAYER
 	for hit in get_world_2d().direct_space_state.intersect_shape(query, 16):
 		var body = hit["collider"]
 		if body.has_method("take_damage"):

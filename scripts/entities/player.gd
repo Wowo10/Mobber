@@ -585,7 +585,7 @@ func _push_mobs() -> void:
 	circle.radius = radius + Constants.MOB_RADIUS
 	query.shape = circle
 	query.transform = global_transform
-	query.collision_mask = 1
+	query.collision_mask = Constants.MOB_COLLISION_LAYER
 	query.exclude = [get_rid()]
 	for hit in get_world_2d().direct_space_state.intersect_shape(query, 16):
 		var body: Node2D = hit["collider"]

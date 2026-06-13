@@ -101,7 +101,7 @@ func _do_bash(pos: Vector2, dir: Vector2) -> void:
 	box.size = Vector2(BASH_RANGE, BASH_HALF_WIDTH * 2.0)
 	query.shape = box
 	query.transform = Transform2D(dir.angle(), pos + dir * (_player.radius + BASH_RANGE * 0.5))
-	query.collision_mask = 1
+	query.collision_mask = 1 | Constants.MOB_COLLISION_LAYER
 	for hit in _player.get_world_2d().direct_space_state.intersect_shape(query, 16):
 		var body = hit["collider"]
 		if body.has_method("take_damage"):

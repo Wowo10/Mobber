@@ -145,7 +145,7 @@ func spawn_mini_smash_local(pos: Vector2, visual_only: bool) -> void:
 		circle.radius = 80.0
 		query.shape = circle
 		query.transform = Transform2D(0.0, pos)
-		query.collision_mask = 1
+		query.collision_mask = 1 | Constants.MOB_COLLISION_LAYER
 		var sword = _player.get_node("Sword")
 		var smash_damage: float = (sword.base_damage + sword.damage_bonus) * 2.0
 		for hit in _player.get_world_2d().direct_space_state.intersect_shape(query, 8):

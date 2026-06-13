@@ -21,6 +21,7 @@ var base_swing_duration: float = Constants.SWORD_SWING_DURATION
 func _ready() -> void:
 	monitoring = false
 	visible = false
+	collision_mask = 1 | Constants.MOB_COLLISION_LAYER
 	body_entered.connect(_on_body_entered)
 
 func _process(delta: float) -> void:

@@ -175,7 +175,7 @@ func _begin_host_migration() -> void:
 				_player_speed_levels, _player_damage_levels, _player_sword_size_levels,
 				_player_attack_speed_levels, _player_skill1_levels, _player_skill2_levels,
 				_player_skill3_levels, _player_skills_unlocked, _player_unlocks_pending,
-				_player_unlock_milestone]:
+				_player_unlock_milestone, PlayerPrefs.peer_names]:
 			if dict.has(my_old_id):
 				dict[1] = dict[my_old_id]
 				dict.erase(my_old_id)

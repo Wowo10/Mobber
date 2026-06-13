@@ -50,7 +50,7 @@ func use_dash() -> bool:
 		circle.radius = PULL_RADIUS
 		query.shape = circle
 		query.transform = Transform2D(0.0, _player.global_position)
-		query.collision_mask = 1
+		query.collision_mask = 1 | Constants.MOB_COLLISION_LAYER
 		for hit in _player.get_world_2d().direct_space_state.intersect_shape(query, 32):
 			var body = hit["collider"]
 			if body.has_method("apply_burst"):

@@ -39,7 +39,7 @@ func _detonate() -> void:
 	circle.radius = radius
 	query.shape = circle
 	query.transform = Transform2D(0.0, global_position)
-	query.collision_mask = 1
+	query.collision_mask = 1 | Constants.MOB_COLLISION_LAYER
 	var hits := get_world_2d().direct_space_state.intersect_shape(query, 32)
 	var mobs: Array = []
 	for h in hits:
