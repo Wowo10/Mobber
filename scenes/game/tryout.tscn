@@ -1,0 +1,87 @@
+[gd_scene load_steps=4 format=3 uid="uid://tryout001tscn"]
+
+[ext_resource type="Script" uid="uid://tryout1gd001" path="res://scripts/game/tryout.gd" id="1_tryout"]
+[ext_resource type="PackedScene" uid="uid://rena001tscn" path="res://scenes/game/arena.tscn" id="2_arena"]
+[ext_resource type="Script" uid="uid://dldp2677k28n2" path="res://scripts/ui/skill_slot.gd" id="3_skill"]
+
+[node name="Game" type="Node"]
+script = ExtResource("1_tryout")
+
+[node name="Arena" parent="." instance=ExtResource("2_arena")]
+
+[node name="PlayerContainer" type="Node2D" parent="."]
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="ReturnButton" type="Button" parent="HUD"]
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 160.0
+offset_bottom = 46.0
+text = "Return to Lobby"
+
+[node name="MobCountLabel" type="Label" parent="HUD"]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_top = 0.0
+anchor_right = 0.5
+anchor_bottom = 0.0
+offset_left = -60.0
+offset_top = 12.0
+offset_right = 60.0
+offset_bottom = 36.0
+theme_override_font_sizes/font_size = 16
+text = "Mobs: 0"
+horizontal_alignment = 1
+
+[node name="SkillBar" type="HBoxContainer" parent="HUD"]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -156.0
+offset_top = -68.0
+offset_right = 156.0
+offset_bottom = -12.0
+theme_override_constants/separation = 8
+
+[node name="AttackSlot" type="Control" parent="HUD/SkillBar"]
+custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+script = ExtResource("3_skill")
+
+[node name="DashSlot" type="Control" parent="HUD/SkillBar"]
+custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+script = ExtResource("3_skill")
+
+[node name="Skill1Slot" type="Control" parent="HUD/SkillBar"]
+custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+script = ExtResource("3_skill")
+
+[node name="Skill2Slot" type="Control" parent="HUD/SkillBar"]
+custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+script = ExtResource("3_skill")
+
+[node name="Skill3Slot" type="Control" parent="HUD/SkillBar"]
+custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+script = ExtResource("3_skill")
+
+[node name="DebuffBar" type="HBoxContainer" parent="HUD"]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -130.0
+offset_top = -132.0
+offset_right = 130.0
+offset_bottom = -80.0
+grow_horizontal = 2
+theme_override_constants/separation = 6
+
+[connection signal="pressed" from="HUD/ReturnButton" to="." method="_on_return_pressed"]

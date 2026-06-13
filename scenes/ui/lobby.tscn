@@ -18,9 +18,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -140.0
-offset_top = -120.0
+offset_top = -165.0
 offset_right = 140.0
-offset_bottom = 120.0
+offset_bottom = 165.0
 theme_override_constants/separation = 10
 
 [node name="Title" type="Label" parent="VBox"]
@@ -69,7 +69,21 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 12
 horizontal_alignment = 1
 
+[node name="HSepTryout" type="HSeparator" parent="VBox"]
+layout_mode = 2
+
+[node name="ArchetypeSelect" type="OptionButton" parent="VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+
+[node name="TryArchetypeButton" type="Button" parent="VBox"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "Try Archetype (Solo)"
+
 [connection signal="text_changed" from="VBox/NameInput" to="." method="_on_name_changed"]
 [connection signal="pressed" from="VBox/HostButton" to="." method="_on_host_pressed"]
 [connection signal="pressed" from="VBox/JoinButton" to="." method="_on_join_pressed"]
 [connection signal="pressed" from="VBox/CodeDisplay" to="." method="_on_code_display_pressed"]
+[connection signal="pressed" from="VBox/TryArchetypeButton" to="." method="_on_try_archetype_pressed"]

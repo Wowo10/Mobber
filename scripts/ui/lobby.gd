@@ -2,6 +2,7 @@ extends CanvasLayer
 
 const GAME_SCENE = "res://scenes/game/game.tscn"
 const GAME_ROOM_SCENE = "res://scenes/ui/game_room.tscn"
+const TRYOUT_SCENE = "res://scenes/game/tryout.tscn"
 
 func _ready() -> void:
 	multiplayer.multiplayer_peer = null
@@ -20,6 +21,14 @@ func _ready() -> void:
 	scheme_sel.item_selected.connect(func(_i: int) -> void:
 		PlayerPrefs.control_scheme = scheme_sel.get_selected_id()
 		_save_scheme(PlayerPrefs.control_scheme))
+
+	var arch_sel := %ArchetypeSelect
+	for name in Constants.ARCHETYPE_NAMES:
+		arch_sel.add_item(name)
+	arch_sel.select(PlayerPrefs.archetype)
+	arch_sel.item_selected.connect(func(idx: int) -> void:
+		PlayerPrefs.archetype = idx
+		_save_archetype(idx))
 
 	WebRTCSignaling.lobby_created.connect(_on_lobby_created)
 	WebRTCSignaling.game_ready.connect(_on_game_ready)
@@ -58,6 +67,15 @@ func _load_scheme() -> int:
 	if cfg.load("user://prefs.cfg") == OK:
 		return cfg.get_value("player", "control_scheme", 0)
 	return 0
+
+func _save_archetype(arch: int) -> void:
+	if OS.get_name() == "Web":
+		JavaScriptBridge.eval("localStorage.setItem('mobber_arch','%d')" % arch)
+	else:
+		var cfg := ConfigFile.new()
+		cfg.load("user://prefs.cfg")
+		cfg.set_value("player", "archetype", arch)
+		cfg.save("user://prefs.cfg")
 
 func _save_scheme(scheme: int) -> void:
 	if OS.get_name() == "Web":
@@ -104,4 +122,7 @@ func _on_game_ready() -> void:
 
 func _on_signaling_error(msg: String) -> void:
 	$VBox/StatusLabel.text = msg
+
+func _on_try_archetype_pressed() -> void:
+	get_tree().change_scene_to_file(TRYOUT_SCENE)
 
