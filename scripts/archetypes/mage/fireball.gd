@@ -1,6 +1,7 @@
 extends "res://scripts/archetypes/projectile_base.gd"
 
-const SPEED = 700.0
+const SPEED = 500.0
+const ACCELERATION = 900.0
 const RANGE = 900.0
 const EXPLOSION_RADIUS = 120.0
 const DAMAGE = 60.0
@@ -8,6 +9,8 @@ const KNOCKBACK = 8000.0
 
 var skill_level: int = 0
 var _exploded := false
+var _returning := false
+var _current_speed := SPEED
 
 func _ready() -> void:
 	$SfxFire.play()
@@ -17,11 +20,24 @@ func _process(_delta: float) -> void:
 
 func _physics_process(delta: float) -> void:
 	var prev_pos := global_position
-	var step := direction * SPEED * delta
+	if _returning:
+		_current_speed += ACCELERATION * delta
+	if _returning:
+		if player_ref != null and is_instance_valid(player_ref):
+			direction = (player_ref.global_position - global_position).normalized()
+			var ret_step := direction * _current_speed * delta
+			global_position += ret_step
+			_check_hit(prev_pos)
+			if global_position.distance_to(player_ref.global_position) < player_ref.radius + 24.0:
+				queue_free()
+		else:
+			queue_free()
+		return
+	var step := direction * _current_speed * delta
 	global_position += step
 	_distance_traveled += step.length()
 	if _distance_traveled >= RANGE:
-		_explode()
+		_returning = true
 		return
 	_check_hit(prev_pos)
 
@@ -79,5 +95,5 @@ func _spawn_explosion_visual() -> void:
 	get_tree().create_timer(p.lifetime + 0.2).timeout.connect(p.queue_free)
 
 func _draw() -> void:
-	draw_circle(Vector2.ZERO, 16.0, Color(1.0, 0.45, 0.1))
-	draw_circle(Vector2.ZERO, 9.0, Color(1.0, 0.85, 0.3))
+	draw_circle(Vector2.ZERO, 22.0, Color(1.0, 0.45, 0.1))
+	draw_circle(Vector2.ZERO, 13.0, Color(1.0, 0.85, 0.3))

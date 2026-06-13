@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://dvvvnfms0d20o" path="res://scripts/archetypes/mage/fireball.gd" id="1_fireball"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_fireball"]
-radius = 16.0
+radius = 22.0
 
 [node name="Fireball" type="Area2D"]
 collision_mask = 1
