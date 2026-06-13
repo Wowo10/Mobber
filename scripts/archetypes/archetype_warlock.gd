@@ -100,7 +100,10 @@ func use_dash() -> bool:
 				_player.rpc_place_warlock_portal.rpc(_portal_pos)
 		else:
 			var prev_pos: Vector2 = _player.global_position
+			var jump_dir: Vector2 = ((_portal_pos - prev_pos).normalized() if _portal_pos != prev_pos else Vector2.RIGHT)
+			_spawn_teleport_burst(prev_pos, jump_dir)
 			_player.position = _portal_pos
+			_spawn_teleport_burst(_player.global_position, -jump_dir)
 			if is_instance_valid(_portal_node):
 				_portal_node.queue_free()
 			_portal_pos = prev_pos
@@ -209,6 +212,26 @@ func spawn_wisp_local(visual_only: bool) -> void:
 		v.lifetime = WISP_COOLDOWN * 0.5 + 3.0 * _player.skill3_level
 		_player.get_parent().add_child(v)
 		v.global_position = _player.global_position
+
+func _spawn_teleport_burst(pos: Vector2, dir: Vector2) -> void:
+	var p := CPUParticles2D.new()
+	p.global_position = pos
+	p.one_shot = true
+	p.explosiveness = 1.0
+	p.amount = 18
+	p.lifetime = 0.35
+	p.gravity = Vector2.ZERO
+	p.direction = dir
+	p.spread = 55.0
+	p.initial_velocity_min = 80.0
+	p.initial_velocity_max = 260.0
+	p.scale_amount_min = 1.5
+	p.scale_amount_max = 3.5
+	p.color = Color(0.35, 0.1, 0.9, 0.9)
+	ParticleUtils.polish(p)
+	p.emitting = true
+	_player.get_parent().add_child(p)
+	_player.get_tree().create_timer(p.lifetime + 0.1).timeout.connect(p.queue_free)
 
 func spawn_rift_local(pos: Vector2, visual_only: bool) -> void:
 	var rift := RIFT_SCENE.instantiate()
