@@ -17,6 +17,9 @@ const FLOOR_TEXTURES := [
 	preload("res://assets/textures/StoneFloorTexture2.png"),
 	preload("res://assets/textures/StoneFloorTexture3.png"),
 	preload("res://assets/textures/StoneFloorTexture4.png"),
+	preload("res://assets/textures/grass.jpg"),
+	preload("res://assets/textures/grass2.jpg"),
+	preload("res://assets/textures/grass3.jpg"),
 ]
 
 var _sync_timer := 0.0
