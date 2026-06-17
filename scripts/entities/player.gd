@@ -12,6 +12,14 @@ const CORRECTION_PX_PER_SEC  := 400.0  # drift correction speed — fast enough 
 const OBSERVED_CORRECTION_PX_PER_SEC := 400.0
 const OBSERVED_SNAP_THRESHOLD        := 250.0
 
+# Observed (remote) player snapshot interpolation — render other players slightly
+# in the past and lerp between two known snapshots instead of extrapolating by
+# velocity. This removes the overshoot/snap-back that pure extrapolation produces
+# when a remote player stops. Cost is a small constant visual delay on others;
+# hits stay server-authoritative so fairness is unaffected.
+const OBSERVED_INTERP_DELAY := 0.066   # s — render ~2 sync intervals behind real-time
+const OBSERVED_EXTRAP_CAP   := 0.1     # s — max time to extrapolate when buffer is starved
+
 var radius = 20.0
 var color = Color(0.33, 0.29, 0.87)
 var player_name: String = ""
@@ -71,6 +79,10 @@ var _mouse_dash_pressed := false
 # Observed (remote) player dead-reckoning — extrapolate by velocity, blend in correction
 var _observed_velocity   := Vector2.ZERO
 var _observed_correction := Vector2.ZERO
+
+# Observed (remote) player snapshot buffer — [{t, pos, vel, facing, move_dir}] ordered by arrival.
+# Only populated for non-authority players we merely display; used for interpolation.
+var _snap_buffer: Array = []
 
 # Position sync rate-limit (server) and input change-detection (client)
 const POS_SYNC_INTERVAL   := 0.033   # every physics tick (60 Hz)
@@ -177,14 +189,19 @@ func _process(delta: float) -> void:
 	if networked and not multiplayer.is_server() and (not is_multiplayer_authority() or not Constants.CLIENT_PREDICTION):
 		if spinning and not is_multiplayer_authority():
 			$Sword.rotation += ArchetypePaladin.SPIN_SPEED * delta
-		var move := _observed_velocity * delta
-		if _observed_correction != Vector2.ZERO:
-			var step := _observed_correction.limit_length(OBSERVED_CORRECTION_PX_PER_SEC * delta)
-			move += step
-			_observed_correction -= step
-			if _observed_correction.length() < 0.5:
-				_observed_correction = Vector2.ZERO
-		position += move
+		if not is_multiplayer_authority():
+			# Genuinely remote player — interpolate between buffered snapshots.
+			_sample_snapshot_buffer()
+		else:
+			# Own player with prediction OFF — keep velocity extrapolation + correction.
+			var move := _observed_velocity * delta
+			if _observed_correction != Vector2.ZERO:
+				var step := _observed_correction.limit_length(OBSERVED_CORRECTION_PX_PER_SEC * delta)
+				move += step
+				_observed_correction -= step
+				if _observed_correction.length() < 0.5:
+					_observed_correction = Vector2.ZERO
+			position += move
 		queue_redraw()
 	if _cam_correction_offset != Vector2.ZERO:
 		_cam_correction_offset = _cam_correction_offset.move_toward(
@@ -204,6 +221,50 @@ func _process(delta: float) -> void:
 			_spin_loop_timer = 0.25
 			$SfxSpinLoop.pitch_scale = randf_range(0.9, 1.1)
 			$SfxSpinLoop.play()
+
+# Position a genuinely-remote player by interpolating buffered snapshots at a
+# render time held slightly behind real-time. Interpolating between two known
+# positions never overshoots, so stopping is exact (no rubber-band).
+func _sample_snapshot_buffer() -> void:
+	var count := _snap_buffer.size()
+	if count == 0:
+		return
+	var newest: Dictionary = _snap_buffer[count - 1]
+	if count == 1:
+		position = newest["pos"]
+		last_facing = newest["facing"]
+		move_direction = newest["move_dir"]
+		$Sword.set_facing(last_facing.angle())
+		return
+	var render_t := Time.get_ticks_msec() / 1000.0 - OBSERVED_INTERP_DELAY
+	# Render point is past the newest snapshot — buffer starved; extrapolate by the
+	# last known velocity, but only for a capped window so a dropped stop-packet
+	# can't fling the player away.
+	if render_t >= newest["t"]:
+		var ahead: float = min(render_t - newest["t"], OBSERVED_EXTRAP_CAP)
+		position = newest["pos"] + newest["vel"] * ahead
+		last_facing = newest["facing"]
+		move_direction = newest["move_dir"]
+		$Sword.set_facing(last_facing.angle())
+		return
+	# Find the pair of snapshots that bracket the render time and lerp between them.
+	for i in range(count - 1, 0, -1):
+		var s1: Dictionary = _snap_buffer[i]
+		var s0: Dictionary = _snap_buffer[i - 1]
+		if s0["t"] <= render_t and render_t <= s1["t"]:
+			var span: float = s1["t"] - s0["t"]
+			var f: float = 0.0 if span <= 0.0 else (render_t - s0["t"]) / span
+			position = (s0["pos"] as Vector2).lerp(s1["pos"], f)
+			last_facing = s1["facing"]
+			move_direction = s1["move_dir"]
+			$Sword.set_facing(last_facing.angle())
+			return
+	# Render point is older than the whole buffer (just snapped) — hold at oldest.
+	var oldest: Dictionary = _snap_buffer[0]
+	position = oldest["pos"]
+	last_facing = oldest["facing"]
+	move_direction = oldest["move_dir"]
+	$Sword.set_facing(last_facing.angle())
 
 func _input(event: InputEvent) -> void:
 	if PlayerPrefs.control_scheme != PlayerPrefs.SCHEME_MOUSE:
@@ -1029,17 +1090,26 @@ func _rpc_sync_pos(pos: Vector2, vel: Vector2, facing: Vector2, move_dir: Vector
 		skill3_cooldown = s_sk3
 		dash_cooldown   = s_dash
 	else:
-		# Observed player — dead-reckon between snapshots instead of teleporting on every packet
-		_observed_velocity = vel
-		var error := pos - position
-		if error.length() > OBSERVED_SNAP_THRESHOLD:
+		# Observed player — buffer the snapshot and interpolate in _process (no
+		# extrapolation, so there is no overshoot/snap-back when the player stops).
+		var now := Time.get_ticks_msec() / 1000.0
+		var snap := {
+			"t": now, "pos": pos, "vel": vel,
+			"facing": facing, "move_dir": move_dir,
+		}
+		# First snapshot, or a teleport-sized jump — drop history and snap so
+		# interpolation doesn't slide across the gap.
+		if _snap_buffer.is_empty() or pos.distance_to(position) > OBSERVED_SNAP_THRESHOLD:
+			_snap_buffer = [snap]
 			position = pos
-			_observed_correction = Vector2.ZERO
+			last_facing = facing
+			move_direction = move_dir
+			$Sword.set_facing(facing.angle())
 		else:
-			_observed_correction = error
-		last_facing = facing
-		move_direction = move_dir
-		$Sword.set_facing(facing.angle())
+			_snap_buffer.append(snap)
+			# Keep a little history behind the render point plus the newest sample.
+			while _snap_buffer.size() > 8:
+				_snap_buffer.pop_front()
 	queue_redraw()
 
 # --- Drawing ---

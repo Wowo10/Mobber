@@ -29,9 +29,16 @@ var _slow_mult := 1.0
 # Client-side position reconciliation
 const MOB_CORRECTION_PX_PER_SEC := 400.0
 const MOB_SNAP_THRESHOLD        := 120.0
-var _position_correction := Vector2.ZERO
 var _visual_dir          := Vector2.RIGHT  # actual frame-to-frame movement dir, used by _draw
 var _is_client_observer  := false
+
+# Observer snapshot interpolation — render the mob slightly behind real-time and
+# lerp between two received snapshots instead of extrapolating by velocity. This
+# removes the overshoot/snap-back that extrapolation produces when a mob stops.
+const MOB_INTERP_DELAY := 0.066   # s — render ~2 sync intervals behind real-time
+const MOB_EXTRAP_CAP   := 0.1     # s — max time to extrapolate when buffer is starved
+var _snap_buffer: Array = []      # [{t, pos, vel}] ordered by arrival
+var _predict_offset := Vector2.ZERO  # local client-push prediction, layered over the interpolated base
 
 func _apply_mob_type() -> void:
 	if mob_type == MobType.FLEEING:
@@ -61,26 +68,59 @@ func _ready() -> void:
 
 func receive_server_state(pos: Vector2, vel: Vector2) -> void:
 	velocity = vel
-	var error := pos - position
-	if error.length() > MOB_SNAP_THRESHOLD:
+	var now := Time.get_ticks_msec() / 1000.0
+	var snap := {"t": now, "pos": pos, "vel": vel}
+	# First snapshot, or a teleport-sized jump — drop history and snap so
+	# interpolation doesn't slide across the gap.
+	if _snap_buffer.is_empty() or pos.distance_to(position) > MOB_SNAP_THRESHOLD:
+		_snap_buffer = [snap]
 		position = pos
-		_position_correction = Vector2.ZERO
 	else:
-		_position_correction = error
+		_snap_buffer.append(snap)
+		while _snap_buffer.size() > 8:
+			_snap_buffer.pop_front()
 
 func _process(delta: float) -> void:
 	if _is_client_observer:
-		var move := velocity * delta
-		if _position_correction != Vector2.ZERO:
-			var correction_step := _position_correction.limit_length(MOB_CORRECTION_PX_PER_SEC * delta)
-			move += correction_step
-			_position_correction -= correction_step
-			if _position_correction.length() < 1.0:
-				_position_correction = Vector2.ZERO
-		position += move
+		var prev := position
+		var base := _sample_snapshot_buffer()
+		# Local client-push prediction is layered on top and decays as the server's
+		# snapshots catch up to reflect the same push.
+		if _predict_offset != Vector2.ZERO:
+			_predict_offset = _predict_offset.move_toward(
+				Vector2.ZERO, MOB_CORRECTION_PX_PER_SEC * delta)
+		position = base + _predict_offset
+		var move := position - prev
 		if move.length_squared() > 0.25:
 			_visual_dir = move.normalized()
 	queue_redraw()
+
+# Position derived from the snapshot buffer at a render time held behind real-time.
+# Interpolating between two known positions never overshoots, so a stopping mob
+# settles exactly instead of drifting past and snapping back.
+func _sample_snapshot_buffer() -> Vector2:
+	var count := _snap_buffer.size()
+	if count == 0:
+		return position
+	var newest: Dictionary = _snap_buffer[count - 1]
+	if count == 1:
+		return newest["pos"]
+	var render_t := Time.get_ticks_msec() / 1000.0 - MOB_INTERP_DELAY
+	# Render point past the newest snapshot — buffer starved (mobs stop syncing
+	# once at rest); extrapolate by last velocity for a capped window only.
+	if render_t >= newest["t"]:
+		var ahead: float = min(render_t - newest["t"], MOB_EXTRAP_CAP)
+		return newest["pos"] + newest["vel"] * ahead
+	# Find the pair of snapshots bracketing the render time and lerp between them.
+	for i in range(count - 1, 0, -1):
+		var s1: Dictionary = _snap_buffer[i]
+		var s0: Dictionary = _snap_buffer[i - 1]
+		if s0["t"] <= render_t and render_t <= s1["t"]:
+			var span: float = s1["t"] - s0["t"]
+			var f: float = 0.0 if span <= 0.0 else (render_t - s0["t"]) / span
+			return (s0["pos"] as Vector2).lerp(s1["pos"], f)
+	# Render point older than the whole buffer (just snapped) — hold at oldest.
+	return _snap_buffer[0]["pos"]
 
 func _physics_process(delta: float) -> void:
 	if _slow_timer > 0.0:
@@ -194,7 +234,7 @@ func apply_client_push(displacement: Vector2) -> void:
 	if not _is_client_observer:
 		return
 	var step := displacement.limit_length(MOB_CORRECTION_PX_PER_SEC * 0.033)
-	position += step
+	_predict_offset += step
 	if step.length_squared() > 0.25:
 		_visual_dir = step.normalized()
 
