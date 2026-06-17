@@ -187,6 +187,17 @@ func apply_slow(mult: float, duration: float) -> void:
 func apply_push(impulse: Vector2) -> void:
 	_external_velocity = (_external_velocity + impulse).limit_length(Constants.MOB_MAX_EXTERNAL_SPEED)
 
+# Client-side visual prediction — nudge an observer mob immediately when the
+# local player walks into it. Server stays authoritative; receive_server_state
+# reconciles any over/under-prediction smoothly.
+func apply_client_push(displacement: Vector2) -> void:
+	if not _is_client_observer:
+		return
+	var step := displacement.limit_length(MOB_CORRECTION_PX_PER_SEC * 0.033)
+	position += step
+	if step.length_squared() > 0.25:
+		_visual_dir = step.normalized()
+
 func apply_burst(impulse: Vector2) -> void:
 	_external_velocity = impulse
 

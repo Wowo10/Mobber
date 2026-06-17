@@ -223,9 +223,24 @@ func _physics_process(delta: float) -> void:
 			do_attack = Input.is_action_just_pressed("attack") and _archetype_handler.can_attack()
 			do_dash   = Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0
 		var _ctrl := Input.is_key_pressed(KEY_CTRL)
-		do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0 and skills_unlocked[0] and not _ctrl
-		do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0 and skills_unlocked[1] and not _ctrl
-		do_skill3 = Input.is_action_just_pressed("skill3") and skill3_cooldown <= 0.0 and skills_unlocked[2] and not _ctrl
+		do_skill1 = (
+			Input.is_action_just_pressed("skill1") 
+			and skill1_cooldown <= 0.0 
+			and skills_unlocked[0] 
+			and not _ctrl
+		)
+		do_skill2 = (
+			Input.is_action_just_pressed("skill2") 
+			and skill2_cooldown <= 0.0 
+			and skills_unlocked[1] 
+			and not _ctrl
+		)
+		do_skill3 = (
+			Input.is_action_just_pressed("skill3") 
+			and skill3_cooldown <= 0.0 
+			and skills_unlocked[2] 
+			and not _ctrl
+		)
 
 	elif multiplayer.is_server():
 		# Path B — Server: simulate all players authoritatively
@@ -241,9 +256,25 @@ func _physics_process(delta: float) -> void:
 				do_attack = Input.is_action_just_pressed("attack") and _archetype_handler.can_attack()
 				do_dash   = Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0
 			var _ctrl2 := Input.is_key_pressed(KEY_CTRL)
-			do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0 and skills_unlocked[0] and not _ctrl2
-			do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0 and skills_unlocked[1] and not _ctrl2
-			do_skill3 = Input.is_action_just_pressed("skill3") and skill3_cooldown <= 0.0 and skills_unlocked[2] and not _ctrl2
+			do_skill1 = (
+				Input.is_action_just_pressed("skill1") 
+				and skill1_cooldown <= 0.0 
+				and skills_unlocked[0] 
+				and not _ctrl2
+				)
+			do_skill2 = (
+				Input.is_action_just_pressed("skill2") 
+				and skill2_cooldown <= 0.0
+				and skills_unlocked[1]
+				and not _ctrl2
+			)
+			do_skill3 = (
+				Input.is_action_just_pressed("skill3") 
+				and skill3_cooldown <= 0.0 
+				and skills_unlocked[2] 
+				and not _ctrl2
+			)
+
 		else:
 			direction = _received_direction
 			facing = _received_facing
@@ -271,9 +302,25 @@ func _physics_process(delta: float) -> void:
 			do_attack = Input.is_action_just_pressed("attack") and _archetype_handler.can_attack()
 			do_dash   = Input.is_action_just_pressed("dash") and dash_cooldown <= 0.0
 		var _ctrl := Input.is_key_pressed(KEY_CTRL)
-		do_skill1 = Input.is_action_just_pressed("skill1") and skill1_cooldown <= 0.0 and skills_unlocked[0] and not _ctrl
-		do_skill2 = Input.is_action_just_pressed("skill2") and skill2_cooldown <= 0.0 and skills_unlocked[1] and not _ctrl
-		do_skill3 = Input.is_action_just_pressed("skill3") and skill3_cooldown <= 0.0 and skills_unlocked[2] and not _ctrl
+		do_skill1 = (
+			Input.is_action_just_pressed("skill1") 
+			and skill1_cooldown <= 0.0 
+			and skills_unlocked[0] 
+			and not _ctrl
+		)
+		do_skill2 = (
+			Input.is_action_just_pressed("skill2") 
+			and skill2_cooldown <= 0.0 
+			and skills_unlocked[1] 
+			and not _ctrl
+		)
+		do_skill3 = (
+			Input.is_action_just_pressed("skill3") 
+			and skill3_cooldown <= 0.0 
+			and skills_unlocked[2] 
+			and not _ctrl
+		)
+
 		if debuff_no_dash_timer > 0.0:
 			do_dash = false
 		if debuff_silence_timer > 0.0:
@@ -355,7 +402,11 @@ func _physics_process(delta: float) -> void:
 	else:
 		if dash_cooldown > 0.0:
 			dash_cooldown -= delta
-		var speed_mult := (1.0 + Constants.SHOP_SPEED_MULT_PER_LEVEL * speed_level) * _archetype_handler.get_speed_mult()
+		var speed_mult := (
+			1.0 + 
+			Constants.SHOP_SPEED_MULT_PER_LEVEL * 
+			speed_level
+		) * _archetype_handler.get_speed_mult()
 		velocity = move_direction * SPEED * speed_mult
 		if do_dash:
 			if _archetype_handler.use_dash():
@@ -385,6 +436,10 @@ func _physics_process(delta: float) -> void:
 	# Mob pushing — server and offline only
 	if not networked or multiplayer.is_server():
 		_push_mobs()
+	elif is_multiplayer_authority():
+		# Client own player: predict the push locally on observer mobs so they
+		# scatter immediately instead of after a server round-trip.
+		_push_mobs_client_predict(delta)
 
 	queue_redraw()
 
@@ -631,6 +686,24 @@ func _push_mobs() -> void:
 		if dir.is_zero_approx():
 			continue
 		body.apply_push(dir.normalized() * Constants.MOB_PUSH_FORCE * (6.0 if _dashing else 1.0))
+
+func _push_mobs_client_predict(delta: float) -> void:
+	var query := PhysicsShapeQueryParameters2D.new()
+	var circle := CircleShape2D.new()
+	circle.radius = radius + Constants.MOB_RADIUS
+	query.shape = circle
+	query.transform = global_transform
+	query.collision_mask = Constants.MOB_COLLISION_LAYER
+	query.exclude = [get_rid()]
+	for hit in get_world_2d().direct_space_state.intersect_shape(query, 16):
+		var body: Node2D = hit["collider"]
+		if not body.has_method("apply_client_push"):
+			continue
+		var dir := body.global_position - global_position
+		if dir.is_zero_approx():
+			continue
+		body.apply_client_push(
+				dir.normalized() * Constants.MOB_PUSH_FORCE * (6.0 if _dashing else 1.0) * delta)
 
 # --- Broadcast helpers (called by archetype handlers) ---
 
