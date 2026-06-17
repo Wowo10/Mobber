@@ -8,6 +8,10 @@ const CORRECTION_THRESHOLD   := 4.0    # px — ignore errors smaller than this
 const SNAP_THRESHOLD         := 250.0  # px — teleport instead of lerping (major desync)
 const CORRECTION_PX_PER_SEC  := 50.0   # subtle drift correction — ~0.83 px/frame, invisible but prevents divergence
 
+# Observed (remote) player dead-reckoning — same shape as mob.gd's reconciliation
+const OBSERVED_CORRECTION_PX_PER_SEC := 400.0
+const OBSERVED_SNAP_THRESHOLD        := 250.0
+
 var radius = 20.0
 var color = Color(0.33, 0.29, 0.87)
 var player_name: String = ""
@@ -63,6 +67,10 @@ var _cam_correction_offset  := Vector2.ZERO  # counteracts correction on camera 
 var _received_facing := Vector2.RIGHT
 var _mouse_attack_pressed := false
 var _mouse_dash_pressed := false
+
+# Observed (remote) player dead-reckoning — extrapolate by velocity, blend in correction
+var _observed_velocity   := Vector2.ZERO
+var _observed_correction := Vector2.ZERO
 
 # Position sync rate-limit (server) and input change-detection (client)
 const POS_SYNC_INTERVAL   := 0.033   # every physics tick (60 Hz)
@@ -166,8 +174,18 @@ func _rpc_shake_camera(duration: float, intensity: float) -> void:
 
 func _process(delta: float) -> void:
 	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
-	if networked and not multiplayer.is_server() and not is_multiplayer_authority() and spinning:
-		$Sword.rotation += ArchetypePaladin.SPIN_SPEED * delta
+	if networked and not multiplayer.is_server() and not is_multiplayer_authority():
+		if spinning:
+			$Sword.rotation += ArchetypePaladin.SPIN_SPEED * delta
+		var move := _observed_velocity * delta
+		if _observed_correction != Vector2.ZERO:
+			var step := _observed_correction.limit_length(OBSERVED_CORRECTION_PX_PER_SEC * delta)
+			move += step
+			_observed_correction -= step
+			if _observed_correction.length() < 0.5:
+				_observed_correction = Vector2.ZERO
+		position += move
+		queue_redraw()
 	if _cam_correction_offset != Vector2.ZERO:
 		_cam_correction_offset = _cam_correction_offset.move_toward(
 				Vector2.ZERO, CORRECTION_PX_PER_SEC * delta)
@@ -471,7 +489,7 @@ func _physics_process(delta: float) -> void:
 			_pos_sync_timer += delta
 			if _pos_sync_timer >= POS_SYNC_INTERVAL:
 				_pos_sync_timer = 0.0
-				_rpc_sync_pos.rpc(position, last_facing, move_direction,
+				_rpc_sync_pos.rpc(position, velocity, last_facing, move_direction,
 					skill1_cooldown, skill2_cooldown, skill3_cooldown, dash_cooldown)
 	else:
 		# Path C: local visual prediction — no server-authoritative spawning
@@ -968,7 +986,7 @@ func _rpc_trigger_spin_stop() -> void:
 # --- Position sync (server → all clients) ---
 
 @rpc("any_peer", "unreliable_ordered")
-func _rpc_sync_pos(pos: Vector2, facing: Vector2, move_dir: Vector2,
+func _rpc_sync_pos(pos: Vector2, vel: Vector2, facing: Vector2, move_dir: Vector2,
 		s_sk1: float, s_sk2: float, s_sk3: float, s_dash: float) -> void:
 	var _s := multiplayer.get_remote_sender_id()
 	if _s != 0 and _s != 1:
@@ -991,8 +1009,14 @@ func _rpc_sync_pos(pos: Vector2, facing: Vector2, move_dir: Vector2,
 		skill3_cooldown = s_sk3
 		dash_cooldown   = s_dash
 	else:
-		# Observed player — apply server state directly
-		position = pos
+		# Observed player — dead-reckon between snapshots instead of teleporting on every packet
+		_observed_velocity = vel
+		var error := pos - position
+		if error.length() > OBSERVED_SNAP_THRESHOLD:
+			position = pos
+			_observed_correction = Vector2.ZERO
+		else:
+			_observed_correction = error
 		last_facing = facing
 		move_direction = move_dir
 		$Sword.set_facing(facing.angle())
