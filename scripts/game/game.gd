@@ -42,6 +42,8 @@ var _enemy_mob_bar: Control = null
 var _ping_label: Label = null
 var _ping_timer: float = 0.0
 var _ping_send_time: float = 0.0
+var _fps_label: Label = null
+var _fps_timer: float = 0.0
 
 func _ready() -> void:
 	_networked = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
@@ -58,6 +60,7 @@ func _ready() -> void:
 	$Arena2.player_exited_arena_master.connect(_on_player_exited_arena_master)
 	_setup_scoreboard()
 	_ping_label = $HUD/PingLabel
+	_fps_label = $HUD/FpsLabel
 
 	if not _networked:
 		PlayerPrefs.peer_names = {1: PlayerPrefs.player_name}
@@ -734,6 +737,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		_on_skill_unlock_requested(idx)
 
 func _process(delta: float) -> void:
+	if _fps_label != null:
+		_fps_timer -= delta
+		if _fps_timer <= 0.0:
+			_fps_timer = 0.25
+			_fps_label.text = "%d fps" % int(Engine.get_frames_per_second())
 	if _leaving:
 		return
 	if _scoreboard_panel != null and _spectator_camera == null:

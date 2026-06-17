@@ -106,6 +106,7 @@ func _spawn_player() -> void:
 	_player = player
 
 func _process(_delta: float) -> void:
+	$HUD/FpsLabel.text = "%d fps" % int(Engine.get_frames_per_second())
 	if _player == null:
 		return
 	var bar := $HUD/SkillBar

@@ -6,7 +6,7 @@ const PAD_DEADZONE := 0.15
 # Client-side prediction reconciliation thresholds
 const CORRECTION_THRESHOLD   := 4.0    # px — ignore errors smaller than this
 const SNAP_THRESHOLD         := 250.0  # px — teleport instead of lerping (major desync)
-const CORRECTION_PX_PER_SEC  := 50.0   # subtle drift correction — ~0.83 px/frame, invisible but prevents divergence
+const CORRECTION_PX_PER_SEC  := 400.0  # drift correction speed — fast enough to feel responsive, still smooth
 
 # Observed (remote) player dead-reckoning — same shape as mob.gd's reconciliation
 const OBSERVED_CORRECTION_PX_PER_SEC := 400.0
@@ -1001,9 +1001,12 @@ func _rpc_sync_pos(pos: Vector2, vel: Vector2, facing: Vector2, move_dir: Vector
 		# so they stay naturally in sync. Only snap on extreme divergence (bug/reconnect).
 		var error := pos - position
 		if error.length() > SNAP_THRESHOLD:
-			_cam_correction_offset -= error  # keep camera stable during snap
+			# Large instantaneous jump (e.g. warlock teleport) — snap the camera
+			# with the player. Preserving it here would leave the camera behind,
+			# bleeding back only at the slow drift rate (~50 px/s) and lagging.
 			position = pos
 			_server_correction = Vector2.ZERO
+			_cam_correction_offset = Vector2.ZERO
 		elif error.length() > CORRECTION_THRESHOLD:
 			_server_correction = error  # bleed toward server at 50 px/s — invisible but prevents drift
 		# Always accept server cooldowns — they're discrete events, not continuous state
