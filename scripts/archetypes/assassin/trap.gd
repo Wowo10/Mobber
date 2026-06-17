@@ -19,7 +19,16 @@ func _on_body_entered(body: Node2D) -> void:
 	body.take_damage(999999.0, Vector2.ZERO, player_ref)
 	_notify_archetype()
 	_spawn_burst()
+	_play_trigger_sfx()
 	get_tree().create_timer(0.4).timeout.connect(queue_free)
+
+func _play_trigger_sfx() -> void:
+	var sfx := $SfxTrigger
+	remove_child(sfx)
+	get_parent().add_child(sfx)
+	sfx.global_position = global_position
+	sfx.play()
+	sfx.finished.connect(sfx.queue_free)
 
 func _notify_archetype() -> void:
 	if player_ref and is_instance_valid(player_ref):

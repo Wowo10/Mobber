@@ -87,6 +87,8 @@ func _on_body_entered(body: Node2D) -> void:
 	var knockback: Vector2 = (body.global_position - get_parent().global_position).normalized() \
 		* knockback_force
 	body.take_damage(damage, knockback, get_parent())
+	if spin_mode and get_parent().is_multiplayer_authority():
+		get_parent().get_node("SfxSpinHit").play()
 	if on_hit_callback.is_valid():
 		on_hit_callback.call(body, damage)
 

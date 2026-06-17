@@ -13,6 +13,9 @@ var lifetime := -1.0
 var _shoot_timer := SHOOT_INTERVAL * 0.5
 var _elapsed := 0.0
 
+func _ready() -> void:
+	$SfxAmbient.play()
+
 func _process(delta: float) -> void:
 	if not player_ref or not is_instance_valid(player_ref):
 		queue_free()

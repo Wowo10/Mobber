@@ -14,6 +14,7 @@ var _elapsed := 0.0
 var _detonated := false
 
 func _ready() -> void:
+	$SfxWindup.play()
 	if not visual_only:
 		call_deferred("_check_detonation_setup")
 
@@ -25,11 +26,20 @@ func _process(delta: float) -> void:
 	queue_redraw()
 	if not _detonated and _elapsed >= WINDUP:
 		_detonated = true
+		_play_detonate_sfx()
 		if not visual_only:
 			_detonate()
 		else:
 			_spawn_burst()
 		get_tree().create_timer(0.4).timeout.connect(queue_free)
+
+func _play_detonate_sfx() -> void:
+	var sfx := $SfxDetonate
+	remove_child(sfx)
+	get_parent().add_child(sfx)
+	sfx.global_position = global_position
+	sfx.play()
+	sfx.finished.connect(sfx.queue_free)
 
 func _detonate() -> void:
 	var radius := RADIUS * (1.0 + 0.25 * skill_level)

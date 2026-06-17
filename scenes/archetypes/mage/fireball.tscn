@@ -1,6 +1,8 @@
-[gd_scene load_steps=3 format=3 uid="uid://mgfb01tscne"]
+[gd_scene load_steps=5 format=3 uid="uid://mgfb01tscne"]
 
 [ext_resource type="Script" uid="uid://dvvvnfms0d20o" path="res://scripts/archetypes/mage/fireball.gd" id="1_fireball"]
+[ext_resource type="AudioStream" path="res://assets/sounds/Fireball 1.ogg" id="sfx_fire"]
+[ext_resource type="AudioStream" path="res://assets/sounds/explosion_medium.wav" id="sfx_explode"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_fireball"]
 radius = 22.0
@@ -13,5 +15,7 @@ script = ExtResource("1_fireball")
 shape = SubResource("CircleShape2D_fireball")
 
 [node name="SfxFire" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("sfx_fire")
 
 [node name="SfxExplode" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("sfx_explode")

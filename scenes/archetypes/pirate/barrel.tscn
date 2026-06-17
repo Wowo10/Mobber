@@ -1,6 +1,10 @@
-[gd_scene load_steps=2 format=3 uid="uid://pirate_barrel_tscn"]
+[gd_scene load_steps=3 format=3 uid="uid://pirate_barrel_tscn"]
 
 [ext_resource type="Script" uid="uid://pirate_barrel_gd01" path="res://scripts/archetypes/pirate/barrel.gd" id="1_barrel"]
+[ext_resource type="AudioStream" path="res://assets/sounds/explosion_large.wav" id="sfx_detonate"]
 
 [node name="Barrel" type="Node2D"]
 script = ExtResource("1_barrel")
+
+[node name="SfxDetonate" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("sfx_detonate")

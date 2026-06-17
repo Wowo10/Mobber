@@ -1,6 +1,10 @@
-[gd_scene load_steps=2 format=3 uid="uid://warlock_wisp01"]
+[gd_scene load_steps=3 format=3 uid="uid://warlock_wisp01"]
 
 [ext_resource type="Script" path="res://scripts/archetypes/warlock/wisp.gd" id="1_wisp"]
+[ext_resource type="AudioStream" path="res://assets/sounds/alien space probe 1.wav" id="sfx_ambient"]
 
 [node name="Wisp" type="Node2D"]
 script = ExtResource("1_wisp")
+
+[node name="SfxAmbient" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("sfx_ambient")

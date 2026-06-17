@@ -30,10 +30,19 @@ func detonate() -> void:
 
 func _trigger_detonate() -> void:
 	_detonated = true
+	_play_detonate_sfx()
 	if not visual_only:
 		_do_damage()
 	_spawn_explosion()
 	get_tree().create_timer(0.6).timeout.connect(queue_free)
+
+func _play_detonate_sfx() -> void:
+	var sfx := $SfxDetonate
+	remove_child(sfx)
+	get_parent().add_child(sfx)
+	sfx.global_position = global_position
+	sfx.play()
+	sfx.finished.connect(sfx.queue_free)
 
 func _do_damage() -> void:
 	var radius := DETONATION_RADIUS * (1.0 + 0.25 * skill_level)

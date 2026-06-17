@@ -1,6 +1,7 @@
-[gd_scene load_steps=3 format=3 uid="uid://mgeblt01sc1"]
+[gd_scene load_steps=4 format=3 uid="uid://mgeblt01sc1"]
 
 [ext_resource type="Script" uid="uid://b0nqhwrp3qxeq" path="res://scripts/archetypes/mage/magic_bolt.gd" id="1_bolt"]
+[ext_resource type="AudioStream" path="res://assets/sounds/Retro Magic 54.wav" id="sfx_fire"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_bolt"]
 radius = 10.0
@@ -13,3 +14,4 @@ script = ExtResource("1_bolt")
 shape = SubResource("CircleShape2D_bolt")
 
 [node name="SfxFire" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("sfx_fire")

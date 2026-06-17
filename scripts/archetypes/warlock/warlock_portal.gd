@@ -2,6 +2,9 @@ extends Node2D
 
 var _elapsed := 0.0
 
+func _ready() -> void:
+	$SfxAmbient.play()
+
 func _process(delta: float) -> void:
 	_elapsed += delta
 	queue_redraw()

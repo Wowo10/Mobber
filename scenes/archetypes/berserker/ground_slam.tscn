@@ -1,8 +1,10 @@
-[gd_scene load_steps=2 format=3 uid="uid://berserkerslam1"]
+[gd_scene load_steps=3 format=3 uid="uid://berserkerslam1"]
 
 [ext_resource type="Script" path="res://scripts/archetypes/berserker/ground_slam.gd" id="1_slam"]
+[ext_resource type="AudioStream" path="res://assets/sounds/explosionCrunch_000.ogg" id="sfx_slam"]
 
 [node name="GroundSlam" type="Node2D"]
 script = ExtResource("1_slam")
 
 [node name="SfxSlam" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("sfx_slam")

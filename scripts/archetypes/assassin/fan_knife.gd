@@ -7,6 +7,7 @@ const KNOCKBACK = 2500.0
 
 func _ready() -> void:
 	rotation = direction.angle()
+	$SfxFire.play()
 	_add_trail(Color(0.85, 0.9, 1.0, 0.7), 0.1, 0.3, 8, 0.12)
 
 func _physics_process(delta: float) -> void:

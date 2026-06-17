@@ -1,6 +1,10 @@
-[gd_scene load_steps=2 format=3 uid="uid://warlockportal1"]
+[gd_scene load_steps=3 format=3 uid="uid://warlockportal1"]
 
 [ext_resource type="Script" path="res://scripts/archetypes/warlock/warlock_portal.gd" id="1_wportal"]
+[ext_resource type="AudioStream" path="res://assets/sounds/atmospheric distortion 1.wav" id="sfx_ambient"]
 
 [node name="WarlockPortal" type="Node2D"]
 script = ExtResource("1_wportal")
+
+[node name="SfxAmbient" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("sfx_ambient")

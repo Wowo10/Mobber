@@ -1,6 +1,14 @@
-[gd_scene load_steps=2 format=3 uid="uid://arcane_implosion"]
+[gd_scene load_steps=4 format=3 uid="uid://arcane_implosion"]
 
 [ext_resource type="Script" path="res://scripts/archetypes/mage/arcane_implosion.gd" id="1_implosion"]
+[ext_resource type="AudioStream" path="res://assets/sounds/Rock Meteor Swarm 1.ogg" id="sfx_windup"]
+[ext_resource type="AudioStream" path="res://assets/sounds/Spell Impact 1.ogg" id="sfx_detonate"]
 
 [node name="ArcaneImplosion" type="Node2D"]
 script = ExtResource("1_implosion")
+
+[node name="SfxWindup" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("sfx_windup")
+
+[node name="SfxDetonate" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("sfx_detonate")

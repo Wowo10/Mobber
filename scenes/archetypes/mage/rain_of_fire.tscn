@@ -1,8 +1,10 @@
-[gd_scene load_steps=2 format=3 uid="uid://mgrof01tscn"]
+[gd_scene load_steps=3 format=3 uid="uid://mgrof01tscn"]
 
 [ext_resource type="Script" uid="uid://dy5h0yhxwuy6c" path="res://scripts/archetypes/mage/rain_of_fire.gd" id="1_rain"]
+[ext_resource type="AudioStream" path="res://assets/sounds/Firespray 1.ogg" id="sfx_strike"]
 
 [node name="RainOfFire" type="Node2D"]
 script = ExtResource("1_rain")
 
 [node name="SfxStrike" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("sfx_strike")

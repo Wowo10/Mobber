@@ -1,7 +1,15 @@
-[gd_scene load_steps=5 format=3 uid="uid://lhp5crgd3o0w"]
+[gd_scene load_steps=13 format=3 uid="uid://lhp5crgd3o0w"]
 
 [ext_resource type="Script" uid="uid://cc81omjvsnbyd" path="res://scripts/entities/player.gd" id="1_ucweq"]
 [ext_resource type="Script" uid="uid://csword1gd0001" path="res://scripts/entities/sword.gd" id="2_sword"]
+[ext_resource type="AudioStream" path="res://assets/sounds/Sword Attack 1.ogg" id="sfx_swing"]
+[ext_resource type="AudioStream" path="res://assets/sounds/air_burst.wav" id="sfx_dash"]
+[ext_resource type="AudioStream" path="res://assets/sounds/powerUp1.ogg" id="sfx_spin"]
+[ext_resource type="AudioStream" path="res://assets/sounds/twoTone1.ogg" id="sfx_spin_loop"]
+[ext_resource type="AudioStream" path="res://assets/sounds/impactPunch_medium_000.ogg" id="sfx_spin_hit"]
+[ext_resource type="AudioStream" path="res://assets/sounds/Retro Magic 06.wav" id="sfx_skill1"]
+[ext_resource type="AudioStream" path="res://assets/sounds/Retro Magic 11.wav" id="sfx_skill2"]
+[ext_resource type="AudioStream" path="res://assets/sounds/Retro Magic 34.wav" id="sfx_skill3"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_08t41"]
 radius = 20.0
@@ -21,12 +29,28 @@ shape = SubResource("CircleShape2D_08t41")
 emitting = false
 
 [node name="SfxSwing" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("sfx_swing")
 
 [node name="SfxDash" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("sfx_dash")
 
 [node name="SfxSpin" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("sfx_spin")
 
-[node name="SfxSkill" type="AudioStreamPlayer2D" parent="."]
+[node name="SfxSpinLoop" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("sfx_spin_loop")
+
+[node name="SfxSpinHit" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("sfx_spin_hit")
+
+[node name="SfxSkill1" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("sfx_skill1")
+
+[node name="SfxSkill2" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("sfx_skill2")
+
+[node name="SfxSkill3" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("sfx_skill3")
 
 [node name="Sword" type="Area2D" parent="."]
 script = ExtResource("2_sword")

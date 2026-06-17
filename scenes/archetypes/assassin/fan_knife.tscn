@@ -1,6 +1,7 @@
-[gd_scene load_steps=3 format=3 uid="uid://fanknife01tscn"]
+[gd_scene load_steps=4 format=3 uid="uid://fanknife01tscn"]
 
 [ext_resource type="Script" path="res://scripts/archetypes/assassin/fan_knife.gd" id="1_fknife"]
+[ext_resource type="AudioStream" path="res://assets/sounds/knifeSlice.ogg" id="sfx_fire"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_fknife"]
 size = Vector2(18, 4)
@@ -11,3 +12,6 @@ script = ExtResource("1_fknife")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("RectangleShape2D_fknife")
+
+[node name="SfxFire" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("sfx_fire")

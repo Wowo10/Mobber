@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://cla5o8q3k15pb"
+path="res://.godot/imported/Wave Attack 1.ogg-07fc63b87ead625afafb1ff9ae2abf0b.oggvorbisstr"
+
+[deps]
+
+source_file="res://assets/sounds/Wave Attack 1.ogg"
+dest_files=["res://.godot/imported/Wave Attack 1.ogg-07fc63b87ead625afafb1ff9ae2abf0b.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

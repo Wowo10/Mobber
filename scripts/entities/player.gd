@@ -45,6 +45,7 @@ var _shake_max_duration := 1.0
 # Public — accessed by archetype handlers and spin RPCs
 var spinning := false
 var spin_timer := 0.0
+var _spin_loop_timer := 0.0
 
 # Server-side input buffers — written by client RPCs, consumed each physics tick
 var _received_direction := Vector2.ZERO
@@ -179,6 +180,12 @@ func _process(delta: float) -> void:
 		$Camera2D.offset = shake + _cam_correction_offset
 	else:
 		$Camera2D.offset = _cam_correction_offset
+	if spinning and is_multiplayer_authority():
+		_spin_loop_timer -= delta
+		if _spin_loop_timer <= 0.0:
+			_spin_loop_timer = 0.25
+			$SfxSpinLoop.pitch_scale = randf_range(0.9, 1.1)
+			$SfxSpinLoop.play()
 
 func _input(event: InputEvent) -> void:
 	if PlayerPrefs.control_scheme != PlayerPrefs.SCHEME_MOUSE:
@@ -329,6 +336,8 @@ func _physics_process(delta: float) -> void:
 			$Sword.exit_spin()
 			if is_multiplayer_authority():
 				$SfxSpin.stop()
+				$SfxSpinLoop.stop()
+				_spin_loop_timer = 0.0
 			if networked and multiplayer.is_server():
 				_rpc_trigger_spin_stop.rpc()
 
@@ -389,16 +398,19 @@ func _physics_process(delta: float) -> void:
 				_archetype_handler.broadcast_attack()
 		if do_skill1:
 			_use_skill1()
-			if is_multiplayer_authority() and archetype == Constants.ARCHETYPE_PALADIN:
-				$SfxSpin.play()
+			if is_multiplayer_authority():
+				if archetype == Constants.ARCHETYPE_PALADIN:
+					$SfxSpin.play()
+				else:
+					$SfxSkill1.play()
 		if do_skill2:
 			_use_skill2()
 			if is_multiplayer_authority():
-				$SfxSkill.play()
+				$SfxSkill2.play()
 		if do_skill3:
 			_use_skill3()
 			if is_multiplayer_authority():
-				$SfxSkill.play()
+				$SfxSkill3.play()
 		_archetype_handler.physics_process(delta)
 		if networked:
 			_pos_sync_timer += delta
@@ -413,14 +425,16 @@ func _physics_process(delta: float) -> void:
 			$SfxSwing.play()
 		if do_skill1:
 			skill1_cooldown = skill1_max_cooldown
+			if archetype != Constants.ARCHETYPE_PALADIN:
+				$SfxSkill1.play()
 			_archetype_handler.on_skill1_client_predict()
 		if do_skill2:
 			skill2_cooldown = skill2_max_cooldown
-			$SfxSkill.play()
+			$SfxSkill2.play()
 			_archetype_handler.on_skill2_client_predict()
 		if do_skill3:
 			skill3_cooldown = skill3_max_cooldown
-			$SfxSkill.play()
+			$SfxSkill3.play()
 			_archetype_handler.on_skill3_client_predict()
 		_archetype_handler.physics_process(delta)
 
@@ -867,6 +881,7 @@ func rpc_trigger_spin_start() -> void:
 	spin_timer = ArchetypePaladin.SPIN_DURATION
 	$Sword.enter_spin()
 	if is_multiplayer_authority():
+		_spin_loop_timer = 0.0
 		$SfxSpin.play()
 
 @rpc("any_peer", "reliable")
