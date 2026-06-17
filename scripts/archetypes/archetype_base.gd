@@ -89,7 +89,7 @@ func broadcast_attack() -> void:
 	_player.broadcast_swing(_player.last_facing.angle())
 
 func get_speed_mult() -> float:
-	return 1.0
+	return 0.8
 
 func use_dash() -> bool:
 	return false  # false = use default dash behavior

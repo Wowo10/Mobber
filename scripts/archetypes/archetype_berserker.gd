@@ -103,7 +103,7 @@ func get_skill2_max_cooldown() -> float:
 	return SLAM_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill2_level)
 
 func get_speed_mult() -> float:
-	return 1.3 if _rage_active else 1.0
+	return 1.04 if _rage_active else 0.8
 
 func get_dash_duration() -> float:
 	return 0.06

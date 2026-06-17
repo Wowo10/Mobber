@@ -6,7 +6,7 @@ const PAD_DEADZONE := 0.15
 # Client-side prediction reconciliation thresholds
 const CORRECTION_THRESHOLD   := 4.0    # px — ignore errors smaller than this
 const SNAP_THRESHOLD         := 250.0  # px — teleport instead of lerping (major desync)
-const CORRECTION_PX_PER_SEC  := 800.0  # correction speed — matches player speed so 1-frame errors vanish in 1 frame
+const CORRECTION_PX_PER_SEC  := 50.0   # subtle drift correction — ~0.83 px/frame, invisible but prevents divergence
 
 var radius = 20.0
 var color = Color(0.33, 0.29, 0.87)
@@ -57,13 +57,14 @@ var _pending_skill3 := false
 var _archetype_handler: ArchetypeBase
 
 # Client-side prediction — pending position correction from server reconciliation
-var _server_correction := Vector2.ZERO
+var _server_correction      := Vector2.ZERO
+var _cam_correction_offset  := Vector2.ZERO  # counteracts correction on camera so it doesn't jump
 var _received_facing := Vector2.RIGHT
 var _mouse_attack_pressed := false
 var _mouse_dash_pressed := false
 
 # Position sync rate-limit (server) and input change-detection (client)
-const POS_SYNC_INTERVAL   := 0.033  # 30 Hz
+const POS_SYNC_INTERVAL   := 0.033   # every physics tick (60 Hz)
 var _pos_sync_timer        := 0.0
 var _last_sent_direction   := Vector2.ZERO
 var _last_sent_facing      := Vector2.RIGHT
@@ -142,6 +143,7 @@ func _setup_camera() -> void:
 	cam.limit_right = int(arena_x + Constants.WORLD_SIZE_X)
 	cam.limit_top = 0
 	cam.limit_bottom = int(Constants.WORLD_SIZE_Y)
+	# cam.zoom = Vector2(0.4, 0.4)
 	cam.make_current()
 
 # --- Observer: keep non-authority spinning swords rotating ---
@@ -165,12 +167,18 @@ func _process(delta: float) -> void:
 	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked and not multiplayer.is_server() and not is_multiplayer_authority() and spinning:
 		$Sword.rotation += ArchetypePaladin.SPIN_SPEED * delta
+	if _cam_correction_offset != Vector2.ZERO:
+		_cam_correction_offset = _cam_correction_offset.move_toward(
+				Vector2.ZERO, CORRECTION_PX_PER_SEC * delta)
 	if _shake_duration > 0.0:
 		_shake_duration -= delta
 		var strength := _shake_intensity * (_shake_duration / _shake_max_duration)
-		$Camera2D.offset = Vector2(randf_range(-strength, strength), randf_range(-strength, strength))
+		var shake := Vector2(randf_range(-strength, strength), randf_range(-strength, strength))
 		if _shake_duration <= 0.0:
-			$Camera2D.offset = Vector2.ZERO
+			shake = Vector2.ZERO
+		$Camera2D.offset = shake + _cam_correction_offset
+	else:
+		$Camera2D.offset = _cam_correction_offset
 
 func _input(event: InputEvent) -> void:
 	if PlayerPrefs.control_scheme != PlayerPrefs.SCHEME_MOUSE:
@@ -363,6 +371,7 @@ func _physics_process(delta: float) -> void:
 		_server_correction -= step
 		if _server_correction.length() < 0.5:
 			_server_correction = Vector2.ZERO
+		_cam_correction_offset -= step  # camera stays still; _process bleeds this back
 
 	# Mob pushing — server and offline only
 	if not networked or multiplayer.is_server():
@@ -878,14 +887,17 @@ func _rpc_sync_pos(pos: Vector2, facing: Vector2, move_dir: Vector2,
 		return
 	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked and not multiplayer.is_server() and is_multiplayer_authority():
-		# Own player — reconcile predicted position and cooldowns with server's authoritative state
+		# Own player — trust local prediction entirely; no rubber-banding.
+		# Server and client run the same physics with at most 1-frame input lag,
+		# so they stay naturally in sync. Only snap on extreme divergence (bug/reconnect).
 		var error := pos - position
 		if error.length() > SNAP_THRESHOLD:
+			_cam_correction_offset -= error  # keep camera stable during snap
 			position = pos
 			_server_correction = Vector2.ZERO
 		elif error.length() > CORRECTION_THRESHOLD:
-			_server_correction = error
-		# Always accept server cooldowns — they are authoritative
+			_server_correction = error  # bleed toward server at 50 px/s — invisible but prevents drift
+		# Always accept server cooldowns — they're discrete events, not continuous state
 		skill1_cooldown = s_sk1
 		skill2_cooldown = s_sk2
 		skill3_cooldown = s_sk3

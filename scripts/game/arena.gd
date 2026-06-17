@@ -10,7 +10,7 @@ const FLOOR_TILE_SIZE = 256.0
 const MOB_SCENE = preload("res://scenes/entities/mob.tscn")
 const SHOP_ZONE_RECT := Rect2(100, 1650, 300, 300)
 const ARENA_MASTER_ZONE_RECT := Rect2(2267, 1650, 300, 300)
-const MOB_SYNC_INTERVAL := 0.1   # 10 Hz
+const MOB_SYNC_INTERVAL := 0.033   # every physics tick (60 Hz)
 const MOVE_THRESHOLD_SQ := 225.0  # 15 px — skip mobs that haven't moved
 const FLOOR_TEXTURES := [
 	preload("res://assets/textures/StoneFloorTexture1.png"),

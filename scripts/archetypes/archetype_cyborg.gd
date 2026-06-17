@@ -79,7 +79,7 @@ func get_skill3_max_cooldown() -> float:
 	return OVERCLOCK_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill3_level)
 
 func get_speed_mult() -> float:
-	return 1.35 if _overclock_active else 1.0
+	return 1.08 if _overclock_active else 0.8
 
 func can_attack() -> bool:
 	if _ranged_mode:
