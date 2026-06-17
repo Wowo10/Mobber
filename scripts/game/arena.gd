@@ -11,7 +11,7 @@ const MOB_SCENE = preload("res://scenes/entities/mob.tscn")
 const SHOP_ZONE_RECT := Rect2(100, 1650, 300, 300)
 const ARENA_MASTER_ZONE_RECT := Rect2(2267, 1650, 300, 300)
 const MOB_SYNC_INTERVAL := 0.1   # 10 Hz
-const MOVE_THRESHOLD_SQ := 4.0   # 2 px — skip mobs that haven't moved
+const MOVE_THRESHOLD_SQ := 225.0  # 15 px — skip mobs that haven't moved
 const FLOOR_TEXTURES := [
 	preload("res://assets/textures/StoneFloorTexture1.png"),
 	preload("res://assets/textures/StoneFloorTexture2.png"),
@@ -23,7 +23,10 @@ const FLOOR_TEXTURES := [
 ]
 
 var _sync_timer := 0.0
-var _last_sync_positions: Dictionary = {}
+var _last_sync_positions: Dictionary = {}  # instance_id → Vector2
+var _mob_by_id: Dictionary = {}            # net_id → node
+var _mob_net_id: Dictionary = {}           # instance_id → net_id
+var _next_mob_id: int = 0
 var _floor_texture: Texture2D
 var mob_speed_multiplier: float = 1.0
 var mob_frenzy_timer: float = 0.0
@@ -36,6 +39,22 @@ func _ready() -> void:
 	_build_arena_master_zone()
 	$MobSpawner.spawn_path = $MobContainer.get_path()
 	$MobSpawner.add_spawnable_scene("res://scenes/entities/mob.tscn")
+	$MobContainer.child_entered_tree.connect(_on_mob_entered)
+	$MobContainer.child_exiting_tree.connect(_on_mob_exiting)
+
+func _on_mob_entered(mob: Node) -> void:
+	var iid := mob.get_instance_id()
+	_mob_by_id[_next_mob_id] = mob
+	_mob_net_id[iid] = _next_mob_id
+	_next_mob_id += 1
+
+func _on_mob_exiting(mob: Node) -> void:
+	var iid := mob.get_instance_id()
+	var id: int = _mob_net_id.get(iid, -1)
+	if id >= 0:
+		_mob_by_id.erase(id)
+		_mob_net_id.erase(iid)
+	_last_sync_positions.erase(iid)
 
 func _build_shop_zone() -> void:
 	var area := Area2D.new()
@@ -105,7 +124,7 @@ func _physics_process(delta: float) -> void:
 		return
 	if mob_frenzy_timer > 0.0:
 		mob_frenzy_timer = max(0.0, mob_frenzy_timer - delta)
-		if mob_frenzy_timer == 0.0:
+		if mob_frenzy_timer <= 0.0:
 			mob_speed_multiplier = 1.0
 	if not networked:
 		return
@@ -116,7 +135,7 @@ func _physics_process(delta: float) -> void:
 	var mobs := $MobContainer.get_children()
 	if mobs.is_empty():
 		return
-	var names := PackedStringArray()
+	var ids := PackedInt32Array()
 	var positions := PackedVector2Array()
 	var velocities := PackedVector2Array()
 	for mob in mobs:
@@ -125,25 +144,29 @@ func _physics_process(delta: float) -> void:
 		if mob.position.distance_squared_to(last_pos) < MOVE_THRESHOLD_SQ:
 			continue
 		_last_sync_positions[iid] = mob.position
-		names.append(mob.name)
+		ids.append(_mob_net_id.get(iid, -1))
 		positions.append(mob.position)
 		velocities.append(mob.velocity)
-	if names.is_empty():
+	if ids.is_empty():
 		return
-	_rpc_sync_mob_states.rpc(names, positions, velocities)
+	_rpc_sync_mob_states.rpc(ids, positions, velocities)
 
 @rpc("authority", "unreliable_ordered")
 func _rpc_sync_mob_states(
-	names: PackedStringArray,
+	ids: PackedInt32Array,
 	positions: PackedVector2Array,
 	velocities: PackedVector2Array
 ) -> void:
-	for i in names.size():
-		var mob := $MobContainer.get_node_or_null(names[i])
+	for i in ids.size():
+		var mob = _mob_by_id.get(ids[i])
 		if mob == null:
 			continue
-		mob.position = positions[i]
-		mob.velocity = velocities[i]
+		mob.receive_server_state(positions[i], velocities[i])
+
+@rpc("authority", "reliable")
+func rpc_set_frenzy(speed_mult: float, duration: float) -> void:
+	mob_speed_multiplier = speed_mult
+	mob_frenzy_timer = duration
 
 func spawn_mob(type: int = -1, near_pos: Vector2 = Vector2(-1.0, -1.0)) -> void:
 	if not multiplayer.is_server():

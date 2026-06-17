@@ -4,9 +4,9 @@ const SPEED = 800.0
 const PAD_DEADZONE := 0.15
 
 # Client-side prediction reconciliation thresholds
-const CORRECTION_THRESHOLD := 4.0    # px — ignore errors smaller than this
-const SNAP_THRESHOLD       := 250.0  # px — teleport instead of lerping (major desync)
-const CORRECTION_SPEED     := 0.25   # fraction of error applied per physics tick
+const CORRECTION_THRESHOLD   := 4.0    # px — ignore errors smaller than this
+const SNAP_THRESHOLD         := 250.0  # px — teleport instead of lerping (major desync)
+const CORRECTION_PX_PER_SEC  := 800.0  # correction speed — matches player speed so 1-frame errors vanish in 1 frame
 
 var radius = 20.0
 var color = Color(0.33, 0.29, 0.87)
@@ -61,6 +61,12 @@ var _server_correction := Vector2.ZERO
 var _received_facing := Vector2.RIGHT
 var _mouse_attack_pressed := false
 var _mouse_dash_pressed := false
+
+# Position sync rate-limit (server) and input change-detection (client)
+const POS_SYNC_INTERVAL   := 0.033  # 30 Hz
+var _pos_sync_timer        := 0.0
+var _last_sent_direction   := Vector2.ZERO
+var _last_sent_facing      := Vector2.RIGHT
 
 func _ready() -> void:
 	# MultiplayerSpawner doesn't sync authority — derive it from node name "Player_N"
@@ -259,8 +265,12 @@ func _physics_process(delta: float) -> void:
 			do_skill1 = false
 			do_skill2 = false
 			do_skill3 = false
-		_rpc_send_direction.rpc_id(1, direction)
-		_rpc_send_facing.rpc_id(1, facing)
+		if direction != _last_sent_direction:
+			_rpc_send_direction.rpc_id(1, direction)
+			_last_sent_direction = direction
+		if facing != _last_sent_facing:
+			_rpc_send_facing.rpc_id(1, facing)
+			_last_sent_facing = facing
 		var action_mask := 0
 		if do_attack: action_mask |= 1
 		if do_dash:   action_mask |= 2
@@ -294,7 +304,7 @@ func _physics_process(delta: float) -> void:
 
 	# Cooldown ticks
 	if attack_cooldown > 0.0:
-		attack_cooldown -= delta
+		attack_cooldown = max(0.0, attack_cooldown - delta)
 	if skill1_cooldown > 0.0:
 		skill1_cooldown = max(0.0, skill1_cooldown - delta)
 	if skill2_cooldown > 0.0:
@@ -348,7 +358,7 @@ func _physics_process(delta: float) -> void:
 
 	# Apply server correction nudge (client prediction only)
 	if networked and not multiplayer.is_server() and _server_correction != Vector2.ZERO:
-		var step := _server_correction * CORRECTION_SPEED
+		var step := _server_correction.limit_length(CORRECTION_PX_PER_SEC * delta)
 		position += step
 		_server_correction -= step
 		if _server_correction.length() < 0.5:
@@ -382,8 +392,11 @@ func _physics_process(delta: float) -> void:
 				$SfxSkill.play()
 		_archetype_handler.physics_process(delta)
 		if networked:
-			_rpc_sync_pos.rpc(position, last_facing, move_direction,
-				skill1_cooldown, skill2_cooldown, skill3_cooldown, dash_cooldown)
+			_pos_sync_timer += delta
+			if _pos_sync_timer >= POS_SYNC_INTERVAL:
+				_pos_sync_timer = 0.0
+				_rpc_sync_pos.rpc(position, last_facing, move_direction,
+					skill1_cooldown, skill2_cooldown, skill3_cooldown, dash_cooldown)
 	else:
 		# Path C: local visual prediction — no server-authoritative spawning
 		if do_attack:

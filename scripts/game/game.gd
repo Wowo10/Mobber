@@ -605,6 +605,8 @@ func _rpc_sync_skill_unlocks(unlocked: Array) -> void:
 
 @rpc("authority", "reliable")
 func _rpc_game_over(losing_arena_id: int) -> void:
+	if $GameOverOverlay.visible:
+		return
 	for child in $PlayerContainer.get_children():
 		child.set_physics_process(false)
 
@@ -1084,6 +1086,8 @@ func _apply_purchase(peer_id: int, item_id: int) -> void:
 			money -= Constants.DEBUFF_COST_FRENZY
 			opponent_arena.mob_speed_multiplier = Constants.DEBUFF_FRENZY_SPEED_MULT
 			opponent_arena.mob_frenzy_timer = Constants.DEBUFF_DUR_FRENZY
+			if _networked:
+				opponent_arena.rpc_set_frenzy.rpc(Constants.DEBUFF_FRENZY_SPEED_MULT, Constants.DEBUFF_DUR_FRENZY)
 			_notify_opponents_debuff_icon(peer_id, Constants.DEBUFF_FRENZY, Constants.DEBUFF_DUR_FRENZY)
 			_peer_debuffs_applied[peer_id] = _peer_debuffs_applied.get(peer_id, 0) + 1
 

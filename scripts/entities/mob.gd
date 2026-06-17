@@ -26,6 +26,13 @@ var _arena: Node = null
 var _slow_timer := 0.0
 var _slow_mult := 1.0
 
+# Client-side position reconciliation
+const MOB_CORRECTION_PX_PER_SEC := 400.0
+const MOB_SNAP_THRESHOLD        := 120.0
+var _position_correction := Vector2.ZERO
+var _visual_dir          := Vector2.RIGHT  # actual frame-to-frame movement dir, used by _draw
+var _is_client_observer  := false
+
 func _apply_mob_type() -> void:
 	if mob_type == MobType.FLEEING:
 		max_health = Constants.MOB_FLEE_MAX_HEALTH
@@ -49,12 +56,30 @@ func _ready() -> void:
 	var networked: bool = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked and not multiplayer.is_server():
 		set_physics_process(false)
+		_is_client_observer = true
 
+
+func receive_server_state(pos: Vector2, vel: Vector2) -> void:
+	velocity = vel
+	var error := pos - position
+	if error.length() > MOB_SNAP_THRESHOLD:
+		position = pos
+		_position_correction = Vector2.ZERO
+	else:
+		_position_correction = error
 
 func _process(delta: float) -> void:
-	var networked: bool = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
-	if networked and not multiplayer.is_server():
-		position += velocity * delta
+	if _is_client_observer:
+		var move := velocity * delta
+		if _position_correction != Vector2.ZERO:
+			var correction_step := _position_correction.limit_length(MOB_CORRECTION_PX_PER_SEC * delta)
+			move += correction_step
+			_position_correction -= correction_step
+			if _position_correction.length() < 1.0:
+				_position_correction = Vector2.ZERO
+		position += move
+		if move.length_squared() > 0.25:
+			_visual_dir = move.normalized()
 	queue_redraw()
 
 func _physics_process(delta: float) -> void:
@@ -202,9 +227,13 @@ func _draw_droplet(r: float, col: Color, fwd: Vector2) -> void:
 	draw_colored_polygon(pts, col)
 
 func _draw() -> void:
-	var fwd := velocity.normalized() if velocity.length_squared() > 1.0 else _wander_dir
-	if fwd.is_zero_approx():
-		fwd = Vector2.RIGHT
+	var fwd: Vector2
+	if _is_client_observer:
+		fwd = _visual_dir
+	else:
+		fwd = velocity.normalized() if velocity.length_squared() > 1.0 else _wander_dir
+		if fwd.is_zero_approx():
+			fwd = Vector2.RIGHT
 	_draw_droplet(radius, color, fwd)
 	if _panicking:
 		var t := Time.get_ticks_msec() * 0.001 * Constants.MOB_FLEE_PANIC_PULSE_FREQ
