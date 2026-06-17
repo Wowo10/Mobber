@@ -174,8 +174,8 @@ func _rpc_shake_camera(duration: float, intensity: float) -> void:
 
 func _process(delta: float) -> void:
 	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
-	if networked and not multiplayer.is_server() and not is_multiplayer_authority():
-		if spinning:
+	if networked and not multiplayer.is_server() and (not is_multiplayer_authority() or not Constants.CLIENT_PREDICTION):
+		if spinning and not is_multiplayer_authority():
 			$Sword.rotation += ArchetypePaladin.SPIN_SPEED * delta
 		var move := _observed_velocity * delta
 		if _observed_correction != Vector2.ZERO:
@@ -219,6 +219,8 @@ func _input(event: InputEvent) -> void:
 
 func _physics_process(delta: float) -> void:
 	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
+	# Own client player predicts movement only when prediction is enabled.
+	var predict_movement := (not networked) or multiplayer.is_server() or Constants.CLIENT_PREDICTION
 
 	var direction: Vector2
 	var facing: Vector2
@@ -407,57 +409,58 @@ func _physics_process(delta: float) -> void:
 				_rpc_trigger_spin_stop.rpc()
 
 	# Dash / movement
-	if _dashing:
-		_dash_timer -= delta
-		velocity = last_facing * Constants.PLAYER_DASH_SPEED
-		if _dash_timer <= 0.0:
-			_dashing = false
-			$DashParticles.emitting = false
-			if networked and multiplayer.is_server():
-				_rpc_set_dash_particles.rpc(Vector2.ZERO, false)
-			if not networked or multiplayer.is_server():
-				_archetype_handler.on_dash_end()
-	else:
-		if dash_cooldown > 0.0:
-			dash_cooldown -= delta
-		var speed_mult := (
-			1.0 + 
-			Constants.SHOP_SPEED_MULT_PER_LEVEL * 
-			speed_level
-		) * _archetype_handler.get_speed_mult()
-		velocity = move_direction * SPEED * speed_mult
-		if do_dash:
-			if _archetype_handler.use_dash():
-				pass  # archetype owns dash entirely (sets dash_cooldown internally)
-			else:
-				_dashing = true
-				_dash_timer = _archetype_handler.get_dash_duration()
-				dash_cooldown = Constants.PLAYER_DASH_COOLDOWN
-				$DashParticles.direction = -last_facing
-				$DashParticles.emitting = true
-				if is_multiplayer_authority():
-					$SfxDash.play()
+	if predict_movement:
+		if _dashing:
+			_dash_timer -= delta
+			velocity = last_facing * Constants.PLAYER_DASH_SPEED
+			if _dash_timer <= 0.0:
+				_dashing = false
+				$DashParticles.emitting = false
 				if networked and multiplayer.is_server():
-					_rpc_set_dash_particles.rpc(-last_facing, true)
+					_rpc_set_dash_particles.rpc(Vector2.ZERO, false)
+				if not networked or multiplayer.is_server():
+					_archetype_handler.on_dash_end()
+		else:
+			if dash_cooldown > 0.0:
+				dash_cooldown -= delta
+			var speed_mult := (
+				1.0 +
+				Constants.SHOP_SPEED_MULT_PER_LEVEL *
+				speed_level
+			) * _archetype_handler.get_speed_mult()
+			velocity = move_direction * SPEED * speed_mult
+			if do_dash:
+				if _archetype_handler.use_dash():
+					pass  # archetype owns dash entirely (sets dash_cooldown internally)
+				else:
+					_dashing = true
+					_dash_timer = _archetype_handler.get_dash_duration()
+					dash_cooldown = Constants.PLAYER_DASH_COOLDOWN
+					$DashParticles.direction = -last_facing
+					$DashParticles.emitting = true
+					if is_multiplayer_authority():
+						$SfxDash.play()
+					if networked and multiplayer.is_server():
+						_rpc_set_dash_particles.rpc(-last_facing, true)
 
-	move_and_slide()
+		move_and_slide()
 
-	# Apply server correction nudge (client prediction only)
-	if networked and not multiplayer.is_server() and _server_correction != Vector2.ZERO:
-		var step := _server_correction.limit_length(CORRECTION_PX_PER_SEC * delta)
-		position += step
-		_server_correction -= step
-		if _server_correction.length() < 0.5:
-			_server_correction = Vector2.ZERO
-		_cam_correction_offset -= step  # camera stays still; _process bleeds this back
+		# Apply server correction nudge (client prediction only)
+		if networked and not multiplayer.is_server() and _server_correction != Vector2.ZERO:
+			var step := _server_correction.limit_length(CORRECTION_PX_PER_SEC * delta)
+			position += step
+			_server_correction -= step
+			if _server_correction.length() < 0.5:
+				_server_correction = Vector2.ZERO
+			_cam_correction_offset -= step  # camera stays still; _process bleeds this back
 
-	# Mob pushing — server and offline only
-	if not networked or multiplayer.is_server():
-		_push_mobs()
-	elif is_multiplayer_authority():
-		# Client own player: predict the push locally on observer mobs so they
-		# scatter immediately instead of after a server round-trip.
-		_push_mobs_client_predict(delta)
+		# Mob pushing — server and offline only
+		if not networked or multiplayer.is_server():
+			_push_mobs()
+		elif is_multiplayer_authority():
+			# Client own player: predict the push locally on observer mobs so they
+			# scatter immediately instead of after a server round-trip.
+			_push_mobs_client_predict(delta)
 
 	queue_redraw()
 
@@ -992,7 +995,7 @@ func _rpc_sync_pos(pos: Vector2, vel: Vector2, facing: Vector2, move_dir: Vector
 	if _s != 0 and _s != 1:
 		return
 	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
-	if networked and not multiplayer.is_server() and is_multiplayer_authority():
+	if networked and not multiplayer.is_server() and is_multiplayer_authority() and Constants.CLIENT_PREDICTION:
 		# Own player — trust local prediction entirely; no rubber-banding.
 		# Server and client run the same physics with at most 1-frame input lag,
 		# so they stay naturally in sync. Only snap on extreme divergence (bug/reconnect).
@@ -1004,6 +1007,20 @@ func _rpc_sync_pos(pos: Vector2, vel: Vector2, facing: Vector2, move_dir: Vector
 		elif error.length() > CORRECTION_THRESHOLD:
 			_server_correction = error  # bleed toward server at 50 px/s — invisible but prevents drift
 		# Always accept server cooldowns — they're discrete events, not continuous state
+		skill1_cooldown = s_sk1
+		skill2_cooldown = s_sk2
+		skill3_cooldown = s_sk3
+		dash_cooldown   = s_dash
+	elif networked and not multiplayer.is_server() and is_multiplayer_authority():
+		# Own player, prediction OFF — dead-reckon server position (no local movement).
+		# Keep facing local for crisp aim; accept server cooldowns.
+		_observed_velocity = vel
+		var error := pos - position
+		if error.length() > OBSERVED_SNAP_THRESHOLD:
+			position = pos
+			_observed_correction = Vector2.ZERO
+		else:
+			_observed_correction = error
 		skill1_cooldown = s_sk1
 		skill2_cooldown = s_sk2
 		skill3_cooldown = s_sk3

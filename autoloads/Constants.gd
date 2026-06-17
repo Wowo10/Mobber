@@ -7,6 +7,10 @@ const SIGNALING_URL = "wss://mobber.onrender.com"
 const PLAYER_SPEED = 300.0
 const PLAYER_START_RADIUS = 30.0
 
+# When false, the client's own player stops predicting movement locally and
+# instead applies server position via dead-reckoning (same path as observed players).
+const CLIENT_PREDICTION := true
+
 const MOB_RADIUS = 15.0
 const MOB_SPEED = 120.0
 const MOB_MAX_HEALTH = 30.0
