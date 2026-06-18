@@ -4,6 +4,9 @@
 [ext_resource type="PackedScene" uid="uid://rena001tscn" path="res://scenes/game/arena.tscn" id="2_arena"]
 [ext_resource type="Script" uid="uid://dldp2677k28n2" path="res://scripts/ui/skill_slot.gd" id="4_skill"]
 [ext_resource type="Script" uid="uid://22vu6qkk72iq" path="res://scripts/ui/mob_indicator.gd" id="5_indicator"]
+[ext_resource type="Script" path="res://scripts/game/net_sync.gd" id="6_netsync"]
+[ext_resource type="Script" path="res://scripts/game/economy.gd" id="7_economy"]
+[ext_resource type="Script" path="res://scripts/game/match_manager.gd" id="8_match"]
 
 [node name="Game" type="Node"]
 script = ExtResource("1_sul5r")
@@ -16,6 +19,15 @@ position = Vector2(2967, 0)
 [node name="PlayerContainer" type="Node2D" parent="."]
 
 [node name="PlayerSpawner" type="MultiplayerSpawner" parent="."]
+
+[node name="NetSync" type="Node" parent="."]
+script = ExtResource("6_netsync")
+
+[node name="Economy" type="Node" parent="."]
+script = ExtResource("7_economy")
+
+[node name="MatchManager" type="Node" parent="."]
+script = ExtResource("8_match")
 
 [node name="GameOverOverlay" type="CanvasLayer" parent="."]
 layer = 10
