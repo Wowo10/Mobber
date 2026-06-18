@@ -98,7 +98,7 @@ func use_skill1() -> void:
 	spawn_fan_local(_player.global_position, base_angle, false)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
-		_player.rpc_spawn_fan_of_knives.rpc(_player.global_position, base_angle)
+		_player.net_sync.rpc_spawn_fan_of_knives.rpc(_player.global_position, base_angle)
 
 func on_skill2_client_predict() -> void:
 	var nearest := _find_nearest_mob(SHADOWSTEP_RANGE)
@@ -120,7 +120,7 @@ func use_skill2() -> void:
 	_spawn_blink_burst(nearest.global_position)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
-		_player.rpc_shadowstep_visual.rpc(nearest.global_position)
+		_player.net_sync.rpc_shadowstep_visual.rpc(nearest.global_position)
 
 func use_skill3() -> void:
 	if _trap_count >= MAX_TRAPS + 5 * _player.skill3_level:
@@ -129,7 +129,7 @@ func use_skill3() -> void:
 	spawn_trap_local(_player.global_position, false)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
-		_player.rpc_spawn_assassin_trap.rpc(_player.global_position)
+		_player.net_sync.rpc_spawn_assassin_trap.rpc(_player.global_position)
 
 func on_trap_triggered() -> void:
 	_trap_count = max(0, _trap_count - 1)

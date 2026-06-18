@@ -56,7 +56,7 @@ func _try_shoot() -> void:
 	_spawn_bolt(global_position, dir)
 	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
-		player_ref.rpc_spawn_wisp_bolt.rpc(global_position, dir)
+		player_ref.net_sync.rpc_spawn_wisp_bolt.rpc(global_position, dir)
 
 func _spawn_bolt(pos: Vector2, dir: Vector2) -> void:
 	var bolt := BOLT_SCENE.instantiate()

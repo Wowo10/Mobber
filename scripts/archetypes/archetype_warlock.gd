@@ -97,7 +97,7 @@ func use_dash() -> bool:
 			_player.get_parent().add_child(_portal_node)
 			_portal_node.global_position = _portal_pos
 			if networked:
-				_player.rpc_place_warlock_portal.rpc(_portal_pos)
+				_player.net_sync.rpc_place_warlock_portal.rpc(_portal_pos)
 		else:
 			var prev_pos: Vector2 = _player.global_position
 			var jump_dir: Vector2 = ((_portal_pos - prev_pos).normalized() if _portal_pos != prev_pos else Vector2.RIGHT)
@@ -111,8 +111,8 @@ func use_dash() -> bool:
 			_player.get_parent().add_child(_portal_node)
 			_portal_node.global_position = _portal_pos
 			if networked:
-				_player.rpc_consume_warlock_portal.rpc()
-				_player.rpc_place_warlock_portal.rpc(_portal_pos)
+				_player.net_sync.rpc_consume_warlock_portal.rpc()
+				_player.net_sync.rpc_place_warlock_portal.rpc(_portal_pos)
 	return true
 
 func place_visual_portal(pos: Vector2) -> void:
@@ -136,7 +136,7 @@ func use_attack() -> void:
 	spawn_bolt_local(pos, _player.last_facing, false)
 
 func broadcast_attack() -> void:
-	_player.rpc_spawn_warlock_bolt.rpc(
+	_player.net_sync.rpc_spawn_warlock_bolt.rpc(
 		_player.global_position + _player.last_facing * (_player.radius + 10.0),
 		_player.last_facing)
 
@@ -150,7 +150,7 @@ func use_skill1() -> void:
 	spawn_drain_local(false)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
-		_player.rpc_spawn_drain_life.rpc()
+		_player.net_sync.rpc_spawn_drain_life.rpc()
 
 func use_skill2() -> void:
 	_player.skill2_cooldown = get_skill2_max_cooldown()
@@ -158,7 +158,7 @@ func use_skill2() -> void:
 	spawn_rift_local(_player.global_position, false)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
-		_player.rpc_spawn_void_rift.rpc(_player.global_position)
+		_player.net_sync.rpc_spawn_void_rift.rpc(_player.global_position)
 
 func spawn_bolt_local(pos: Vector2, dir: Vector2, visual_only: bool) -> void:
 	var bolt := BOLT_SCENE.instantiate()
@@ -193,7 +193,7 @@ func use_skill3() -> void:
 	spawn_wisp_local(false)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
-		_player.rpc_spawn_warlock_wisp.rpc()
+		_player.net_sync.rpc_spawn_warlock_wisp.rpc()
 
 func spawn_wisp_local(visual_only: bool) -> void:
 	if not visual_only:

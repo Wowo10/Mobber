@@ -104,7 +104,7 @@ func use_attack() -> void:
 
 func broadcast_attack() -> void:
 	if _ranged_mode:
-		_player.rpc_spawn_cyber_bullet.rpc(
+		_player.net_sync.rpc_spawn_cyber_bullet.rpc(
 			_player.global_position + _player.last_facing * (_player.radius + 10.0),
 			_player.last_facing)
 	else:
@@ -124,7 +124,7 @@ func use_skill1() -> void:
 	set_ranged_mode(not _ranged_mode)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
-		_player.rpc_set_cyborg_ranged_mode.rpc(_ranged_mode)
+		_player.net_sync.rpc_set_cyborg_ranged_mode.rpc(_ranged_mode)
 
 func use_skill2() -> void:
 	_player.skill2_cooldown = get_skill2_max_cooldown()
@@ -132,14 +132,14 @@ func use_skill2() -> void:
 	spawn_ray_local(_player.global_position, _player.last_facing, false)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
-		_player.rpc_spawn_cyber_ray.rpc(_player.global_position, _player.last_facing)
+		_player.net_sync.rpc_spawn_cyber_ray.rpc(_player.global_position, _player.last_facing)
 
 func use_skill3() -> void:
 	_player.skill3_cooldown = get_skill3_max_cooldown()
 	set_overclock(true)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
-		_player.rpc_set_cyborg_overclock.rpc(true)
+		_player.net_sync.rpc_set_cyborg_overclock.rpc(true)
 
 func on_skill3_client_predict() -> void:
 	set_overclock(true)
@@ -215,4 +215,4 @@ func physics_process(delta: float) -> void:
 		set_overclock(false)
 		var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 		if networked and _player.multiplayer.is_server():
-			_player.rpc_set_cyborg_overclock.rpc(false)
+			_player.net_sync.rpc_set_cyborg_overclock.rpc(false)

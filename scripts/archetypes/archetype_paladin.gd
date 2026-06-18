@@ -76,14 +76,14 @@ func use_skill1() -> void:
 	_player.get_node("Sword").enter_spin()
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
-		_player.rpc_trigger_spin_start.rpc()
+		_player.net_sync.rpc_trigger_spin_start.rpc()
 
 func use_skill2() -> void:
 	_player.skill2_cooldown = get_skill2_max_cooldown()
 	spawn_consecration_local(_player.global_position, false)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
-		_player.rpc_spawn_consecration.rpc(_player.global_position)
+		_player.net_sync.rpc_spawn_consecration.rpc(_player.global_position)
 
 func use_skill3() -> void:
 	_player.skill3_cooldown = get_skill3_max_cooldown()
@@ -93,7 +93,7 @@ func use_skill3() -> void:
 	_do_bash(pos, dir)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
-		_player.rpc_knight_shield_bash.rpc(pos, dir)
+		_player.net_sync.rpc_knight_shield_bash.rpc(pos, dir)
 
 func _do_bash(pos: Vector2, dir: Vector2) -> void:
 	var query := PhysicsShapeQueryParameters2D.new()

@@ -1,7 +1,8 @@
-[gd_scene load_steps=13 format=3 uid="uid://lhp5crgd3o0w"]
+[gd_scene load_steps=14 format=3 uid="uid://lhp5crgd3o0w"]
 
 [ext_resource type="Script" uid="uid://cc81omjvsnbyd" path="res://scripts/entities/player.gd" id="1_ucweq"]
 [ext_resource type="Script" uid="uid://csword1gd0001" path="res://scripts/entities/sword.gd" id="2_sword"]
+[ext_resource type="Script" path="res://scripts/entities/player_net_sync.gd" id="3_netsync"]
 [ext_resource type="AudioStream" path="res://assets/sounds/Sword Attack 1.ogg" id="sfx_swing"]
 [ext_resource type="AudioStream" path="res://assets/sounds/air_burst.wav" id="sfx_dash"]
 [ext_resource type="AudioStream" path="res://assets/sounds/powerUp1.ogg" id="sfx_spin"]
@@ -51,6 +52,9 @@ stream = ExtResource("sfx_skill2")
 
 [node name="SfxSkill3" type="AudioStreamPlayer2D" parent="."]
 stream = ExtResource("sfx_skill3")
+
+[node name="NetSync" type="Node" parent="."]
+script = ExtResource("3_netsync")
 
 [node name="Sword" type="Area2D" parent="."]
 script = ExtResource("2_sword")

@@ -86,7 +86,7 @@ func use_attack_visual() -> void:
 	_player.attack_cooldown = sword.swing_duration
 
 func broadcast_attack() -> void:
-	_player.broadcast_swing(_player.last_facing.angle())
+	_player.net_sync.broadcast_swing(_player.last_facing.angle())
 
 func get_speed_mult() -> float:
 	return 0.8

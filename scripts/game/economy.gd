@@ -271,7 +271,7 @@ func apply_purchase(peer_id: int, item_id: int) -> void:
 			if player and is_instance_valid(player):
 				player.speed_level = new_level
 				if game._networked and peer_id != 1:
-					player.rpc_apply_speed_level.rpc_id(peer_id, new_level)
+					player.net_sync.rpc_apply_speed_level.rpc_id(peer_id, new_level)
 			if game._networked and peer_id != 1:
 				_rpc_sync_speed_level.rpc_id(peer_id, new_level)
 		4:
@@ -287,7 +287,7 @@ func apply_purchase(peer_id: int, item_id: int) -> void:
 				player.damage_level = new_level
 				player.apply_upgrades_to_sword()
 				if game._networked and peer_id != 1:
-					player.rpc_apply_damage_level.rpc_id(peer_id, new_level)
+					player.net_sync.rpc_apply_damage_level.rpc_id(peer_id, new_level)
 		5:
 			var cur_level: int = _player_sword_size_levels.get(peer_id, 0)
 			var cost := _upgrade_cost(
@@ -303,7 +303,7 @@ func apply_purchase(peer_id: int, item_id: int) -> void:
 				player.sword_size_level = new_level
 				player.apply_upgrades_to_sword()
 				if game._networked and peer_id != 1:
-					player.rpc_apply_sword_size_level.rpc_id(peer_id, new_level)
+					player.net_sync.rpc_apply_sword_size_level.rpc_id(peer_id, new_level)
 		6:
 			var cur_level: int = _player_attack_speed_levels.get(peer_id, 0)
 			var cost := _upgrade_cost(
@@ -319,7 +319,7 @@ func apply_purchase(peer_id: int, item_id: int) -> void:
 				player.attack_speed_level = new_level
 				player.apply_upgrades_to_sword()
 				if game._networked and peer_id != 1:
-					player.rpc_apply_attack_speed_level.rpc_id(peer_id, new_level)
+					player.net_sync.rpc_apply_attack_speed_level.rpc_id(peer_id, new_level)
 		12:
 			if not game.match_manager._player_skills_unlocked.get(peer_id, [false, false, false])[0]:
 				return
@@ -335,7 +335,7 @@ func apply_purchase(peer_id: int, item_id: int) -> void:
 				player.skill1_level = new_level
 				player.apply_skill_upgrades()
 				if game._networked and peer_id != 1:
-					player.rpc_apply_skill1_level.rpc_id(peer_id, new_level)
+					player.net_sync.rpc_apply_skill1_level.rpc_id(peer_id, new_level)
 			if game._networked and peer_id != 1:
 				_rpc_sync_skill1_level.rpc_id(peer_id, new_level)
 		13:
@@ -353,7 +353,7 @@ func apply_purchase(peer_id: int, item_id: int) -> void:
 				player.skill2_level = new_level
 				player.apply_skill_upgrades()
 				if game._networked and peer_id != 1:
-					player.rpc_apply_skill2_level.rpc_id(peer_id, new_level)
+					player.net_sync.rpc_apply_skill2_level.rpc_id(peer_id, new_level)
 			if game._networked and peer_id != 1:
 				_rpc_sync_skill2_level.rpc_id(peer_id, new_level)
 		14:
@@ -371,7 +371,7 @@ func apply_purchase(peer_id: int, item_id: int) -> void:
 				player.skill3_level = new_level
 				player.apply_skill_upgrades()
 				if game._networked and peer_id != 1:
-					player.rpc_apply_skill3_level.rpc_id(peer_id, new_level)
+					player.net_sync.rpc_apply_skill3_level.rpc_id(peer_id, new_level)
 			if game._networked and peer_id != 1:
 				_rpc_sync_skill3_level.rpc_id(peer_id, new_level)
 		Constants.DEBUFF_NO_DASH, Constants.DEBUFF_SILENCE, Constants.DEBUFF_INVERT:
@@ -442,9 +442,9 @@ func _apply_debuff_to_opponents(buyer_id: int, item_id: int, dur: float) -> void
 		var opp_player = game._peer_to_player.get(opp_id)
 		if not opp_player or not is_instance_valid(opp_player):
 			continue
-		opp_player.rpc_apply_debuff(item_id, dur)
+		opp_player.net_sync.rpc_apply_debuff(item_id, dur)
 		if game._networked and opp_id != 1:
-			opp_player.rpc_apply_debuff.rpc_id(opp_id, item_id, dur)
+			opp_player.net_sync.rpc_apply_debuff.rpc_id(opp_id, item_id, dur)
 		_notify_debuff_icon(opp_id, item_id, dur)
 
 func _notify_opponents_debuff_icon(buyer_id: int, item_id: int, dur: float) -> void:

@@ -80,7 +80,7 @@ func use_skill1() -> void:
 		cannonball.global_position = _player.global_position + dir * (_player.radius + 12.0)
 		cannonball.player_ref = _player
 		_player.get_parent().add_child(cannonball)
-		_player.broadcast_cannonball(cannonball.global_position, dir, true)
+		_player.net_sync.broadcast_cannonball(cannonball.global_position, dir, true)
 
 func use_skill2() -> void:
 	_player.skill2_cooldown = get_skill2_max_cooldown()
@@ -98,7 +98,7 @@ func use_skill2() -> void:
 		_turret.global_position = _player.global_position
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
-		_player.rpc_place_turret.rpc(_player.global_position, _player.last_facing)
+		_player.net_sync.rpc_place_turret.rpc(_player.global_position, _player.last_facing)
 
 func use_skill3() -> void:
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
@@ -108,13 +108,13 @@ func use_skill3() -> void:
 		_player.shake_camera(0.45, 14.0)
 		_player.skill3_cooldown = get_skill3_max_cooldown()
 		if networked:
-			_player.rpc_detonate_pirate_barrel.rpc()
+			_player.net_sync.rpc_detonate_pirate_barrel.rpc()
 	else:
 		_player.skill3_cooldown = BARREL_PLACE_COOLDOWN
 		var pos: Vector2 = _player.global_position
 		spawn_barrel_local(pos, false)
 		if networked:
-			_player.rpc_place_pirate_barrel.rpc(pos)
+			_player.net_sync.rpc_place_pirate_barrel.rpc(pos)
 
 func spawn_barrel_local(pos: Vector2, visual_only: bool) -> void:
 	var b := BARREL_SCENE.instantiate()

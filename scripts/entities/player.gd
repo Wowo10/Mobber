@@ -58,20 +58,15 @@ var spinning := false
 var spin_timer := 0.0
 var _spin_loop_timer := 0.0
 
-# Server-side input buffers — written by client RPCs, consumed each physics tick
-var _received_direction := Vector2.ZERO
-var _pending_attack := false
-var _pending_dash := false
-var _pending_skill1 := false
-var _pending_skill2 := false
-var _pending_skill3 := false
-
 var _archetype_handler: ArchetypeBase
+
+# RPC message-passing layer — input RPCs + buffers, visual/broadcast RPCs, and the
+# upgrade/debuff/skill-unlock appliers. Archetype handlers reach it via _player.net_sync.
+@onready var net_sync: Node = $NetSync
 
 # Client-side prediction — pending position correction from server reconciliation
 var _server_correction      := Vector2.ZERO
 var _cam_correction_offset  := Vector2.ZERO  # counteracts correction on camera so it doesn't jump
-var _received_facing := Vector2.RIGHT
 var _mouse_attack_pressed := false
 var _mouse_dash_pressed := false
 
@@ -86,10 +81,14 @@ var _last_sent_direction   := Vector2.ZERO
 var _last_sent_facing      := Vector2.RIGHT
 
 func _ready() -> void:
-	# MultiplayerSpawner doesn't sync authority — derive it from node name "Player_N"
+	# MultiplayerSpawner doesn't sync authority — derive it from node name "Player_N".
+	# The NetSync child does NOT inherit authority, so set it there too or its RPC
+	# authority guards (input RPCs, sender-id checks) break.
 	var parts := name.split("_")
 	if parts.size() == 2 and parts[0] == "Player":
-		set_multiplayer_authority(parts[1].to_int())
+		var peer_id := parts[1].to_int()
+		set_multiplayer_authority(peer_id)
+		$NetSync.set_multiplayer_authority(peer_id)
 
 	_apply_archetype()
 	add_to_group("players")
@@ -351,18 +350,18 @@ func _physics_process(delta: float) -> void:
 			)
 
 		else:
-			direction = _received_direction
-			facing = _received_facing
-			do_attack = _pending_attack and _archetype_handler.can_attack()
-			do_dash   = _pending_dash and dash_cooldown <= 0.0
-			do_skill1 = _pending_skill1 and skill1_cooldown <= 0.0 and skills_unlocked[0]
-			do_skill2 = _pending_skill2 and skill2_cooldown <= 0.0 and skills_unlocked[1]
-			do_skill3 = _pending_skill3 and skill3_cooldown <= 0.0 and skills_unlocked[2]
-			_pending_attack = false
-			_pending_dash   = false
-			_pending_skill1 = false
-			_pending_skill2 = false
-			_pending_skill3 = false
+			direction = net_sync._received_direction
+			facing = net_sync._received_facing
+			do_attack = net_sync._pending_attack and _archetype_handler.can_attack()
+			do_dash   = net_sync._pending_dash and dash_cooldown <= 0.0
+			do_skill1 = net_sync._pending_skill1 and skill1_cooldown <= 0.0 and skills_unlocked[0]
+			do_skill2 = net_sync._pending_skill2 and skill2_cooldown <= 0.0 and skills_unlocked[1]
+			do_skill3 = net_sync._pending_skill3 and skill3_cooldown <= 0.0 and skills_unlocked[2]
+			net_sync._pending_attack = false
+			net_sync._pending_dash   = false
+			net_sync._pending_skill1 = false
+			net_sync._pending_skill2 = false
+			net_sync._pending_skill3 = false
 
 	else:
 		# Path C — Client own player: predict locally and send input to server
@@ -403,10 +402,10 @@ func _physics_process(delta: float) -> void:
 			do_skill2 = false
 			do_skill3 = false
 		if direction != _last_sent_direction:
-			_rpc_send_direction.rpc_id(1, direction)
+			net_sync._rpc_send_direction.rpc_id(1, direction)
 			_last_sent_direction = direction
 		if facing != _last_sent_facing:
-			_rpc_send_facing.rpc_id(1, facing)
+			net_sync._rpc_send_facing.rpc_id(1, facing)
 			_last_sent_facing = facing
 		var action_mask := 0
 		if do_attack: action_mask |= 1
@@ -415,7 +414,7 @@ func _physics_process(delta: float) -> void:
 		if do_skill2: action_mask |= 8
 		if do_skill3: action_mask |= 16
 		if action_mask != 0:
-			_rpc_send_action.rpc_id(1, action_mask)
+			net_sync._rpc_send_action.rpc_id(1, action_mask)
 
 	# --- Debuff timers + enforcement ---
 
@@ -461,7 +460,7 @@ func _physics_process(delta: float) -> void:
 				$SfxSpinLoop.stop()
 				_spin_loop_timer = 0.0
 			if networked and multiplayer.is_server():
-				_rpc_trigger_spin_stop.rpc()
+				net_sync._rpc_trigger_spin_stop.rpc()
 
 	# Dash / movement
 	if predict_movement:
@@ -472,7 +471,7 @@ func _physics_process(delta: float) -> void:
 				_dashing = false
 				$DashParticles.emitting = false
 				if networked and multiplayer.is_server():
-					_rpc_set_dash_particles.rpc(Vector2.ZERO, false)
+					net_sync._rpc_set_dash_particles.rpc(Vector2.ZERO, false)
 				if not networked or multiplayer.is_server():
 					_archetype_handler.on_dash_end()
 		else:
@@ -496,7 +495,7 @@ func _physics_process(delta: float) -> void:
 					if is_multiplayer_authority():
 						$SfxDash.play()
 					if networked and multiplayer.is_server():
-						_rpc_set_dash_particles.rpc(-last_facing, true)
+						net_sync._rpc_set_dash_particles.rpc(-last_facing, true)
 
 		move_and_slide()
 
@@ -599,36 +598,6 @@ func _read_facing(move_dir: Vector2) -> Vector2:
 		return move_dir
 	return last_facing
 
-# --- Input RPCs (client → server) ---
-
-@rpc("any_peer", "unreliable_ordered")
-func _rpc_send_direction(direction: Vector2) -> void:
-	if not multiplayer.is_server():
-		return
-	if multiplayer.get_remote_sender_id() != get_multiplayer_authority():
-		return
-	_received_direction = direction
-
-@rpc("any_peer", "unreliable_ordered")
-func _rpc_send_facing(f: Vector2) -> void:
-	if not multiplayer.is_server():
-		return
-	if multiplayer.get_remote_sender_id() != get_multiplayer_authority():
-		return
-	_received_facing = f
-
-@rpc("any_peer", "reliable")
-func _rpc_send_action(action_mask: int) -> void:
-	if not multiplayer.is_server():
-		return
-	if multiplayer.get_remote_sender_id() != get_multiplayer_authority():
-		return
-	if action_mask & 1: _pending_attack = true
-	if action_mask & 2: _pending_dash   = true
-	if action_mask & 4:  _pending_skill1 = true
-	if action_mask & 8:  _pending_skill2 = true
-	if action_mask & 16: _pending_skill3 = true
-
 # --- Skills ---
 
 func _use_skill1() -> void:
@@ -652,7 +621,7 @@ func get_passive_counter() -> int:
 func get_archetype_handler() -> ArchetypeBase:
 	return _archetype_handler
 
-# --- Upgrade RPCs ---
+# --- Upgrades (applied locally; the RPC entry points live on NetSync) ---
 
 func apply_skill_upgrades() -> void:
 	skill1_max_cooldown = _archetype_handler.get_skill1_max_cooldown()
@@ -671,78 +640,6 @@ func apply_upgrades_to_sword() -> void:
 	var sz_mult := 1.0 + sword_size_level * Constants.SHOP_SWORD_SIZE_PER_LEVEL
 	var spd_mult := 1.0 - attack_speed_level * Constants.SHOP_ATTACK_SPEED_PER_LEVEL
 	$Sword.apply_upgrades(dmg_bonus, sz_mult, spd_mult)
-
-@rpc("any_peer", "reliable")
-func rpc_apply_speed_level(level: int) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	speed_level = level
-
-@rpc("any_peer", "reliable")
-func rpc_apply_damage_level(level: int) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	damage_level = level
-	apply_upgrades_to_sword()
-
-@rpc("any_peer", "reliable")
-func rpc_apply_sword_size_level(level: int) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	sword_size_level = level
-	apply_upgrades_to_sword()
-
-@rpc("any_peer", "reliable")
-func rpc_apply_attack_speed_level(level: int) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	attack_speed_level = level
-	apply_upgrades_to_sword()
-
-@rpc("any_peer", "reliable")
-func rpc_apply_skill1_level(level: int) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	skill1_level = level
-	apply_skill_upgrades()
-
-@rpc("any_peer", "reliable")
-func rpc_apply_skill2_level(level: int) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	skill2_level = level
-	apply_skill_upgrades()
-
-@rpc("any_peer", "reliable")
-func rpc_apply_skill3_level(level: int) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	skill3_level = level
-	apply_skill_upgrades()
-
-@rpc("any_peer", "reliable")
-func rpc_sync_skills_unlocked(unlocked: Array) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	skills_unlocked = unlocked
-
-@rpc("any_peer", "reliable")
-func rpc_apply_debuff(type: int, duration: float) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	match type:
-		Constants.DEBUFF_NO_DASH: debuff_no_dash_timer = duration
-		Constants.DEBUFF_SILENCE: debuff_silence_timer = duration
-		Constants.DEBUFF_INVERT:  debuff_invert_timer  = duration
 
 # --- Mob pushing (server and offline only) ---
 
@@ -780,266 +677,6 @@ func _push_mobs_client_predict(delta: float) -> void:
 			continue
 		body.apply_client_push(
 				dir.normalized() * Constants.MOB_PUSH_FORCE * (6.0 if _dashing else 1.0) * delta)
-
-# --- Broadcast helpers (called by archetype handlers) ---
-
-func broadcast_swing(angle: float) -> void:
-	rpc_trigger_swing.rpc(angle)
-
-func broadcast_cannonball(pos: Vector2, dir: Vector2, homing: bool) -> void:
-	var networked := not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
-	if networked and multiplayer.is_server():
-		rpc_spawn_cannonball.rpc(pos, dir, homing)
-
-# --- Visual / sync RPCs ---
-
-@rpc("any_peer", "reliable")
-func rpc_spawn_cannonball(pos: Vector2, dir: Vector2, homing: bool) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	(_archetype_handler as ArchetypePirate).spawn_visual_cannonball(pos, dir, homing)
-
-@rpc("any_peer", "reliable")
-func rpc_place_turret(pos: Vector2, fac: Vector2) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	(_archetype_handler as ArchetypePirate).place_visual_turret(pos, fac)
-
-@rpc("any_peer", "reliable")
-func rpc_place_pirate_barrel(pos: Vector2) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	(_archetype_handler as ArchetypePirate).spawn_barrel_local(pos, true)
-
-@rpc("any_peer", "reliable")
-func rpc_detonate_pirate_barrel() -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	(_archetype_handler as ArchetypePirate).detonate_visual_barrel()
-
-@rpc("any_peer", "reliable")
-func rpc_knight_shield_bash(pos: Vector2, dir: Vector2) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	(_archetype_handler as ArchetypePaladin).spawn_bash_visual(pos, dir)
-
-@rpc("any_peer", "reliable")
-func rpc_spawn_consecration(pos: Vector2) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	(_archetype_handler as ArchetypePaladin).spawn_consecration_local(pos, true)
-
-@rpc("any_peer", "reliable")
-func rpc_spawn_mage_bolt(pos: Vector2, dir: Vector2) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	if is_multiplayer_authority():
-		return
-	(_archetype_handler as ArchetypeMage).spawn_bolt_local(pos, dir, true)
-
-@rpc("any_peer", "reliable")
-func rpc_spawn_rain(pos: Vector2, rs: int) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	(_archetype_handler as ArchetypeMage).spawn_rain_local(pos, true, rs)
-
-@rpc("any_peer", "reliable")
-func rpc_spawn_fireball(pos: Vector2, dir: Vector2) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	(_archetype_handler as ArchetypeMage).spawn_fireball_local(pos, dir, true)
-
-@rpc("any_peer", "reliable")
-func rpc_spawn_cyber_bullet(pos: Vector2, dir: Vector2) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	if is_multiplayer_authority():
-		return
-	(_archetype_handler as ArchetypeCyborg).spawn_bullet_local(pos, dir, true)
-
-@rpc("any_peer", "reliable")
-func rpc_spawn_cyber_ray(pos: Vector2, facing: Vector2) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	(_archetype_handler as ArchetypeCyborg).spawn_ray_local(pos, facing, true)
-
-@rpc("any_peer", "reliable")
-func rpc_set_cyborg_ranged_mode(active: bool) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	(_archetype_handler as ArchetypeCyborg).set_ranged_mode(active)
-
-@rpc("any_peer", "reliable")
-func rpc_shadowstep_visual(pos: Vector2) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	(_archetype_handler as ArchetypeAssassin).spawn_visual_at(pos)
-
-@rpc("any_peer", "reliable")
-func rpc_set_berserker_rage(active: bool) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	(_archetype_handler as ArchetypeBerserker).set_rage(active)
-
-@rpc("any_peer", "reliable")
-func rpc_spawn_ground_slam(pos: Vector2, slam_radius: float = -1.0) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	(_archetype_handler as ArchetypeBerserker).spawn_slam_local(pos, true, -1.0, slam_radius)
-
-@rpc("any_peer", "reliable")
-func rpc_spawn_warlock_bolt(pos: Vector2, dir: Vector2) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	if is_multiplayer_authority():
-		return
-	(_archetype_handler as ArchetypeWarlock).spawn_bolt_local(pos, dir, true)
-
-@rpc("any_peer", "reliable")
-func rpc_spawn_wisp_bolt(pos: Vector2, dir: Vector2) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	if is_multiplayer_authority():
-		return
-	(_archetype_handler as ArchetypeWarlock).spawn_wisp_bolt_visual(pos, dir)
-
-@rpc("any_peer", "reliable")
-func rpc_spawn_drain_life() -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	(_archetype_handler as ArchetypeWarlock).spawn_drain_local(true)
-
-@rpc("any_peer", "reliable")
-func rpc_spawn_void_rift(pos: Vector2) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	(_archetype_handler as ArchetypeWarlock).spawn_rift_local(pos, true)
-
-@rpc("any_peer", "reliable")
-func rpc_spawn_fan_of_knives(pos: Vector2, facing_angle: float) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	if is_multiplayer_authority():
-		return
-	(_archetype_handler as ArchetypeAssassin).spawn_fan_local(pos, facing_angle, true)
-
-@rpc("any_peer", "reliable")
-func rpc_place_warlock_portal(pos: Vector2) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	(_archetype_handler as ArchetypeWarlock).place_visual_portal(pos)
-
-@rpc("any_peer", "reliable")
-func rpc_consume_warlock_portal() -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	(_archetype_handler as ArchetypeWarlock).consume_visual_portal()
-
-@rpc("any_peer", "reliable")
-func rpc_mage_force_pull(pos: Vector2) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	(_archetype_handler as ArchetypeMage).spawn_pull_visual(pos)
-
-@rpc("any_peer", "reliable")
-func rpc_spawn_arcane_implosion(pos: Vector2) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	(_archetype_handler as ArchetypeMage).spawn_implosion_local(pos, true)
-
-@rpc("any_peer", "reliable")
-func rpc_set_cyborg_overclock(active: bool) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	(_archetype_handler as ArchetypeCyborg).set_overclock(active)
-
-@rpc("any_peer", "reliable")
-func rpc_spawn_berserker_mini_smash(pos: Vector2) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	(_archetype_handler as ArchetypeBerserker).spawn_mini_smash_local(pos, true)
-
-@rpc("any_peer", "reliable")
-func rpc_berserker_set_hit_count(count: int) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	(_archetype_handler as ArchetypeBerserker).set_hit_count(count)
-
-@rpc("any_peer", "reliable")
-func rpc_spawn_assassin_trap(pos: Vector2) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	(_archetype_handler as ArchetypeAssassin).spawn_trap_local(pos, true)
-
-@rpc("any_peer", "reliable")
-func rpc_spawn_warlock_wisp() -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	(_archetype_handler as ArchetypeWarlock).spawn_wisp_local(true)
-
-@rpc("any_peer", "unreliable_ordered")
-func _rpc_set_dash_particles(dir: Vector2, emitting: bool) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	$DashParticles.direction = dir
-	$DashParticles.emitting = emitting
-
-@rpc("any_peer", "reliable")
-func rpc_trigger_swing(facing_angle: float) -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	$Sword.swing(facing_angle)
-
-@rpc("any_peer", "reliable")
-func rpc_trigger_spin_start() -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	spinning = true
-	spin_timer = ArchetypePaladin.SPIN_DURATION
-	$Sword.enter_spin()
-	if is_multiplayer_authority():
-		_spin_loop_timer = 0.0
-		$SfxSpin.play()
-
-@rpc("any_peer", "reliable")
-func _rpc_trigger_spin_stop() -> void:
-	var _s := multiplayer.get_remote_sender_id()
-	if _s != 0 and _s != 1:
-		return
-	spinning = false
-	$Sword.exit_spin()
 
 # --- Position sync (server → all clients) ---
 

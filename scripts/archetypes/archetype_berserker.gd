@@ -24,11 +24,11 @@ func _on_sword_hit(mob: Node, _damage: float) -> void:
 	_hit_count += 1
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
-		_player.rpc_berserker_set_hit_count.rpc(_hit_count)
+		_player.net_sync.rpc_berserker_set_hit_count.rpc(_hit_count)
 	if _player.skills_unlocked[2] and _hit_count % get_mini_smash_threshold() == 0:
 		spawn_mini_smash_local(mob.global_position, false)
 		if networked:
-			_player.rpc_spawn_berserker_mini_smash.rpc(mob.global_position)
+			_player.net_sync.rpc_spawn_berserker_mini_smash.rpc(mob.global_position)
 
 func get_hit_count() -> int:
 	return _hit_count
@@ -113,7 +113,7 @@ func on_dash_end() -> void:
 	spawn_slam_local(_player.global_position, false, 20.0, 55.0)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
-		_player.rpc_spawn_ground_slam.rpc(_player.global_position, 55.0)
+		_player.net_sync.rpc_spawn_ground_slam.rpc(_player.global_position, 55.0)
 
 func on_skill1_client_predict() -> void:
 	set_rage(true)
@@ -125,7 +125,7 @@ func use_skill1() -> void:
 	_rage_timer = RAGE_DURATION + _player.skill1_level * 0.5
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
-		_player.rpc_set_berserker_rage.rpc(true)
+		_player.net_sync.rpc_set_berserker_rage.rpc(true)
 
 func use_skill2() -> void:
 	_player.skill2_cooldown = get_skill2_max_cooldown()
@@ -136,7 +136,7 @@ func use_skill2() -> void:
 	spawn_slam_local(_player.global_position, false, d, r)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
-		_player.rpc_spawn_ground_slam.rpc(_player.global_position, r)
+		_player.net_sync.rpc_spawn_ground_slam.rpc(_player.global_position, r)
 
 func spawn_mini_smash_local(pos: Vector2, visual_only: bool) -> void:
 	if not visual_only:
@@ -203,4 +203,4 @@ func physics_process(delta: float) -> void:
 		set_rage(false)
 		var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 		if networked and _player.multiplayer.is_server():
-			_player.rpc_set_berserker_rage.rpc(false)
+			_player.net_sync.rpc_set_berserker_rage.rpc(false)

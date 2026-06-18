@@ -58,7 +58,7 @@ func use_dash() -> bool:
 				body.apply_burst(dir * PULL_FORCE)
 		spawn_pull_visual(_player.global_position)
 		if networked:
-			_player.rpc_mage_force_pull.rpc(_player.global_position)
+			_player.net_sync.rpc_mage_force_pull.rpc(_player.global_position)
 	else:
 		spawn_pull_visual(_player.global_position)
 	return true
@@ -130,7 +130,7 @@ func use_attack() -> void:
 	spawn_bolt_local(pos, _player.last_facing, false)
 
 func broadcast_attack() -> void:
-	_player.rpc_spawn_mage_bolt.rpc(
+	_player.net_sync.rpc_spawn_mage_bolt.rpc(
 		_player.global_position + _player.last_facing * (_player.radius + 10.0),
 		_player.last_facing)
 
@@ -145,7 +145,7 @@ func use_skill1() -> void:
 	spawn_rain_local(_player.global_position, false, rs)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
-		_player.rpc_spawn_rain.rpc(_player.global_position, rs)
+		_player.net_sync.rpc_spawn_rain.rpc(_player.global_position, rs)
 
 func use_skill2() -> void:
 	_player.skill2_cooldown = get_skill2_max_cooldown()
@@ -153,7 +153,7 @@ func use_skill2() -> void:
 	spawn_fireball_local(pos, _player.last_facing, false)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
-		_player.rpc_spawn_fireball.rpc(pos, _player.last_facing)
+		_player.net_sync.rpc_spawn_fireball.rpc(pos, _player.last_facing)
 
 func spawn_bolt_local(pos: Vector2, dir: Vector2, visual_only: bool) -> void:
 	var bolt := BOLT_SCENE.instantiate()
@@ -177,7 +177,7 @@ func use_skill3() -> void:
 	spawn_implosion_local(_player.global_position, false)
 	var networked := not (_player.multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked:
-		_player.rpc_spawn_arcane_implosion.rpc(_player.global_position)
+		_player.net_sync.rpc_spawn_arcane_implosion.rpc(_player.global_position)
 
 func spawn_implosion_local(pos: Vector2, visual_only: bool) -> void:
 	var imp := IMPLOSION_SCENE.instantiate()

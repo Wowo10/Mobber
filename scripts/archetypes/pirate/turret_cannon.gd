@@ -37,7 +37,7 @@ func _fire_cone() -> void:
 		ball.player_ref = player_ref
 		get_parent().add_child(ball)
 		if player_ref and is_instance_valid(player_ref):
-			player_ref.broadcast_cannonball(ball.global_position, dir, false)
+			player_ref.net_sync.broadcast_cannonball(ball.global_position, dir, false)
 
 func _draw() -> void:
 	draw_circle(Vector2.ZERO, 14.0, Color(0.3, 0.25, 0.15))

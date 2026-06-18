@@ -259,7 +259,7 @@ func apply_skill_unlock(peer_id: int, skill_index: int) -> void:
 	if player and is_instance_valid(player):
 		player.skills_unlocked = unlocked
 		if game._networked and peer_id != 1:
-			player.rpc_sync_skills_unlocked.rpc_id(peer_id, unlocked)
+			player.net_sync.rpc_sync_skills_unlocked.rpc_id(peer_id, unlocked)
 	if not game._networked or peer_id == 1:
 		_rpc_sync_skill_unlocks(unlocked)
 	else:
