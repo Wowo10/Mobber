@@ -193,8 +193,21 @@ func _wall_avoidance_force() -> Vector2:
 	if by < 1.0: force.y -= (1.0 - by)
 	return force * Constants.MOB_WALL_AVOID_STRENGTH
 
+# All mobs in an arena run their AI in the same physics frame and each needs the
+# player list. Cache it once per physics frame (shared across every mob instance)
+# instead of hitting get_nodes_in_group ~100 times per frame.
+static var _players_frame: int = -1
+static var _players_cache: Array = []
+
+static func _players_in_tree(tree: SceneTree) -> Array:
+	var f := Engine.get_physics_frames()
+	if f != _players_frame:
+		_players_frame = f
+		_players_cache = tree.get_nodes_in_group("players")
+	return _players_cache
+
 func _get_nearest_player() -> Node2D:
-	var players := get_tree().get_nodes_in_group("players")
+	var players := _players_in_tree(get_tree())
 	var nearest_dist := INF
 	var nearest: Node2D = null
 	for p in players:
@@ -205,7 +218,7 @@ func _get_nearest_player() -> Node2D:
 	return nearest
 
 func _get_nearest_player_within(max_dist: float) -> Node2D:
-	var players := get_tree().get_nodes_in_group("players")
+	var players := _players_in_tree(get_tree())
 	var nearest_dist := max_dist
 	var nearest: Node2D = null
 	for p in players:

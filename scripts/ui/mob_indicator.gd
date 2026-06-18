@@ -1,37 +1,35 @@
 extends Control
 
-func _process(_delta: float) -> void:
-	queue_redraw()
+const REDRAW_INTERVAL := 1.0 / 30.0  # arrow doesn't need 60Hz precision
+var _redraw_accum := 0.0
+
+func _process(delta: float) -> void:
+	_redraw_accum += delta
+	if _redraw_accum >= REDRAW_INTERVAL:
+		_redraw_accum = 0.0
+		queue_redraw()
 
 func _draw() -> void:
 	var camera := _get_local_camera()
 	if camera == null:
 		return
 
-	var all_mobs := get_tree().get_nodes_in_group("mobs")
-	# Only care about mobs in the local player's arena
-	var local_mobs: Array = all_mobs.filter(
-		func(m: Node2D) -> bool:
-			return m.global_position.x >= camera.limit_left \
-				and m.global_position.x <= camera.limit_right
-	)
-	if local_mobs.is_empty():
-		return
-
 	var vp_size := get_viewport_rect().size
 	var canvas_xform := get_viewport().get_canvas_transform()
 	var screen_rect := Rect2(Vector2.ZERO, vp_size)
-
-	for mob in local_mobs:
-		if screen_rect.has_point(canvas_xform * (mob as Node2D).global_position):
-			return  # at least one mob is visible
-
-	# No mob visible — find the nearest to the player
 	var player_pos := camera.global_position
+
+	# Single pass over mobs: skip the other arena, bail if any local mob is on
+	# screen (no arrow needed), otherwise track the nearest off-screen one.
 	var nearest: Node2D = null
 	var nearest_dist := INF
-	for mob in local_mobs:
-		var d := player_pos.distance_to((mob as Node2D).global_position)
+	for mob in get_tree().get_nodes_in_group("mobs"):
+		var gp := (mob as Node2D).global_position
+		if gp.x < camera.limit_left or gp.x > camera.limit_right:
+			continue  # other arena
+		if screen_rect.has_point(canvas_xform * gp):
+			return  # at least one mob is visible
+		var d := player_pos.distance_squared_to(gp)
 		if d < nearest_dist:
 			nearest_dist = d
 			nearest = mob
