@@ -93,11 +93,11 @@ offset_top = 11.0
 offset_right = 104.0
 offset_bottom = 69.0
 grow_horizontal = 2
+tooltip_text = "Your mob count / lose threshold.
+Reach the limit and you lose."
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 3
 theme_override_font_sizes/font_size = 28
-tooltip_text = "Your mob count / lose threshold.
-Reach the limit and you lose."
 text = "0 / 100"
 horizontal_alignment = 1
 
@@ -109,11 +109,11 @@ offset_left = -220.0
 offset_top = 12.0
 offset_right = -12.0
 offset_bottom = 70.0
+tooltip_text = "Enemy mob count / their lose threshold.
+Force them to reach the limit to win."
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 3
 theme_override_font_sizes/font_size = 20
-tooltip_text = "Enemy mob count / their lose threshold.
-Force them to reach the limit to win."
 text = "ENEMY: 0 / 100"
 horizontal_alignment = 2
 
@@ -122,9 +122,9 @@ offset_left = 16.0
 offset_top = 15.0
 offset_right = 216.0
 offset_bottom = 53.0
-theme_override_font_sizes/font_size = 30
 tooltip_text = "Gold — earned by killing mobs.
 Spend it at the UPGRADES zone."
+theme_override_font_sizes/font_size = 30
 text = "$0"
 
 [node name="SkillBar" type="HBoxContainer" parent="HUD"]
@@ -188,33 +188,35 @@ mouse_filter = 2
 script = ExtResource("5_indicator")
 
 [node name="PingLabel" type="Label" parent="HUD"]
+anchors_preset = 3
 anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -76.0
-offset_top = -22.0
-offset_right = -8.0
-offset_bottom = -6.0
+offset_left = -75.0
+offset_top = -64.0
+offset_right = -7.0
+offset_bottom = -36.0
 grow_horizontal = 0
-theme_override_colors/font_color = Color(0.55, 0.55, 0.55, 0.75)
-theme_override_font_sizes/font_size = 11
-text = ""
+grow_vertical = 0
+theme_override_colors/font_color = Color(1, 0, 0, 0.78431374)
+theme_override_font_sizes/font_size = 20
 horizontal_alignment = 2
 
 [node name="FpsLabel" type="Label" parent="HUD"]
+anchors_preset = 3
 anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -76.0
-offset_top = -38.0
-offset_right = -8.0
-offset_bottom = -22.0
+offset_left = -75.0
+offset_top = -35.0
+offset_right = -7.0
+offset_bottom = -7.0
 grow_horizontal = 0
-theme_override_colors/font_color = Color(0.55, 0.55, 0.55, 0.75)
-theme_override_font_sizes/font_size = 11
-text = ""
+grow_vertical = 0
+theme_override_colors/font_color = Color(1, 0, 0, 0.78431374)
+theme_override_font_sizes/font_size = 20
 horizontal_alignment = 2
 
 [node name="ShopPanel" type="CanvasLayer" parent="."]

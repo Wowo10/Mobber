@@ -9,7 +9,6 @@ const SNAP_THRESHOLD         := 250.0  # px — teleport instead of lerping (maj
 const CORRECTION_PX_PER_SEC  := 400.0  # drift correction speed — fast enough to feel responsive, still smooth
 
 # Observed (remote) player dead-reckoning — same shape as mob.gd's reconciliation
-const OBSERVED_CORRECTION_PX_PER_SEC := 400.0
 const OBSERVED_SNAP_THRESHOLD        := 250.0
 
 # Observed (remote) player snapshot interpolation — render other players slightly
@@ -75,10 +74,6 @@ var _cam_correction_offset  := Vector2.ZERO  # counteracts correction on camera 
 var _received_facing := Vector2.RIGHT
 var _mouse_attack_pressed := false
 var _mouse_dash_pressed := false
-
-# Observed (remote) player dead-reckoning — extrapolate by velocity, blend in correction
-var _observed_velocity   := Vector2.ZERO
-var _observed_correction := Vector2.ZERO
 
 # Observed (remote) player snapshot buffer — [{t, pos, vel, facing, move_dir}] ordered by arrival.
 # Only populated for non-authority players we merely display; used for interpolation.
@@ -193,15 +188,11 @@ func _process(delta: float) -> void:
 			# Genuinely remote player — interpolate between buffered snapshots.
 			_sample_snapshot_buffer()
 		else:
-			# Own player with prediction OFF — keep velocity extrapolation + correction.
-			var move := _observed_velocity * delta
-			if _observed_correction != Vector2.ZERO:
-				var step := _observed_correction.limit_length(OBSERVED_CORRECTION_PX_PER_SEC * delta)
-				move += step
-				_observed_correction -= step
-				if _observed_correction.length() < 0.5:
-					_observed_correction = Vector2.ZERO
-			position += move
+			# Own player with prediction OFF — interpolate buffered snapshots too, so
+			# the camera (parented here) shares the mobs' past-time timeline instead of
+			# extrapolating into the future and yanking the whole scene backward each
+			# snapshot. Facing stays local (set in _physics_process) for crisp aim.
+			_sample_snapshot_buffer(false)
 		queue_redraw()
 	if _cam_correction_offset != Vector2.ZERO:
 		_cam_correction_offset = _cam_correction_offset.move_toward(
@@ -225,16 +216,17 @@ func _process(delta: float) -> void:
 # Position a genuinely-remote player by interpolating buffered snapshots at a
 # render time held slightly behind real-time. Interpolating between two known
 # positions never overshoots, so stopping is exact (no rubber-band).
-func _sample_snapshot_buffer() -> void:
+# apply_facing: false for our own player (prediction off) — position is interpolated
+# from the buffer but facing/move_dir stay locally driven so aim stays crisp.
+func _sample_snapshot_buffer(apply_facing: bool = true) -> void:
 	var count := _snap_buffer.size()
 	if count == 0:
 		return
 	var newest: Dictionary = _snap_buffer[count - 1]
 	if count == 1:
 		position = newest["pos"]
-		last_facing = newest["facing"]
-		move_direction = newest["move_dir"]
-		$Sword.set_facing(last_facing.angle())
+		if apply_facing:
+			_apply_snapshot_facing(newest)
 		return
 	var render_t := Time.get_ticks_msec() / 1000.0 - OBSERVED_INTERP_DELAY
 	# Render point is past the newest snapshot — buffer starved; extrapolate by the
@@ -243,9 +235,8 @@ func _sample_snapshot_buffer() -> void:
 	if render_t >= newest["t"]:
 		var ahead: float = min(render_t - newest["t"], OBSERVED_EXTRAP_CAP)
 		position = newest["pos"] + newest["vel"] * ahead
-		last_facing = newest["facing"]
-		move_direction = newest["move_dir"]
-		$Sword.set_facing(last_facing.angle())
+		if apply_facing:
+			_apply_snapshot_facing(newest)
 		return
 	# Find the pair of snapshots that bracket the render time and lerp between them.
 	for i in range(count - 1, 0, -1):
@@ -255,15 +246,18 @@ func _sample_snapshot_buffer() -> void:
 			var span: float = s1["t"] - s0["t"]
 			var f: float = 0.0 if span <= 0.0 else (render_t - s0["t"]) / span
 			position = (s0["pos"] as Vector2).lerp(s1["pos"], f)
-			last_facing = s1["facing"]
-			move_direction = s1["move_dir"]
-			$Sword.set_facing(last_facing.angle())
+			if apply_facing:
+				_apply_snapshot_facing(s1)
 			return
 	# Render point is older than the whole buffer (just snapped) — hold at oldest.
 	var oldest: Dictionary = _snap_buffer[0]
 	position = oldest["pos"]
-	last_facing = oldest["facing"]
-	move_direction = oldest["move_dir"]
+	if apply_facing:
+		_apply_snapshot_facing(oldest)
+
+func _apply_snapshot_facing(snap: Dictionary) -> void:
+	last_facing = snap["facing"]
+	move_direction = snap["move_dir"]
 	$Sword.set_facing(last_facing.angle())
 
 func _input(event: InputEvent) -> void:
@@ -1076,15 +1070,21 @@ func _rpc_sync_pos(pos: Vector2, vel: Vector2, facing: Vector2, move_dir: Vector
 		skill3_cooldown = s_sk3
 		dash_cooldown   = s_dash
 	elif networked and not multiplayer.is_server() and is_multiplayer_authority():
-		# Own player, prediction OFF — dead-reckon server position (no local movement).
-		# Keep facing local for crisp aim; accept server cooldowns.
-		_observed_velocity = vel
-		var error := pos - position
-		if error.length() > OBSERVED_SNAP_THRESHOLD:
+		# Own player, prediction OFF — buffer + interpolate exactly like a remote
+		# player so the camera shares the mobs' past-time timeline (no backward
+		# sawtooth). Facing stays local for crisp aim; accept server cooldowns.
+		var now := Time.get_ticks_msec() / 1000.0
+		var snap := {
+			"t": now, "pos": pos, "vel": vel,
+			"facing": facing, "move_dir": move_dir,
+		}
+		if _snap_buffer.is_empty() or pos.distance_to(position) > OBSERVED_SNAP_THRESHOLD:
+			_snap_buffer = [snap]
 			position = pos
-			_observed_correction = Vector2.ZERO
 		else:
-			_observed_correction = error
+			_snap_buffer.append(snap)
+			while _snap_buffer.size() > 8:
+				_snap_buffer.pop_front()
 		skill1_cooldown = s_sk1
 		skill2_cooldown = s_sk2
 		skill3_cooldown = s_sk3

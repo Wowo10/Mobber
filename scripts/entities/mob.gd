@@ -29,7 +29,7 @@ var _slow_mult := 1.0
 # Client-side position reconciliation
 const MOB_CORRECTION_PX_PER_SEC := 400.0
 const MOB_SNAP_THRESHOLD        := 120.0
-var _visual_dir          := Vector2.RIGHT  # actual frame-to-frame movement dir, used by _draw
+var _visual_dir          := Vector2.RIGHT  # facing dir (server velocity / push), used by _draw
 var _is_client_observer  := false
 var _screen_notifier: VisibleOnScreenNotifier2D = null
 
@@ -89,7 +89,6 @@ func receive_server_state(pos: Vector2, vel: Vector2) -> void:
 
 func _process(delta: float) -> void:
 	if _is_client_observer:
-		var prev := position
 		var base := _sample_snapshot_buffer()
 		# Local client-push prediction is layered on top and decays as the server's
 		# snapshots catch up to reflect the same push.
@@ -97,9 +96,11 @@ func _process(delta: float) -> void:
 			_predict_offset = _predict_offset.move_toward(
 				Vector2.ZERO, MOB_CORRECTION_PX_PER_SEC * delta)
 		position = base + _predict_offset
-		var move := position - prev
-		if move.length_squared() > 0.25:
-			_visual_dir = move.normalized()
+		# Face the authoritative server velocity — the same source the server draws
+		# from. Reconstructing facing from interpolated position deltas was fragile:
+		# reconciliation micro-steps could dominate and flip the droplet ~180 degrees.
+		if velocity.length_squared() > 1.0:
+			_visual_dir = velocity.normalized()
 	# Position interpolation above keeps running so the notifier tracks the mob,
 	# but skip the (relatively expensive) _draw rebuild while it's off-screen.
 	if _screen_notifier.is_on_screen():
