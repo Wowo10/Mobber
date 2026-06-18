@@ -29,7 +29,11 @@ var _slow_mult := 1.0
 # Client-side position reconciliation
 const MOB_CORRECTION_PX_PER_SEC := 400.0
 const MOB_SNAP_THRESHOLD        := 120.0
-var _visual_dir          := Vector2.RIGHT  # facing dir (server velocity / push), used by _draw
+var _visual_dir          := Vector2.RIGHT  # facing dir (server velocity / push)
+# Smoothed render facing — slerped toward _visual_dir so turns ease in over a few
+# frames instead of snapping (which read as lag). Higher MOB_TURN_RATE = snappier.
+const MOB_TURN_RATE      := 12.0
+var _facing_dir          := Vector2.RIGHT  # used by _draw
 var _is_client_observer  := false
 var _screen_notifier: VisibleOnScreenNotifier2D = null
 
@@ -101,6 +105,16 @@ func _process(delta: float) -> void:
 		# reconciliation micro-steps could dominate and flip the droplet ~180 degrees.
 		if velocity.length_squared() > 1.0:
 			_visual_dir = velocity.normalized()
+	# Ease the rendered facing toward the target direction. Runs every frame (even
+	# off-screen) so facing stays continuous when the mob pops back in.
+	var target_dir: Vector2
+	if _is_client_observer:
+		target_dir = _visual_dir
+	else:
+		target_dir = velocity.normalized() if velocity.length_squared() > 1.0 else _wander_dir
+		if target_dir.is_zero_approx():
+			target_dir = _facing_dir
+	_facing_dir = _facing_dir.slerp(target_dir, clamp(MOB_TURN_RATE * delta, 0.0, 1.0)).normalized()
 	# Position interpolation above keeps running so the notifier tracks the mob,
 	# but skip the (relatively expensive) _draw rebuild while it's off-screen.
 	if _screen_notifier.is_on_screen():
@@ -302,14 +316,7 @@ func _draw_droplet(r: float, col: Color, fwd: Vector2) -> void:
 	draw_colored_polygon(pts, col)
 
 func _draw() -> void:
-	var fwd: Vector2
-	if _is_client_observer:
-		fwd = _visual_dir
-	else:
-		fwd = velocity.normalized() if velocity.length_squared() > 1.0 else _wander_dir
-		if fwd.is_zero_approx():
-			fwd = Vector2.RIGHT
-	_draw_droplet(radius, color, fwd)
+	_draw_droplet(radius, color, _facing_dir)
 	if _panicking:
 		var t := Time.get_ticks_msec() * 0.001 * Constants.MOB_FLEE_PANIC_PULSE_FREQ
 		var pulse := sin(t) * 0.5 + 0.5
