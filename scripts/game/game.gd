@@ -3,12 +3,23 @@ extends Node
 const PLAYER_SCENE = preload("res://scenes/entities/player.tscn")
 const SKILL_UNLOCK_THRESHOLDS := [0.10, 0.40, 0.70]
 
+# Host-liveness watchdog. The signaling server closes its sockets shortly after
+# the lobby is sealed, and WebRTCMultiplayerPeer does not reliably emit
+# server_disconnected when the host vanishes mid-game (especially on a hard
+# quit). So the host broadcasts a heartbeat and clients trigger migration if it
+# stops arriving.
+const HEARTBEAT_INTERVAL := 0.5
+const SERVER_TIMEOUT := 2.5
+
 var _peer_to_arena: Dictionary = {}
 var _peer_to_player: Dictionary = {}
 var _peer_to_archetype: Dictionary = {}
 var _networked: bool = false
 var _leaving: bool = false
 var _scrubbed: bool = false
+var _migrating: bool = false
+var _heartbeat_timer: float = 0.0
+var _server_silence: float = 0.0
 var _clients_ready_count: int = 0
 var _expected_client_count: int = 0
 var _pending_kills: Dictionary = {}  # arena -> count of mobs dying this frame
@@ -121,7 +132,27 @@ func _rpc_spawn_players(archetypes: Dictionary, win_count: int) -> void:
 		_spawn_player(peer_id)
 
 func _on_server_disconnected() -> void:
+	if _migrating:
+		return
+	_migrating = true
 	_begin_host_migration()
+
+# Server pulses a heartbeat; clients trip migration when it goes silent. This is
+# the only reliable cross-peer signal that the host is gone — see HEARTBEAT_INTERVAL.
+func _update_host_liveness(delta: float) -> void:
+	if multiplayer.is_server():
+		_heartbeat_timer -= delta
+		if _heartbeat_timer <= 0.0:
+			_heartbeat_timer = HEARTBEAT_INTERVAL
+			_rpc_heartbeat.rpc()
+	elif not _migrating:
+		_server_silence += delta
+		if _server_silence >= SERVER_TIMEOUT:
+			_on_server_disconnected()
+
+@rpc("authority", "unreliable")
+func _rpc_heartbeat() -> void:
+	_server_silence = 0.0
 
 func _begin_host_migration() -> void:
 	if _peer_to_player.is_empty():
@@ -744,6 +775,8 @@ func _process(delta: float) -> void:
 			_fps_label.text = "%d fps" % int(Engine.get_frames_per_second())
 	if _leaving:
 		return
+	if _networked:
+		_update_host_liveness(delta)
 	if _scoreboard_panel != null and _spectator_camera == null:
 		var want_visible := Input.is_action_pressed("scoreboard")
 		if want_visible != _scoreboard_panel.visible:
