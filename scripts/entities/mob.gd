@@ -31,6 +31,7 @@ const MOB_CORRECTION_PX_PER_SEC := 400.0
 const MOB_SNAP_THRESHOLD        := 120.0
 var _visual_dir          := Vector2.RIGHT  # actual frame-to-frame movement dir, used by _draw
 var _is_client_observer  := false
+var _screen_notifier: VisibleOnScreenNotifier2D = null
 
 # Observer snapshot interpolation — render the mob slightly behind real-time and
 # lerp between two received snapshots instead of extrapolating by velocity. This
@@ -60,6 +61,12 @@ func _ready() -> void:
 	_apply_mob_type()
 	_pick_wander_dir()
 	_arena = get_parent().get_parent()
+	# Only the mob's _draw is gated by this — physics/AI keep running off-screen so
+	# the server stays authoritative for both arenas. Rect covers the largest mob
+	# (boss) plus health bar, with margin so redraws resume just before it pops in.
+	_screen_notifier = VisibleOnScreenNotifier2D.new()
+	_screen_notifier.rect = Rect2(-110, -110, 220, 220)
+	add_child(_screen_notifier)
 	var networked: bool = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	if networked and not multiplayer.is_server():
 		set_physics_process(false)
@@ -93,7 +100,10 @@ func _process(delta: float) -> void:
 		var move := position - prev
 		if move.length_squared() > 0.25:
 			_visual_dir = move.normalized()
-	queue_redraw()
+	# Position interpolation above keeps running so the notifier tracks the mob,
+	# but skip the (relatively expensive) _draw rebuild while it's off-screen.
+	if _screen_notifier.is_on_screen():
+		queue_redraw()
 
 # Position derived from the snapshot buffer at a render time held behind real-time.
 # Interpolating between two known positions never overshoots, so a stopping mob

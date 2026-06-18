@@ -1,11 +1,22 @@
 class_name ParticleUtils
 
+# These resources are identical for every emitter, so build them once and share
+# the references instead of rebuilding a texture (256-pixel loop), a Curve and a
+# Gradient on every particle spawn. CPUParticles2D only reads them, so sharing is
+# safe.
+static var _circle_texture: ImageTexture
+static var _shrink_curve: Curve
+static var _fade_gradient: Gradient
+
 static func polish(p: CPUParticles2D) -> void:
-	p.texture = _make_circle_texture()
-	var sc := _make_shrink_curve()
-	p.scale_curve_x = sc
-	p.scale_curve_y = sc
-	p.color_ramp = _make_fade_gradient()
+	if _circle_texture == null:
+		_circle_texture = _make_circle_texture()
+		_shrink_curve = _make_shrink_curve()
+		_fade_gradient = _make_fade_gradient()
+	p.texture = _circle_texture
+	p.scale_curve_x = _shrink_curve
+	p.scale_curve_y = _shrink_curve
+	p.color_ramp = _fade_gradient
 	p.damping_min = 80.0
 	p.damping_max = 180.0
 
