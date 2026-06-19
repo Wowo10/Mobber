@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="ArchetypeData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/archetypes/archetype_data.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://bdarnscji4lry" path="res://assets/icons/thrown-daggers.png" id="2"]
+[ext_resource type="Texture2D" uid="uid://bnbeoagcge777" path="res://assets/icons/shadow-grasp.png" id="3"]
+[ext_resource type="Texture2D" uid="uid://bh1fandmvuj6o" path="res://assets/icons/box-trap.png" id="4"]
+
+[resource]
+script = ExtResource("1")
+color = Color(0.45, 0.1, 0.6, 1)
+dash_duration = 0.2
+sword_damage = 7.0
+sword_swing_duration = 0.15
+attack_description = "Fast melee strike. Low damage."
+dash_description = "Blinks toward the nearest mob in your front cone."
+skill1_name = "Fan of Knives"
+skill1_color = Color(0.75, 0.85, 1, 1)
+skill1_icon = ExtResource("2")
+skill1_description = "Throws 5 knives in a 60-degree cone.
+Cooldown: 7s"
+skill1_cooldown = 7.0
+skill2_name = "Shadowstep"
+skill2_color = Color(0.3, 0.05, 0.45, 1)
+skill2_icon = ExtResource("3")
+skill2_description = "Teleports behind the nearest mob and deals damage.
+Cooldown: 10s"
+skill2_cooldown = 10.0
+skill3_name = "Trap"
+skill3_color = Color(0.45, 0.1, 0.65, 1)
+skill3_icon = ExtResource("4")
+skill3_description = "Places a hidden trap at your feet. Max 15 active traps.
+Cooldown: 1s"
+skill3_cooldown = 1.0

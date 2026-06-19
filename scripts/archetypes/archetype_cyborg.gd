@@ -7,10 +7,8 @@ const RAY_SCENE = preload("res://scenes/archetypes/cyborg/cyber_ray.tscn")
 const _MELEE_ATTACK_ICON = preload("res://assets/icons/energy-sword.png")
 const _RANGED_ATTACK_ICON = preload("res://assets/icons/cpu-shot.png")
 
+const DATA = preload("res://data/archetypes/cyborg.tres")
 const BULLET_COOLDOWN = 0.45
-const TARGETING_COOLDOWN = 9.0
-const RAY_COOLDOWN = 10.0
-const OVERCLOCK_COOLDOWN = 12.0
 const OVERCLOCK_DURATION = 5.0
 
 var _ranged_mode := false
@@ -24,59 +22,8 @@ func get_attack_icon() -> Texture2D:
 func get_attack_color() -> Color:
 	return Color(0.1, 0.85, 1.0) if _ranged_mode else Color(0.3, 0.9, 0.6)
 
-func get_color() -> Color:
-	return Color(0.05, 0.65, 0.8)
-
-func get_skill1_color() -> Color:
-	return Color(0.1, 0.85, 1.0)
-
-func get_skill1_icon() -> Texture2D:
-	return load("res://assets/icons/crosshair.png")
-
-func get_skill2_color() -> Color:
-	return Color(0.0, 0.5, 0.8)
-
-func get_skill2_icon() -> Texture2D:
-	return load("res://assets/icons/laser-burst.png")
-
-func get_skill3_color() -> Color:
-	return Color(0.0, 0.8, 0.55)
-
-func get_skill3_icon() -> Texture2D:
-	return load("res://assets/icons/cogsplosion.png")
-
-func get_skill1_name() -> String:
-	return "Targeting"
-
-func get_skill2_name() -> String:
-	return "Laser Ray"
-
-func get_skill3_name() -> String:
-	return "Overclock"
-
-func get_attack_description() -> String:
-	return "Melee strike or cyber bullet depending on Targeting mode."
-
-func get_dash_description() -> String:
-	return "Standard dash."
-
-func get_skill1_description() -> String:
-	return "Toggles between melee and ranged attack mode.\nCooldown: 9s"
-
-func get_skill2_description() -> String:
-	return "Fires a piercing laser ray forward.\nCooldown: 10s"
-
-func get_skill3_description() -> String:
-	return "Overclocks for 5s: adds a second sword and halves attack delays.\nCooldown: 12s"
-
-func get_skill1_max_cooldown() -> float:
-	return TARGETING_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill1_level)
-
-func get_skill2_max_cooldown() -> float:
-	return RAY_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill2_level)
-
-func get_skill3_max_cooldown() -> float:
-	return OVERCLOCK_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill3_level)
+func get_data_resource() -> ArchetypeData:
+	return DATA
 
 func get_speed_mult() -> float:
 	return 1.08 if _overclock_active else 0.8

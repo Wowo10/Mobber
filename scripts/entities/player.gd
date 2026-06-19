@@ -26,7 +26,11 @@ var move_direction = Vector2.ZERO
 var last_facing := Vector2.RIGHT
 var archetype: int = 0  # set by game.gd before add_child
 
-var _dashing := false
+# Movement state machine. Dash is the only state that overrides normal velocity;
+# everything else (spinning, debuffs) is an orthogonal modifier layered on top, so
+# it is NOT a movement state. See _enter_dash / _tick_dash / _exit_dash.
+enum MoveState { NORMAL, DASHING }
+var _move_state: int = MoveState.NORMAL
 var _dash_timer := 0.0
 var dash_cooldown := 0.0
 var attack_cooldown := 0.0
@@ -464,16 +468,11 @@ func _physics_process(delta: float) -> void:
 
 	# Dash / movement
 	if predict_movement:
-		if _dashing:
+		if _move_state == MoveState.DASHING:
 			_dash_timer -= delta
 			velocity = last_facing * Constants.PLAYER_DASH_SPEED
 			if _dash_timer <= 0.0:
-				_dashing = false
-				$DashParticles.emitting = false
-				if networked and multiplayer.is_server():
-					net_sync._rpc_set_dash_particles.rpc(Vector2.ZERO, false)
-				if not networked or multiplayer.is_server():
-					_archetype_handler.on_dash_end()
+				_exit_dash(networked)
 		else:
 			if dash_cooldown > 0.0:
 				dash_cooldown -= delta
@@ -487,15 +486,7 @@ func _physics_process(delta: float) -> void:
 				if _archetype_handler.use_dash():
 					pass  # archetype owns dash entirely (sets dash_cooldown internally)
 				else:
-					_dashing = true
-					_dash_timer = _archetype_handler.get_dash_duration()
-					dash_cooldown = Constants.PLAYER_DASH_COOLDOWN
-					$DashParticles.direction = -last_facing
-					$DashParticles.emitting = true
-					if is_multiplayer_authority():
-						$SfxDash.play()
-					if networked and multiplayer.is_server():
-						net_sync._rpc_set_dash_particles.rpc(-last_facing, true)
+					_enter_dash(networked)
 
 		move_and_slide()
 
@@ -641,6 +632,30 @@ func apply_upgrades_to_sword() -> void:
 	var spd_mult := 1.0 - attack_speed_level * Constants.SHOP_ATTACK_SPEED_PER_LEVEL
 	$Sword.apply_upgrades(dmg_bonus, sz_mult, spd_mult)
 
+# --- Movement state: dash ---
+
+func _is_dashing() -> bool:
+	return _move_state == MoveState.DASHING
+
+func _enter_dash(networked: bool) -> void:
+	_move_state = MoveState.DASHING
+	_dash_timer = _archetype_handler.get_dash_duration()
+	dash_cooldown = Constants.PLAYER_DASH_COOLDOWN
+	$DashParticles.direction = -last_facing
+	$DashParticles.emitting = true
+	if is_multiplayer_authority():
+		$SfxDash.play()
+	if networked and multiplayer.is_server():
+		net_sync._rpc_set_dash_particles.rpc(-last_facing, true)
+
+func _exit_dash(networked: bool) -> void:
+	_move_state = MoveState.NORMAL
+	$DashParticles.emitting = false
+	if networked and multiplayer.is_server():
+		net_sync._rpc_set_dash_particles.rpc(Vector2.ZERO, false)
+	if not networked or multiplayer.is_server():
+		_archetype_handler.on_dash_end()
+
 # --- Mob pushing (server and offline only) ---
 
 func _push_mobs() -> void:
@@ -658,7 +673,7 @@ func _push_mobs() -> void:
 		var dir := body.global_position - global_position
 		if dir.is_zero_approx():
 			continue
-		body.apply_push(dir.normalized() * Constants.MOB_PUSH_FORCE * (6.0 if _dashing else 1.0))
+		body.apply_push(dir.normalized() * Constants.MOB_PUSH_FORCE * (6.0 if _is_dashing() else 1.0))
 
 func _push_mobs_client_predict(delta: float) -> void:
 	var query := PhysicsShapeQueryParameters2D.new()
@@ -676,7 +691,7 @@ func _push_mobs_client_predict(delta: float) -> void:
 		if dir.is_zero_approx():
 			continue
 		body.apply_client_push(
-				dir.normalized() * Constants.MOB_PUSH_FORCE * (6.0 if _dashing else 1.0) * delta)
+				dir.normalized() * Constants.MOB_PUSH_FORCE * (6.0 if _is_dashing() else 1.0) * delta)
 
 # --- Position sync (server → all clients) ---
 

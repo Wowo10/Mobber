@@ -6,40 +6,14 @@ const RAIN_SCENE = preload("res://scenes/archetypes/mage/rain_of_fire.tscn")
 const FIREBALL_SCENE = preload("res://scenes/archetypes/mage/fireball.tscn")
 const IMPLOSION_SCENE = preload("res://scenes/archetypes/mage/arcane_implosion.tscn")
 
+const DATA = preload("res://data/archetypes/mage.tres")
 const BOLT_COOLDOWN = 0.6
-const RAIN_COOLDOWN = 12.0
-const FIREBALL_COOLDOWN = 8.0
-const IMPLOSION_COOLDOWN = 14.0
-
-func get_attack_icon() -> Texture2D:
-	return load("res://assets/icons/bolt-spell-cast.png")
-
-func get_attack_color() -> Color:
-	return Color(0.75, 0.25, 1.0)
-
-func get_color() -> Color:
-	return Color(0.55, 0.15, 0.9)
-
-func get_skill1_color() -> Color:
-	return Color(0.9, 0.2, 0.4)
-
-func get_skill1_icon() -> Texture2D:
-	return load("res://assets/icons/burning-meteor.png")
-
-func get_skill2_color() -> Color:
-	return Color(1.0, 0.45, 0.1)
-
-func get_skill2_icon() -> Texture2D:
-	return load("res://assets/icons/fireball.png")
 
 const PULL_RADIUS = 350.0
 const PULL_FORCE = 1500.0
 
-func get_dash_icon() -> Texture2D:
-	return load("res://assets/icons/pull.png")
-
-func get_dash_color() -> Color:
-	return Color(0.55, 0.15, 0.9)
+func get_data_resource() -> ArchetypeData:
+	return DATA
 
 func use_dash() -> bool:
 	_player.dash_cooldown = Constants.PLAYER_DASH_COOLDOWN
@@ -81,45 +55,6 @@ func spawn_pull_visual(pos: Vector2) -> void:
 	p.emitting = true
 	_player.get_parent().add_child(p)
 	_player.get_tree().create_timer(p.lifetime + 0.1).timeout.connect(p.queue_free)
-
-func get_skill3_color() -> Color:
-	return Color(0.55, 0.05, 0.85)
-
-func get_skill3_icon() -> Texture2D:
-	return load("res://assets/icons/implosion.png")
-
-func get_skill1_name() -> String:
-	return "Rain of Fire"
-
-func get_skill2_name() -> String:
-	return "Fireball"
-
-func get_skill3_name() -> String:
-	return "Implosion"
-
-func get_attack_description() -> String:
-	return "Fires a magic bolt toward the cursor.\nCooldown: 0.6s"
-
-func get_dash_description() -> String:
-	return "Pulls nearby enemies toward you."
-
-func get_skill1_description() -> String:
-	return "Rains fire across a wide area around you.\nCooldown: 12s"
-
-func get_skill2_description() -> String:
-	return "Launches a slow but powerful fireball.\nCooldown: 8s"
-
-func get_skill3_description() -> String:
-	return "Creates an arcane implosion that pulls enemies inward.\nCooldown: 14s"
-
-func get_skill1_max_cooldown() -> float:
-	return RAIN_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill1_level)
-
-func get_skill2_max_cooldown() -> float:
-	return FIREBALL_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill2_level)
-
-func get_skill3_max_cooldown() -> float:
-	return IMPLOSION_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill3_level)
 
 func can_attack() -> bool:
 	return _player.attack_cooldown <= 0.0

@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="ArchetypeData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/archetypes/archetype_data.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://mf4j78yb3nn5" path="res://assets/icons/cannon-ball.png" id="2"]
+[ext_resource type="Texture2D" uid="uid://dr0335qgc2tus" path="res://assets/icons/laser-turret.png" id="3"]
+[ext_resource type="Texture2D" uid="uid://bw1yeevccoy4k" path="res://assets/icons/barrel.png" id="4"]
+
+[resource]
+script = ExtResource("1")
+color = Color(0.8, 0.35, 0.1, 1)
+attack_description = "Sword swing."
+dash_description = "Standard dash."
+skill1_name = "Cannonball"
+skill1_color = Color(0.95, 0.7, 0.1, 1)
+skill1_icon = ExtResource("2")
+skill1_description = "Fires a heavy cannonball that bounces off enemies.
+Cooldown: 3.5s"
+skill1_cooldown = 3.5
+skill2_name = "Turret"
+skill2_color = Color(0.45, 0.3, 0.15, 1)
+skill2_icon = ExtResource("3")
+skill2_description = "Places a cannon turret that fires automatically.
+Cooldown: 4s"
+skill2_cooldown = 4.0
+skill3_name = "Barrel"
+skill3_color = Color(0.75, 0.45, 0.1, 1)
+skill3_icon = ExtResource("4")
+skill3_description = "First press: place a barrel (CD: 0.5s). Second press: detonate it (CD: 12s)."
+skill3_cooldown = 12.0

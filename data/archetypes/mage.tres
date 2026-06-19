@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="ArchetypeData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/archetypes/archetype_data.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://cwxc0ydhm2db2" path="res://assets/icons/bolt-spell-cast.png" id="2"]
+[ext_resource type="Texture2D" uid="uid://dgyds43kxof87" path="res://assets/icons/pull.png" id="3"]
+[ext_resource type="Texture2D" uid="uid://oi8yjmb2sfbk" path="res://assets/icons/burning-meteor.png" id="4"]
+[ext_resource type="Texture2D" uid="uid://bfrws857sfax4" path="res://assets/icons/fireball.png" id="5"]
+[ext_resource type="Texture2D" uid="uid://bpwcm53lu7fai" path="res://assets/icons/implosion.png" id="6"]
+
+[resource]
+script = ExtResource("1")
+color = Color(0.55, 0.15, 0.9, 1)
+attack_color = Color(0.75, 0.25, 1, 1)
+attack_icon = ExtResource("2")
+attack_description = "Fires a magic bolt toward the cursor.
+Cooldown: 0.6s"
+dash_color = Color(0.55, 0.15, 0.9, 1)
+dash_icon = ExtResource("3")
+dash_description = "Pulls nearby enemies toward you."
+skill1_name = "Rain of Fire"
+skill1_color = Color(0.9, 0.2, 0.4, 1)
+skill1_icon = ExtResource("4")
+skill1_description = "Rains fire across a wide area around you.
+Cooldown: 12s"
+skill1_cooldown = 12.0
+skill2_name = "Fireball"
+skill2_color = Color(1, 0.45, 0.1, 1)
+skill2_icon = ExtResource("5")
+skill2_description = "Launches a slow but powerful fireball.
+Cooldown: 8s"
+skill2_cooldown = 8.0
+skill3_name = "Implosion"
+skill3_color = Color(0.55, 0.05, 0.85, 1)
+skill3_icon = ExtResource("6")
+skill3_description = "Creates an arcane implosion that pulls enemies inward.
+Cooldown: 14s"
+skill3_cooldown = 14.0

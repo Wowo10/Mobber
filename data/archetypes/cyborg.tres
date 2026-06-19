@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="ArchetypeData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/archetypes/archetype_data.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://bh8ss3hsb055y" path="res://assets/icons/crosshair.png" id="2"]
+[ext_resource type="Texture2D" uid="uid://2nwaim7tc72i" path="res://assets/icons/laser-burst.png" id="3"]
+[ext_resource type="Texture2D" uid="uid://btbfmj6eu8sa6" path="res://assets/icons/cogsplosion.png" id="4"]
+
+[resource]
+script = ExtResource("1")
+color = Color(0.05, 0.65, 0.8, 1)
+attack_description = "Melee strike or cyber bullet depending on Targeting mode."
+dash_description = "Standard dash."
+skill1_name = "Targeting"
+skill1_color = Color(0.1, 0.85, 1, 1)
+skill1_icon = ExtResource("2")
+skill1_description = "Toggles between melee and ranged attack mode.
+Cooldown: 9s"
+skill1_cooldown = 9.0
+skill2_name = "Laser Ray"
+skill2_color = Color(0, 0.5, 0.8, 1)
+skill2_icon = ExtResource("3")
+skill2_description = "Fires a piercing laser ray forward.
+Cooldown: 10s"
+skill2_cooldown = 10.0
+skill3_name = "Overclock"
+skill3_color = Color(0, 0.8, 0.55, 1)
+skill3_icon = ExtResource("4")
+skill3_description = "Overclocks for 5s: adds a second sword and halves attack delays.
+Cooldown: 12s"
+skill3_cooldown = 12.0

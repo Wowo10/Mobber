@@ -4,89 +4,27 @@ extends ArchetypeBase
 const FAN_KNIFE_SCENE = preload("res://scenes/archetypes/assassin/fan_knife.tscn")
 const TRAP_SCENE = preload("res://scenes/archetypes/assassin/trap.tscn")
 
-const FAN_COOLDOWN = 7.0
+const DATA = preload("res://data/archetypes/assassin.tres")
 const FAN_COUNT = 5
 const FAN_SPREAD_DEG = 60.0  # total cone width
 
 const DASH_CONE_HALF_DEG = 50.0
 const DASH_TARGET_RANGE = 450.0
 
-const SHADOWSTEP_COOLDOWN = 10.0
 const SHADOWSTEP_DAMAGE = 15.0
 const SHADOWSTEP_RANGE = 350.0
-const TRAP_COOLDOWN = 1.0
 const MAX_TRAPS = 15
 
 var _trap_count := 0
 
-func get_color() -> Color:
-	return Color(0.45, 0.1, 0.6)
-
-func get_skill3_color() -> Color:
-	return Color(0.45, 0.1, 0.65)
-
-func get_skill3_icon() -> Texture2D:
-	return load("res://assets/icons/box-trap.png")
-
-func get_skill1_name() -> String:
-	return "Fan of Knives"
-
-func get_skill2_name() -> String:
-	return "Shadowstep"
-
-func get_skill3_name() -> String:
-	return "Trap"
-
-func get_attack_description() -> String:
-	return "Fast melee strike. Low damage."
-
-func get_dash_description() -> String:
-	return "Blinks toward the nearest mob in your front cone."
-
-func get_skill1_description() -> String:
-	return "Throws 5 knives in a 60-degree cone.\nCooldown: 7s"
-
-func get_skill2_description() -> String:
-	return "Teleports behind the nearest mob and deals damage.\nCooldown: 10s"
-
-func get_skill3_description() -> String:
-	return "Places a hidden trap at your feet. Max 15 active traps.\nCooldown: 1s"
-
-func get_skill3_max_cooldown() -> float:
-	return TRAP_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill3_level)
-
-func get_skill1_color() -> Color:
-	return Color(0.75, 0.85, 1.0)
-
-func get_skill1_icon() -> Texture2D:
-	return load("res://assets/icons/thrown-daggers.png")
-
-func get_skill2_color() -> Color:
-	return Color(0.3, 0.05, 0.45)
-
-func get_skill2_icon() -> Texture2D:
-	return load("res://assets/icons/shadow-grasp.png")
-
-func get_sword_damage() -> float:
-	return 7.0
-
-func get_sword_swing_duration() -> float:
-	return 0.15
-
-func get_skill1_max_cooldown() -> float:
-	return FAN_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill1_level)
-
-func get_skill2_max_cooldown() -> float:
-	return SHADOWSTEP_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill2_level)
+func get_data_resource() -> ArchetypeData:
+	return DATA
 
 func use_dash() -> bool:
 	var target := _find_mob_in_cone(DASH_CONE_HALF_DEG, DASH_TARGET_RANGE)
 	if target != null:
 		_player.last_facing = _player.global_position.direction_to(target.global_position)
 	return false  # let the default dash run with updated facing
-
-func get_dash_duration() -> float:
-	return 0.2
 
 func on_skill1_client_predict() -> void:
 	var base_angle: float = _player.last_facing.angle()

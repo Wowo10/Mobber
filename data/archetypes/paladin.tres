@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="ArchetypeData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/archetypes/archetype_data.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://bx1q4ouldrxr0" path="res://assets/icons/spinning-sword.png" id="2"]
+[ext_resource type="Texture2D" uid="uid://cy5capyo0qspm" path="res://assets/icons/holy-symbol.png" id="3"]
+[ext_resource type="Texture2D" uid="uid://eobljpdgn18q" path="res://assets/icons/shield-bash.png" id="4"]
+
+[resource]
+script = ExtResource("1")
+color = Color(0.6, 0.65, 0.85, 1)
+attack_description = "Broad sword swing."
+dash_description = "Standard dash."
+skill1_name = "Spin"
+skill1_color = Color(0.15, 0.4, 1, 1)
+skill1_icon = ExtResource("2")
+skill1_description = "Spins your sword continuously for 2.5s.
+Cooldown: 7s"
+skill1_cooldown = 7.0
+skill2_name = "Consecration"
+skill2_color = Color(1, 0.85, 0.2, 1)
+skill2_icon = ExtResource("3")
+skill2_description = "Creates a holy zone that damages enemies over time.
+Cooldown: 8s"
+skill2_cooldown = 8.0
+skill3_name = "Shield Bash"
+skill3_color = Color(0.2, 0.55, 1, 1)
+skill3_icon = ExtResource("4")
+skill3_description = "Slams your shield forward, dealing damage and slowing enemies.
+Cooldown: 7s"
+skill3_cooldown = 7.0

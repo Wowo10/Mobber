@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="ArchetypeData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/archetypes/archetype_data.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://bnbeoagcge777" path="res://assets/icons/shadow-grasp.png" id="2"]
+[ext_resource type="Texture2D" uid="uid://cceheofiwjh0i" path="res://assets/icons/magic-portal.png" id="3"]
+[ext_resource type="Texture2D" uid="uid://c60yv53r4p3s7" path="res://assets/icons/marrow-drain.png" id="4"]
+[ext_resource type="Texture2D" uid="uid://dqp8jp6m2ler5" path="res://assets/icons/vortex.png" id="5"]
+[ext_resource type="Texture2D" uid="uid://enjbin6wvmqi" path="res://assets/icons/ghost-ally.png" id="6"]
+
+[resource]
+script = ExtResource("1")
+color = Color(0.1, 0.2, 0.55, 1)
+attack_color = Color(0.35, 0.05, 0.8, 1)
+attack_icon = ExtResource("2")
+attack_description = "Fires a shadow bolt toward the cursor.
+Cooldown: 0.7s"
+dash_color = Color(0.4, 0.1, 0.8, 1)
+dash_icon = ExtResource("3")
+dash_description = "First press: place a portal. Second press: teleport to it."
+skill1_name = "Drain Life"
+skill1_color = Color(0.15, 0.55, 0.8, 1)
+skill1_icon = ExtResource("4")
+skill1_description = "Siphons health from nearby enemies.
+Cooldown: 8s"
+skill1_cooldown = 8.0
+skill2_name = "Void Rift"
+skill2_color = Color(0.05, 0.05, 0.4, 1)
+skill2_icon = ExtResource("5")
+skill2_description = "Creates a void rift that pulls enemies into a vortex.
+Cooldown: 15s"
+skill2_cooldown = 15.0
+skill3_name = "Wisp"
+skill3_color = Color(0.2, 0.4, 0.9, 1)
+skill3_icon = ExtResource("6")
+skill3_description = "Summons a wisp familiar that attacks nearby enemies.
+Cooldown: 22s"
+skill3_cooldown = 22.0

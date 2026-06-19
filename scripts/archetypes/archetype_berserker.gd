@@ -3,9 +3,8 @@ extends ArchetypeBase
 
 const GROUND_SLAM_SCENE = preload("res://scenes/archetypes/berserker/ground_slam.tscn")
 
-const RAGE_COOLDOWN = 10.0
+const DATA = preload("res://data/archetypes/berserker.tres")
 const RAGE_DURATION = 3.0
-const SLAM_COOLDOWN = 8.0
 const BASE_SLAM_RADIUS = 150.0
 const BASE_SLAM_DAMAGE = 45.0
 
@@ -36,77 +35,11 @@ func get_hit_count() -> int:
 func set_hit_count(count: int) -> void:
 	_hit_count = count
 
-func get_color() -> Color:
-	return Color(0.85, 0.2, 0.1)
-
-func get_skill3_color() -> Color:
-	return Color(0.9, 0.4, 0.05)
-
-func get_skill3_icon() -> Texture2D:
-	return load("res://assets/icons/anvil-impact.png")
-
-func get_skill1_name() -> String:
-	return "Enrage"
-
-func get_skill2_name() -> String:
-	return "Ground Slam"
-
-func get_skill3_name() -> String:
-	return "Mini Smash"
-
-func get_attack_description() -> String:
-	return "Heavy sword swing. High damage."
-
-func get_dash_description() -> String:
-	return "Short dash that triggers a ground slam on landing."
-
-func get_skill1_description() -> String:
-	return "Boosts movement speed and attack speed for 3s.\nCooldown: 10s"
-
-func get_skill2_description() -> String:
-	return "Smashes the ground in a wide radius.\nCooldown: 8s"
-
-func get_skill3_description() -> String:
-	return "Passive — every 4th sword hit triggers a shockwave."
-
-func get_skill3_max_cooldown() -> float:
-	return 0.0
-
-func get_skill1_color() -> Color:
-	return Color(1.0, 0.3, 0.05)
-
-func get_skill1_icon() -> Texture2D:
-	return load("res://assets/icons/enrage.png")
-
-func get_skill2_color() -> Color:
-	return Color(0.6, 0.15, 0.05)
-
-func get_skill2_icon() -> Texture2D:
-	return load("res://assets/icons/crush.png")
-
-func get_sword_damage() -> float:
-	return 18.0
-
-func get_sword_width() -> float:
-	return 13.0
-
-func get_sword_length() -> float:
-	return 55.0
-
-func get_sword_swing_duration() -> float:
-	return 0.38
-
-func get_skill1_max_cooldown() -> float:
-	return RAGE_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill1_level)
-
-func get_skill2_max_cooldown() -> float:
-	return SLAM_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill2_level)
+func get_data_resource() -> ArchetypeData:
+	return DATA
 
 func get_speed_mult() -> float:
 	return 1.04 if _rage_active else 0.8
-
-func get_dash_duration() -> float:
-	return 0.06
 
 func on_dash_end() -> void:
 	_player.shake_camera(0.4, 14.0)

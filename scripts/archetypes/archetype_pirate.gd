@@ -5,9 +5,7 @@ const CANNONBALL_SCENE = preload("res://scenes/archetypes/pirate/cannonball.tscn
 const TURRET_SCENE = preload("res://scenes/archetypes/pirate/turret_cannon.tscn")
 const BARREL_SCENE = preload("res://scenes/archetypes/pirate/barrel.tscn")
 
-const CANNON_COOLDOWN = 3.5
-const TURRET_COOLDOWN = 4.0
-const BARREL_COOLDOWN = 12.0
+const DATA = preload("res://data/archetypes/pirate.tres")
 const BARREL_PLACE_COOLDOWN = 0.5
 
 var _turret: Node2D = null
@@ -15,59 +13,8 @@ var _visual_turret: Node2D = null
 var _barrel_node: Node2D = null
 var _visual_barrel: Node2D = null
 
-func get_color() -> Color:
-	return Color(0.8, 0.35, 0.1)
-
-func get_skill1_color() -> Color:
-	return Color(0.95, 0.7, 0.1)
-
-func get_skill1_icon() -> Texture2D:
-	return load("res://assets/icons/cannon-ball.png")
-
-func get_skill2_color() -> Color:
-	return Color(0.45, 0.3, 0.15)
-
-func get_skill2_icon() -> Texture2D:
-	return load("res://assets/icons/laser-turret.png")
-
-func get_skill3_color() -> Color:
-	return Color(0.75, 0.45, 0.1)
-
-func get_skill3_icon() -> Texture2D:
-	return load("res://assets/icons/barrel.png")
-
-func get_skill1_name() -> String:
-	return "Cannonball"
-
-func get_skill2_name() -> String:
-	return "Turret"
-
-func get_skill3_name() -> String:
-	return "Barrel"
-
-func get_attack_description() -> String:
-	return "Sword swing."
-
-func get_dash_description() -> String:
-	return "Standard dash."
-
-func get_skill1_description() -> String:
-	return "Fires a heavy cannonball that bounces off enemies.\nCooldown: 3.5s"
-
-func get_skill2_description() -> String:
-	return "Places a cannon turret that fires automatically.\nCooldown: 4s"
-
-func get_skill3_description() -> String:
-	return "First press: place a barrel (CD: 0.5s). Second press: detonate it (CD: 12s)."
-
-func get_skill3_max_cooldown() -> float:
-	return BARREL_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill3_level)
-
-func get_skill1_max_cooldown() -> float:
-	return CANNON_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill1_level)
-
-func get_skill2_max_cooldown() -> float:
-	return TURRET_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill2_level)
+func get_data_resource() -> ArchetypeData:
+	return DATA
 
 func use_skill1() -> void:
 	_player.skill1_cooldown = get_skill1_max_cooldown()

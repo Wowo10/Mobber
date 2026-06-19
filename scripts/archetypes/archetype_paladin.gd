@@ -1,13 +1,13 @@
 class_name ArchetypePaladin
 extends ArchetypeBase
 
+const DATA = preload("res://data/archetypes/paladin.tres")
 const CONSECRATION_SCENE = preload("res://scenes/archetypes/knight/consecration.tscn")
 
-const SPIN_COOLDOWN = 7.0
+# Behavior constants (tuning/visuals live in DATA). SPIN_DURATION/SPIN_SPEED are
+# also read by player.gd and player_net_sync.gd for the spin animation.
 const SPIN_DURATION = 2.5
 const SPIN_SPEED = TAU * 3.0
-const CONSECRATION_COOLDOWN = 8.0
-const BASH_COOLDOWN = 7.0
 const BASH_RANGE = 130.0
 const BASH_HALF_WIDTH = 55.0
 const BASH_DAMAGE = 6.0
@@ -15,59 +15,8 @@ const BASH_KNOCKBACK = 4500.0
 const BASH_SLOW_MULT = 0.35
 const BASH_SLOW_DURATION = 3.0
 
-func get_color() -> Color:
-	return Color(0.6, 0.65, 0.85)
-
-func get_skill1_color() -> Color:
-	return Color(0.15, 0.4, 1.0)
-
-func get_skill1_icon() -> Texture2D:
-	return load("res://assets/icons/spinning-sword.png")
-
-func get_skill2_color() -> Color:
-	return Color(1.0, 0.85, 0.2)
-
-func get_skill2_icon() -> Texture2D:
-	return load("res://assets/icons/holy-symbol.png")
-
-func get_skill1_name() -> String:
-	return "Spin"
-
-func get_skill2_name() -> String:
-	return "Consecration"
-
-func get_skill3_name() -> String:
-	return "Shield Bash"
-
-func get_attack_description() -> String:
-	return "Broad sword swing."
-
-func get_dash_description() -> String:
-	return "Standard dash."
-
-func get_skill1_description() -> String:
-	return "Spins your sword continuously for 2.5s.\nCooldown: 7s"
-
-func get_skill2_description() -> String:
-	return "Creates a holy zone that damages enemies over time.\nCooldown: 8s"
-
-func get_skill3_description() -> String:
-	return "Slams your shield forward, dealing damage and slowing enemies.\nCooldown: 7s"
-
-func get_skill1_max_cooldown() -> float:
-	return SPIN_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill1_level)
-
-func get_skill2_max_cooldown() -> float:
-	return CONSECRATION_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill2_level)
-
-func get_skill3_color() -> Color:
-	return Color(0.2, 0.55, 1.0)
-
-func get_skill3_icon() -> Texture2D:
-	return load("res://assets/icons/shield-bash.png")
-
-func get_skill3_max_cooldown() -> float:
-	return BASH_COOLDOWN * (1.0 - Constants.SHOP_SKILL_CD_REDUCTION_PER_LEVEL * _player.skill3_level)
+func get_data_resource() -> ArchetypeData:
+	return DATA
 
 func use_skill1() -> void:
 	_player.skill1_cooldown = get_skill1_max_cooldown()
