@@ -82,9 +82,9 @@ Scenes and scripts mirror each other's folder structure under `scenes/` and `scr
 
 `arena.gd` owns a `MultiplayerSpawner` (`MobContainer` spawn path). `spawn_mob(type, near_pos)` runs server-side only; the spawner replicates nodes to clients. Each mob carries `mob_worth` (BOSS counts more); `get_mob_count()` sums worth, and that total drives the HUD and win check.
 
-### Host migration
+### Host disconnect
 
-If the host disconnects mid-match, `game.gd::_begin_host_migration` converts the remaining client to an offline authority: it scrubs multiplayer signal hooks (Godot 4.x `SceneCacheInterface` cleanup), remaps the local peer ID to `1` across every peer-keyed dictionary, re-asserts player authority, redistributes the ex-host's gold to teammates, and re-spawns mobs to match pre-disconnect counts.
+There is no host migration — if the host vanishes mid-match the match ends. The host pulses a heartbeat (`net_sync.gd::_rpc_heartbeat`); clients run a watchdog (`update_host_liveness`) and, when it goes silent past `SERVER_TIMEOUT` (or `server_disconnected` fires), call `net_sync.gd::_show_host_left`. That scrubs multiplayer signal hooks (Godot 4.x `SceneCacheInterface` cleanup), drops the dead peer, and shows the game-over overlay with the final scoreboard and a Return-to-lobby button. A *non-host* peer leaving is handled separately by `net_sync.gd::_on_peer_disconnected` (gold redistribution, ghosting, arena-empty win check).
 
 ## Economy & progression
 

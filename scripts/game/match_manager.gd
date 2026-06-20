@@ -23,14 +23,6 @@ func _ready() -> void:
 func _my_id() -> int:
 	return 1 if not game._networked else multiplayer.get_unique_id()
 
-# --- Host-migration support ---
-
-func remap_peer_id(old_id: int, new_id: int) -> void:
-	for dict in [_player_skills_unlocked, _player_unlocks_pending, _player_unlock_milestone]:
-		if dict.has(old_id):
-			dict[new_id] = dict[old_id]
-			dict.erase(old_id)
-
 # Initialise unlock state for a freshly spawned player (server / offline only).
 func init_unlock_state(peer_id: int) -> void:
 	_player_skills_unlocked[peer_id] = [false, false, false]

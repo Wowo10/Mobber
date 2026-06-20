@@ -71,16 +71,6 @@ func _ready() -> void:
 
 	net_sync.begin()
 
-# --- Host-migration support ---
-
-func _remap_peer_id(old_id: int, new_id: int) -> void:
-	for dict in [_peer_to_player, _peer_to_arena, _peer_to_archetype,
-			_peer_kills, _peer_money_earned, _peer_mobs_sent,
-			_peer_debuffs_applied, _peer_stats_cache, PlayerPrefs.peer_names]:
-		if dict.has(old_id):
-			dict[new_id] = dict[old_id]
-			dict.erase(old_id)
-
 func _snapshot_disconnected_peer(id: int) -> void:
 	var arena: Node2D = _peer_to_arena.get(id)
 	if arena == null:

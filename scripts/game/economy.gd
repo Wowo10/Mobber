@@ -34,17 +34,6 @@ func _ready() -> void:
 func _my_id() -> int:
 	return 1 if not game._networked else multiplayer.get_unique_id()
 
-# --- Host-migration support ---
-
-func remap_peer_id(old_id: int, new_id: int) -> void:
-	for dict in [_peer_money,
-			_player_speed_levels, _player_damage_levels, _player_sword_size_levels,
-			_player_attack_speed_levels, _player_skill1_levels, _player_skill2_levels,
-			_player_skill3_levels]:
-		if dict.has(old_id):
-			dict[new_id] = dict[old_id]
-			dict.erase(old_id)
-
 # --- Shop / arena-master zone wiring ---
 
 func connect_zone_signals() -> void:

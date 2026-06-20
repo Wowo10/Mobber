@@ -15,7 +15,7 @@ const SERVER_TIMEOUT := 2.5
 
 var game: Node
 
-var _migrating: bool = false
+var _host_gone: bool = false
 var _scrubbed: bool = false
 var _heartbeat_timer: float = 0.0
 var _server_silence: float = 0.0
@@ -70,15 +70,16 @@ func _rpc_spawn_players(archetypes: Dictionary, win_count: int) -> void:
 
 # --- Host liveness / heartbeat ---
 
-# Server pulses a heartbeat; clients trip migration when it goes silent. This is
-# the only reliable cross-peer signal that the host is gone — see HEARTBEAT_INTERVAL.
+# Server pulses a heartbeat; clients trip the host-left screen when it goes
+# silent. This is the only reliable cross-peer signal that the host is gone — see
+# HEARTBEAT_INTERVAL.
 func update_host_liveness(delta: float) -> void:
 	if multiplayer.is_server():
 		_heartbeat_timer -= delta
 		if _heartbeat_timer <= 0.0:
 			_heartbeat_timer = HEARTBEAT_INTERVAL
 			_rpc_heartbeat.rpc()
-	elif not _migrating:
+	elif not _host_gone:
 		_server_silence += delta
 		if _server_silence >= SERVER_TIMEOUT:
 			_on_server_disconnected()
@@ -88,84 +89,48 @@ func _rpc_heartbeat() -> void:
 	_server_silence = 0.0
 
 func _on_server_disconnected() -> void:
-	if _migrating:
+	if _host_gone:
 		return
-	_migrating = true
-	_begin_host_migration()
+	_host_gone = true
+	_show_host_left()
 
-func _begin_host_migration() -> void:
-	if game._peer_to_player.is_empty():
-		scrub_multiplayer_hooks()
-		multiplayer.multiplayer_peer = null
-		show_disconnect("Host disconnected. Returning to lobby...")
+# Host vanished mid-match. There is no migration — the match simply ends. Tear
+# the dead peer down cleanly and show the end screen with the final scoreboard.
+func _show_host_left() -> void:
+	if game.get_node("GameOverOverlay").visible:
 		return
-	var my_old_id := multiplayer.get_unique_id()
-	var a1_count: int = game.arena1.get_mob_count()
-	var a2_count: int = game.arena2.get_mob_count()
+	game._leaving = true
 
-	# Disconnect tree signals to suppress SceneCacheInterface errors when the
-	# spawner stops on peer transition. MobContainer is intentionally NOT freed
-	# so spawn_mob() keeps working after we re-enable local authority below.
-	if not _scrubbed:
-		_scrubbed = true
-		for arena in [game.arena1, game.arena2]:
-			var mc: Node = arena.get_node_or_null("MobContainer")
-			if mc:
-				for mob in mc.get_children():
-					_clear_signal(mob.tree_exiting)
-			var spawner: Node = arena.get_node_or_null("MobSpawner")
-			if spawner:
-				_clear_signal(spawner.tree_exited)
-		for player in game.get_node("PlayerContainer").get_children():
-			_clear_signal(player.tree_exited)
-		_clear_signal(game.tree_exited)
-
-	# Switching to null makes multiplayer.is_server() return true locally and
-	# causes the MultiplayerSpawner to despawn all mob nodes via _stop().
+	# Scrub before dropping the peer so the MultiplayerSpawner's _stop() despawn
+	# doesn't trip the SceneCacheInterface dangling-callable errors.
+	scrub_multiplayer_hooks()
 	multiplayer.multiplayer_peer = null
-	game._networked = false
 
-	# Spread the ex-host's gold to their teammates before removing their data.
-	game.economy.spread_gold(1)
-	game._snapshot_disconnected_peer(1)
+	for child in game.get_node("PlayerContainer").get_children():
+		child.set_physics_process(false)
 
-	# Remove the ex-host's player node. In offline mode get_unique_id() == 1,
-	# so any node still carrying authority 1 would be wrongly controlled by us.
-	var host_player = game._peer_to_player.get(1)
-	if host_player and is_instance_valid(host_player):
-		host_player.queue_free()
-	game._peer_to_player.erase(1)
-	game._peer_to_arena.erase(1)
-	game._peer_to_archetype.erase(1)
+	var my_id: int = multiplayer.get_unique_id()
 
-	# Remap our old peer ID to 1 (the local offline authority ID) across every
-	# peer-keyed dictionary so all existing HUD, shop, and win-condition logic
-	# that resolves "my_id = 1 if not _networked" keeps working.
-	if my_old_id != 1:
-		game._remap_peer_id(my_old_id, 1)
-		game.economy.remap_peer_id(my_old_id, 1)
-		game.match_manager.remap_peer_id(my_old_id, 1)
+	var vbox := game.get_node("GameOverOverlay/VBox")
+	var title := vbox.get_node("TitleLabel")
+	var sub := vbox.get_node("SubLabel")
+	var return_btn := vbox.get_node("ReturnButton")
 
-	# Re-assign authority so our player's is_multiplayer_authority() returns true.
-	# It was set to my_old_id at spawn; offline ID is always 1.
-	var our_player = game._peer_to_player.get(1)
-	if our_player and is_instance_valid(our_player):
-		our_player.set_multiplayer_authority(1)
+	title.text = "HOST LEFT"
+	title.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
+	sub.text = "The host disconnected — match ended."
+	sub.add_theme_color_override("font_color", Color(0.8, 0.8, 0.5))
 
-	# If the opponent arena is now empty, the local player won — show the end screen.
-	var our_arena: Node2D = game._peer_to_arena.get(1)
-	var opponent_arena: Node2D = game.arena2 if our_arena == game.arena1 else game.arena1
-	if game._count_players_in_arena(opponent_arena) == 0:
-		game.match_manager._rpc_game_over(1 if opponent_arena == game.arena1 else 2)
-		return
+	var existing := vbox.find_child("GameOverScoreboard", false, false)
+	if existing:
+		existing.free()
 
-	# Spawner cleared the mob nodes; re-spawn to match the pre-disconnect counts.
-	for i in a1_count:
-		game.arena1.spawn_mob()
-	for i in a2_count:
-		game.arena2.spawn_mob()
+	var sb: Control = game._build_game_over_scoreboard(my_id)
+	sb.name = "GameOverScoreboard"
+	vbox.add_child(sb)
+	vbox.move_child(return_btn, vbox.get_child_count() - 1)
 
-	game._push_hud_update()
+	game.get_node("GameOverOverlay").visible = true
 
 # --- Peer disconnect ---
 
@@ -257,15 +222,6 @@ func tick_ping(delta: float) -> void:
 		_rpc_ping_request.rpc_id(1)
 
 # --- Disconnect / leave ---
-
-func show_disconnect(msg: String) -> void:
-	game._leaving = true
-	for child in game.get_node("PlayerContainer").get_children():
-		child.set_physics_process(false)
-	game.get_node("DisconnectOverlay/MsgLabel").text = msg
-	game.get_node("DisconnectOverlay").visible = true
-	await get_tree().create_timer(3.0).timeout
-	leave_game()
 
 func scrub_multiplayer_hooks() -> void:
 	if _scrubbed:
