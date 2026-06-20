@@ -780,7 +780,7 @@ func _draw_droplet(r: float, col: Color, fwd: Vector2) -> void:
 	draw_colored_polygon(pts, col)
 	var outline := pts.duplicate()
 	outline.append(pts[0])
-	draw_polyline(outline, Color(0, 0, 0, 0.5), 2.0, true)
+	draw_polyline(outline, Color(0, 0, 0, 0.8), 2.0, true)
 
 func _draw() -> void:
 	_draw_droplet(radius, color, last_facing)

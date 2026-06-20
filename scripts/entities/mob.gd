@@ -314,6 +314,9 @@ func _draw_droplet(r: float, col: Color, fwd: Vector2) -> void:
 		pts.append(Vector2(back_cx + back_r * cos(a), back_r * sin(a)).rotated(rot))
 	pts.append(fwd * r * 1.35)
 	draw_colored_polygon(pts, col)
+	var outline := pts.duplicate()
+	outline.append(pts[0])
+	draw_polyline(outline, Color(1, 1, 1, 0.5), 1.0, true)
 
 func _draw() -> void:
 	_draw_droplet(radius, color, _facing_dir)

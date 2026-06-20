@@ -172,6 +172,15 @@ func notify_mob_killed(arena: Node2D, killer: Node = null) -> void:
 	_pending_kills[arena] = _pending_kills.get(arena, 0) + 1
 	var a1: int = arena1.get_mob_count() - _pending_kills.get(arena1, 0)
 	var a2: int = arena2.get_mob_count() - _pending_kills.get(arena2, 0)
+	# Refill an emptied arena so it never sits at zero.
+	if a1 <= 0:
+		arena1.spawn_mob()
+		arena1.spawn_mob()
+		a1 = arena1.get_mob_count() - _pending_kills.get(arena1, 0)
+	if a2 <= 0:
+		arena2.spawn_mob()
+		arena2.spawn_mob()
+		a2 = arena2.get_mob_count() - _pending_kills.get(arena2, 0)
 	_update_hud_local(a1, a2)
 	if _networked:
 		_rpc_update_hud.rpc(a1, a2)
