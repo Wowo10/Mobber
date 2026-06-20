@@ -23,13 +23,13 @@ var player: CharacterBody2D
 
 # Server-side input buffers — written by the input RPCs, consumed each physics
 # tick by player._physics_process (Path B).
-var _received_direction := Vector2.ZERO
-var _received_facing := Vector2.RIGHT
-var _pending_attack := false
-var _pending_dash := false
-var _pending_skill1 := false
-var _pending_skill2 := false
-var _pending_skill3 := false
+var received_direction := Vector2.ZERO
+var received_facing := Vector2.RIGHT
+var pending_attack := false
+var pending_dash := false
+var pending_skill1 := false
+var pending_skill2 := false
+var pending_skill3 := false
 
 func _ready() -> void:
 	player = get_parent()
@@ -37,32 +37,32 @@ func _ready() -> void:
 # --- Input RPCs (client → server) ---
 
 @rpc("any_peer", "unreliable_ordered")
-func _rpc_send_direction(direction: Vector2) -> void:
+func rpc_send_direction(direction: Vector2) -> void:
 	if not multiplayer.is_server():
 		return
 	if multiplayer.get_remote_sender_id() != get_multiplayer_authority():
 		return
-	_received_direction = direction
+	received_direction = direction
 
 @rpc("any_peer", "unreliable_ordered")
-func _rpc_send_facing(f: Vector2) -> void:
+func rpc_send_facing(f: Vector2) -> void:
 	if not multiplayer.is_server():
 		return
 	if multiplayer.get_remote_sender_id() != get_multiplayer_authority():
 		return
-	_received_facing = f
+	received_facing = f
 
 @rpc("any_peer", "reliable")
-func _rpc_send_action(action_mask: int) -> void:
+func rpc_send_action(action_mask: int) -> void:
 	if not multiplayer.is_server():
 		return
 	if multiplayer.get_remote_sender_id() != get_multiplayer_authority():
 		return
-	if action_mask & 1: _pending_attack = true
-	if action_mask & 2: _pending_dash   = true
-	if action_mask & 4:  _pending_skill1 = true
-	if action_mask & 8:  _pending_skill2 = true
-	if action_mask & 16: _pending_skill3 = true
+	if action_mask & 1: pending_attack = true
+	if action_mask & 2: pending_dash   = true
+	if action_mask & 4:  pending_skill1 = true
+	if action_mask & 8:  pending_skill2 = true
+	if action_mask & 16: pending_skill3 = true
 
 # --- Upgrade / debuff / skill-unlock RPCs ---
 
@@ -364,7 +364,7 @@ func rpc_spawn_warlock_wisp() -> void:
 	(player.get_archetype_handler() as ArchetypeWarlock).spawn_wisp_local(true)
 
 @rpc("any_peer", "unreliable_ordered")
-func _rpc_set_dash_particles(dir: Vector2, emitting: bool) -> void:
+func rpc_set_dash_particles(dir: Vector2, emitting: bool) -> void:
 	var _s := multiplayer.get_remote_sender_id()
 	if _s != 0 and _s != 1:
 		return
@@ -388,11 +388,11 @@ func rpc_trigger_spin_start() -> void:
 	player.spin_timer = ArchetypePaladin.SPIN_DURATION
 	player.get_node("Sword").enter_spin()
 	if is_multiplayer_authority():
-		player._spin_loop_timer = 0.0
+		player.spin_loop_timer = 0.0
 		player.get_node("SfxSpin").play()
 
 @rpc("any_peer", "reliable")
-func _rpc_trigger_spin_stop() -> void:
+func rpc_trigger_spin_stop() -> void:
 	var _s := multiplayer.get_remote_sender_id()
 	if _s != 0 and _s != 1:
 		return

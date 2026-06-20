@@ -60,7 +60,7 @@ var _shake_max_duration := 1.0
 # Public — accessed by archetype handlers and spin RPCs
 var spinning := false
 var spin_timer := 0.0
-var _spin_loop_timer := 0.0
+var spin_loop_timer := 0.0
 
 var _archetype_handler: ArchetypeBase
 
@@ -210,9 +210,9 @@ func _process(delta: float) -> void:
 	else:
 		$Camera2D.offset = _cam_correction_offset
 	if spinning and is_multiplayer_authority():
-		_spin_loop_timer -= delta
-		if _spin_loop_timer <= 0.0:
-			_spin_loop_timer = 0.25
+		spin_loop_timer -= delta
+		if spin_loop_timer <= 0.0:
+			spin_loop_timer = 0.25
 			$SfxSpinLoop.pitch_scale = randf_range(0.9, 1.1)
 			$SfxSpinLoop.play()
 
@@ -354,18 +354,18 @@ func _physics_process(delta: float) -> void:
 			)
 
 		else:
-			direction = net_sync._received_direction
-			facing = net_sync._received_facing
-			do_attack = net_sync._pending_attack and _archetype_handler.can_attack()
-			do_dash   = net_sync._pending_dash and dash_cooldown <= 0.0
-			do_skill1 = net_sync._pending_skill1 and skill1_cooldown <= 0.0 and skills_unlocked[0]
-			do_skill2 = net_sync._pending_skill2 and skill2_cooldown <= 0.0 and skills_unlocked[1]
-			do_skill3 = net_sync._pending_skill3 and skill3_cooldown <= 0.0 and skills_unlocked[2]
-			net_sync._pending_attack = false
-			net_sync._pending_dash   = false
-			net_sync._pending_skill1 = false
-			net_sync._pending_skill2 = false
-			net_sync._pending_skill3 = false
+			direction = net_sync.received_direction
+			facing = net_sync.received_facing
+			do_attack = net_sync.pending_attack and _archetype_handler.can_attack()
+			do_dash   = net_sync.pending_dash and dash_cooldown <= 0.0
+			do_skill1 = net_sync.pending_skill1 and skill1_cooldown <= 0.0 and skills_unlocked[0]
+			do_skill2 = net_sync.pending_skill2 and skill2_cooldown <= 0.0 and skills_unlocked[1]
+			do_skill3 = net_sync.pending_skill3 and skill3_cooldown <= 0.0 and skills_unlocked[2]
+			net_sync.pending_attack = false
+			net_sync.pending_dash   = false
+			net_sync.pending_skill1 = false
+			net_sync.pending_skill2 = false
+			net_sync.pending_skill3 = false
 
 	else:
 		# Path C — Client own player: predict locally and send input to server
@@ -406,10 +406,10 @@ func _physics_process(delta: float) -> void:
 			do_skill2 = false
 			do_skill3 = false
 		if direction != _last_sent_direction:
-			net_sync._rpc_send_direction.rpc_id(1, direction)
+			net_sync.rpc_send_direction.rpc_id(1, direction)
 			_last_sent_direction = direction
 		if facing != _last_sent_facing:
-			net_sync._rpc_send_facing.rpc_id(1, facing)
+			net_sync.rpc_send_facing.rpc_id(1, facing)
 			_last_sent_facing = facing
 		var action_mask := 0
 		if do_attack: action_mask |= 1
@@ -418,7 +418,7 @@ func _physics_process(delta: float) -> void:
 		if do_skill2: action_mask |= 8
 		if do_skill3: action_mask |= 16
 		if action_mask != 0:
-			net_sync._rpc_send_action.rpc_id(1, action_mask)
+			net_sync.rpc_send_action.rpc_id(1, action_mask)
 
 	# --- Debuff timers + enforcement ---
 
@@ -462,9 +462,9 @@ func _physics_process(delta: float) -> void:
 			if is_multiplayer_authority():
 				$SfxSpin.stop()
 				$SfxSpinLoop.stop()
-				_spin_loop_timer = 0.0
+				spin_loop_timer = 0.0
 			if networked and multiplayer.is_server():
-				net_sync._rpc_trigger_spin_stop.rpc()
+				net_sync.rpc_trigger_spin_stop.rpc()
 
 	# Dash / movement
 	if predict_movement:
@@ -646,13 +646,13 @@ func _enter_dash(networked: bool) -> void:
 	if is_multiplayer_authority():
 		$SfxDash.play()
 	if networked and multiplayer.is_server():
-		net_sync._rpc_set_dash_particles.rpc(-last_facing, true)
+		net_sync.rpc_set_dash_particles.rpc(-last_facing, true)
 
 func _exit_dash(networked: bool) -> void:
 	_move_state = MoveState.NORMAL
 	$DashParticles.emitting = false
 	if networked and multiplayer.is_server():
-		net_sync._rpc_set_dash_particles.rpc(Vector2.ZERO, false)
+		net_sync.rpc_set_dash_particles.rpc(Vector2.ZERO, false)
 	if not networked or multiplayer.is_server():
 		_archetype_handler.on_dash_end()
 
@@ -778,6 +778,9 @@ func _draw_droplet(r: float, col: Color, fwd: Vector2) -> void:
 		pts.append(Vector2(back_cx + back_r * cos(a), back_r * sin(a)).rotated(rot))
 	pts.append(fwd * r * 1.35)
 	draw_colored_polygon(pts, col)
+	var outline := pts.duplicate()
+	outline.append(pts[0])
+	draw_polyline(outline, Color(0, 0, 0, 0.5), 2.0, true)
 
 func _draw() -> void:
 	_draw_droplet(radius, color, last_facing)
