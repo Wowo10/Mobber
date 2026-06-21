@@ -3,6 +3,8 @@ extends CharacterBody2D
 enum State { WANDER, FLEE, CHASE }
 enum MobType { BASIC, FLEEING, BOSS }
 
+const DEATH_SOUND := preload("res://assets/sounds/mob_death.wav")
+
 var mob_type: MobType = MobType.BASIC:
 	set(v):
 		mob_type = v
@@ -317,7 +319,44 @@ func die() -> void:
 		if game and game.has_method("notify_mob_killed"):
 			var arena: Node = get_parent().get_parent()
 			game.call_deferred("notify_mob_killed", arena, _last_attacker)
+	# Play the death FX on every peer. The node is about to be freed, so spawn
+	# detached, self-freeing nodes rather than playing on the mob itself.
+	if networked:
+		_rpc_play_death_fx.rpc(global_position, color)
+	else:
+		_play_death_fx(global_position, color)
 	queue_free()
+
+@rpc("authority", "call_local", "reliable")
+func _rpc_play_death_fx(pos: Vector2, col: Color) -> void:
+	_play_death_fx(pos, col)
+
+func _play_death_fx(pos: Vector2, col: Color) -> void:
+	var scene := get_tree().current_scene
+	var sfx := AudioStreamPlayer2D.new()
+	sfx.stream = DEATH_SOUND
+	sfx.global_position = pos
+	scene.add_child(sfx)
+	sfx.finished.connect(sfx.queue_free)
+	sfx.play()
+
+	var splash := CPUParticles2D.new()
+	splash.global_position = pos
+	splash.one_shot = true
+	splash.explosiveness = 1.0
+	splash.amount = 16
+	splash.lifetime = 0.4
+	splash.gravity = Vector2.ZERO
+	splash.spread = 180.0
+	splash.initial_velocity_min = 90.0
+	splash.initial_velocity_max = 240.0
+	splash.scale_amount_min = 2.0
+	splash.scale_amount_max = 4.0
+	splash.color = col
+	ParticleUtils.polish(splash)
+	splash.emitting = true
+	scene.add_child(splash)
+	scene.get_tree().create_timer(splash.lifetime + 0.1).timeout.connect(splash.queue_free)
 
 func _draw_droplet(r: float, col: Color, fwd: Vector2) -> void:
 	var n := 20

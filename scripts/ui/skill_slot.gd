@@ -16,7 +16,7 @@ var _cd_max: float = 1.0
 var _passive_counter: int = -1  # -1 = not a passive
 var locked: bool = false
 var unlock_available: bool = false
-var disabled: bool = false
+var debuffed: bool = false
 
 func set_cooldown(remaining: float, max_cd: float) -> void:
 	_cd_remaining = remaining
@@ -101,7 +101,7 @@ func _draw() -> void:
 			draw_string(font, Vector2(s * 0.5 - 8, s * 0.5 + 6), "%.1f" % _cd_remaining,
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
 
-	if disabled:
+	if debuffed:
 		draw_rect(Rect2(0, 0, s, s), Color(0.7, 0.1, 0.1, 0.45))
 		var c := Vector2(s * 0.5, s * 0.5)
 		var r := s * 0.28

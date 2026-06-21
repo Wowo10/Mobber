@@ -24,7 +24,7 @@ const INTEREST_VIEW_HALF_Y = 360.0
 const INTEREST_VIEW_MARGIN = 300.0   # extra ring so mobs sync just before entering view
 const MOB_MAX_HEALTH = 30.0
 const MOB_WANDER_INTERVAL = 2.0
-const MOB_COUNT = 5
+const MOB_COUNT = 95
 const KILL_REWARD = 10
 
 const PLAYER_DASH_SPEED = 2400.0
