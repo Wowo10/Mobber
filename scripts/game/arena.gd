@@ -10,8 +10,11 @@ const FLOOR_TILE_SIZE = 256.0
 const MOB_SCENE = preload("res://scenes/entities/mob.tscn")
 const SHOP_ZONE_RECT := Rect2(100, 1650, 300, 300)
 const ARENA_MASTER_ZONE_RECT := Rect2(2267, 1650, 300, 300)
-const MOB_SYNC_INTERVAL := 0.033   # every physics tick (60 Hz)
+const MOB_SYNC_INTERVAL := 0.033   # ~30 Hz (every ~2 physics ticks at 60 fps)
 const MOVE_THRESHOLD_SQ := 225.0  # 15 px — skip mobs that haven't moved
+# Cap mobs per sync RPC (~20 bytes each) so a packet stays inside one UDP datagram.
+# A lost packet then only stalls its own subset of mobs instead of every mob at once.
+const MAX_MOBS_PER_SYNC := 40
 const FLOOR_TEXTURES := [
 	preload("res://assets/textures/StoneFloorTexture1.png"),
 	preload("res://assets/textures/StoneFloorTexture2.png"),
@@ -147,9 +150,14 @@ func _physics_process(delta: float) -> void:
 		ids.append(_mob_net_id.get(iid, -1))
 		positions.append(mob.position)
 		velocities.append(mob.velocity)
-	if ids.is_empty():
-		return
-	_rpc_sync_mob_states.rpc(ids, positions, velocities)
+		# Flush a full chunk so no single RPC outgrows one datagram.
+		if ids.size() >= MAX_MOBS_PER_SYNC:
+			_rpc_sync_mob_states.rpc(ids, positions, velocities)
+			ids = PackedInt32Array()
+			positions = PackedVector2Array()
+			velocities = PackedVector2Array()
+	if not ids.is_empty():
+		_rpc_sync_mob_states.rpc(ids, positions, velocities)
 
 @rpc("authority", "unreliable_ordered")
 func _rpc_sync_mob_states(

@@ -48,7 +48,13 @@ func use_dash() -> bool:
 			if networked:
 				_player.net_sync.rpc_consume_warlock_portal.rpc()
 				_player.net_sync.rpc_place_warlock_portal.rpc(_portal_pos)
+				_player.net_sync.rpc_warlock_teleport_burst.rpc(
+					prev_pos, _player.global_position, jump_dir)
 	return true
+
+func spawn_teleport_burst_pair(prev_pos: Vector2, new_pos: Vector2, jump_dir: Vector2) -> void:
+	_spawn_teleport_burst(prev_pos, jump_dir)
+	_spawn_teleport_burst(new_pos, -jump_dir)
 
 func place_visual_portal(pos: Vector2) -> void:
 	if is_instance_valid(_visual_portal):

@@ -65,6 +65,8 @@ func use_attack_visual() -> void:
 		spawn_bullet_local(pos, _player.last_facing, true)
 	else:
 		super.use_attack_visual()
+		if _overclock_active and is_instance_valid(_extra_sword):
+			_extra_sword.swing(_player.last_facing.angle() + deg_to_rad(50.0))
 
 func use_skill1() -> void:
 	_player.skill1_cooldown = get_skill1_max_cooldown()

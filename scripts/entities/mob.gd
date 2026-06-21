@@ -40,10 +40,16 @@ var _screen_notifier: VisibleOnScreenNotifier2D = null
 # Observer snapshot interpolation — render the mob slightly behind real-time and
 # lerp between two received snapshots instead of extrapolating by velocity. This
 # removes the overshoot/snap-back that extrapolation produces when a mob stops.
-const MOB_INTERP_DELAY := 0.066   # s — render ~2 sync intervals behind real-time
+const MOB_INTERP_DELAY := 0.12    # s — render ~4 sync intervals behind real-time, so
+                                  # a single dropped sync packet doesn't starve the buffer
 const MOB_EXTRAP_CAP   := 0.1     # s — max time to extrapolate when buffer is starved
+# Exp-smoothing rate for the rendered base. Higher = snappier (less added latency);
+# this only softens the jump when a starved buffer recovers, it doesn't replace interp.
+const MOB_BASE_SMOOTH_RATE := 22.0
 var _snap_buffer: Array = []      # [{t, pos, vel}] ordered by arrival
 var _predict_offset := Vector2.ZERO  # local client-push prediction, layered over the interpolated base
+var _smoothed_base := Vector2.ZERO   # eased interp base; tracks _sample_snapshot_buffer over a few frames
+var _smoothed_base_init := false     # false until the first sample seeds _smoothed_base
 
 func _apply_mob_type() -> void:
 	if mob_type == MobType.FLEEING:
@@ -86,20 +92,31 @@ func receive_server_state(pos: Vector2, vel: Vector2) -> void:
 	if _snap_buffer.is_empty() or pos.distance_to(position) > MOB_SNAP_THRESHOLD:
 		_snap_buffer = [snap]
 		position = pos
+		# Reseed the smoothed base so it doesn't glide across the teleport gap.
+		_smoothed_base = pos
+		_smoothed_base_init = true
 	else:
 		_snap_buffer.append(snap)
-		while _snap_buffer.size() > 8:
+		while _snap_buffer.size() > 12:
 			_snap_buffer.pop_front()
 
 func _process(delta: float) -> void:
 	if _is_client_observer:
 		var base := _sample_snapshot_buffer()
+		# Ease the rendered base toward the interpolated target so a starve→recover
+		# gap reads as a quick glide instead of a hard jump. Frame-rate independent;
+		# smooth the BASE only, then add _predict_offset so local push stays responsive.
+		if _smoothed_base_init:
+			_smoothed_base = _smoothed_base.lerp(base, 1.0 - exp(-MOB_BASE_SMOOTH_RATE * delta))
+		else:
+			_smoothed_base = base
+			_smoothed_base_init = true
 		# Local client-push prediction is layered on top and decays as the server's
 		# snapshots catch up to reflect the same push.
 		if _predict_offset != Vector2.ZERO:
 			_predict_offset = _predict_offset.move_toward(
 				Vector2.ZERO, MOB_CORRECTION_PX_PER_SEC * delta)
-		position = base + _predict_offset
+		position = _smoothed_base + _predict_offset
 		# Face the authoritative server velocity — the same source the server draws
 		# from. Reconstructing facing from interpolated position deltas was fragile:
 		# reconciliation micro-steps could dominate and flip the droplet ~180 degrees.

@@ -315,6 +315,14 @@ func rpc_consume_warlock_portal() -> void:
 	(player.get_archetype_handler() as ArchetypeWarlock).consume_visual_portal()
 
 @rpc("any_peer", "reliable")
+func rpc_warlock_teleport_burst(prev_pos: Vector2, new_pos: Vector2, jump_dir: Vector2) -> void:
+	var _s := multiplayer.get_remote_sender_id()
+	if _s != 0 and _s != 1:
+		return
+	(player.get_archetype_handler() as ArchetypeWarlock).spawn_teleport_burst_pair(
+		prev_pos, new_pos, jump_dir)
+
+@rpc("any_peer", "reliable")
 func rpc_mage_force_pull(pos: Vector2) -> void:
 	var _s := multiplayer.get_remote_sender_id()
 	if _s != 0 and _s != 1:
@@ -378,6 +386,11 @@ func rpc_trigger_swing(facing_angle: float) -> void:
 	if _s != 0 and _s != 1:
 		return
 	player.get_node("Sword").swing(facing_angle)
+	# Overclocked cyborg carries a second sword (see ArchetypeCyborg.use_attack);
+	# swing it for observers too, mirroring the +50 deg offset used there.
+	var extra := player.get_node_or_null("ExtraSword")
+	if extra != null:
+		extra.swing(facing_angle + deg_to_rad(50.0))
 
 @rpc("any_peer", "reliable")
 func rpc_trigger_spin_start() -> void:
