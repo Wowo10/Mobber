@@ -13,6 +13,15 @@ const CLIENT_PREDICTION := true
 
 const MOB_RADIUS = 15.0
 const MOB_SPEED = 120.0
+
+# Interest management — once an arena holds this many mob nodes, its per-tick mob
+# state is only sent to peers whose camera view contains the mob (plus a margin).
+# Below the threshold every viewer of the arena gets all of it. Arena-scoping
+# (only sending to peers viewing that arena) is always on, regardless of count.
+const INTEREST_CULL_THRESHOLD = 50
+const INTEREST_VIEW_HALF_X = 640.0   # half the 1280x720 viewport
+const INTEREST_VIEW_HALF_Y = 360.0
+const INTEREST_VIEW_MARGIN = 300.0   # extra ring so mobs sync just before entering view
 const MOB_MAX_HEALTH = 30.0
 const MOB_WANDER_INTERVAL = 2.0
 const MOB_COUNT = 5

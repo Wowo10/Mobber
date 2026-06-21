@@ -29,6 +29,7 @@ var _sync_timer := 0.0
 var _last_sync_positions: Dictionary = {}  # instance_id → Vector2
 var _mob_by_id: Dictionary = {}            # net_id → node
 var _mob_net_id: Dictionary = {}           # instance_id → net_id
+var _peer_interest: Dictionary = {}        # peer_id → {net_id: true} sent last tick
 var _next_mob_id: int = 0
 var _floor_texture: Texture2D
 var mob_speed_multiplier: float = 1.0
@@ -138,26 +139,58 @@ func _physics_process(delta: float) -> void:
 	var mobs := $MobContainer.get_children()
 	if mobs.is_empty():
 		return
-	var ids := PackedInt32Array()
-	var positions := PackedVector2Array()
-	var velocities := PackedVector2Array()
+	var game := get_parent()
+	if not game.has_method("get_arena_interest"):
+		return
+	var viewers: Dictionary = game.get_arena_interest(self)
+	if viewers.is_empty():
+		return
+
+	# Which mobs moved enough since their last broadcast. This is global (shared
+	# across peers); update last-sync once here so the per-peer loop is read-only.
+	var moved: Dictionary = {}  # net_id → true
 	for mob in mobs:
 		var iid := mob.get_instance_id()
 		var last_pos: Vector2 = _last_sync_positions.get(iid, Vector2(-1e9, -1e9))
-		if mob.position.distance_squared_to(last_pos) < MOVE_THRESHOLD_SQ:
-			continue
-		_last_sync_positions[iid] = mob.position
-		ids.append(_mob_net_id.get(iid, -1))
-		positions.append(mob.position)
-		velocities.append(mob.velocity)
-		# Flush a full chunk so no single RPC outgrows one datagram.
-		if ids.size() >= MAX_MOBS_PER_SYNC:
-			_rpc_sync_mob_states.rpc(ids, positions, velocities)
-			ids = PackedInt32Array()
-			positions = PackedVector2Array()
-			velocities = PackedVector2Array()
-	if not ids.is_empty():
-		_rpc_sync_mob_states.rpc(ids, positions, velocities)
+		if mob.position.distance_squared_to(last_pos) >= MOVE_THRESHOLD_SQ:
+			_last_sync_positions[iid] = mob.position
+			moved[_mob_net_id.get(iid, -1)] = true
+
+	var use_culling: bool = mobs.size() >= Constants.INTEREST_CULL_THRESHOLD
+
+	for peer_id in viewers:
+		var center = viewers[peer_id]  # Vector2 (player view) or null (spectator → no cull)
+		var cull: bool = use_culling and center != null
+		var prev_interest: Dictionary = _peer_interest.get(peer_id, {})
+		var new_interest: Dictionary = {}
+		var ids := PackedInt32Array()
+		var positions := PackedVector2Array()
+		var velocities := PackedVector2Array()
+		for mob in mobs:
+			var nid: int = _mob_net_id.get(mob.get_instance_id(), -1)
+			if cull and not _in_view(mob.position, center):
+				continue
+			new_interest[nid] = true
+			# Send if it moved this tick, OR it just entered this peer's interest —
+			# so a resting mob's position still reaches a freshly-scrolled-in viewer
+			# even though the global move-check skipped it.
+			if moved.has(nid) or not prev_interest.has(nid):
+				ids.append(nid)
+				positions.append(mob.position)
+				velocities.append(mob.velocity)
+		_peer_interest[peer_id] = new_interest
+		if not ids.is_empty():
+			_rpc_sync_mob_states.rpc_id(peer_id, ids, positions, velocities)
+
+# center is global; mob_local is the mob's arena-local position. Convert the mob
+# to global (add this arena's offset) before testing against the view rect.
+func _in_view(mob_local: Vector2, center: Vector2) -> bool:
+	var g := mob_local + position
+	return abs(g.x - center.x) <= Constants.INTEREST_VIEW_HALF_X + Constants.INTEREST_VIEW_MARGIN \
+		and abs(g.y - center.y) <= Constants.INTEREST_VIEW_HALF_Y + Constants.INTEREST_VIEW_MARGIN
+
+func clear_peer_interest(peer_id: int) -> void:
+	_peer_interest.erase(peer_id)
 
 @rpc("authority", "unreliable_ordered")
 func _rpc_sync_mob_states(

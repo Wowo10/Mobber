@@ -6,23 +6,23 @@ const PLAYER_SCENE = preload("res://scenes/entities/player.tscn")
 # per-peer stat counters. The networking, economy, and match-flow concerns live
 # on the NetSync / Economy / MatchManager child nodes (see _ready wiring).
 
-var _peer_to_arena: Dictionary = {}
-var _peer_to_player: Dictionary = {}
-var _peer_to_archetype: Dictionary = {}
-var _networked: bool = false
-var _leaving: bool = false
+var peer_to_arena: Dictionary = {}
+var peer_to_player: Dictionary = {}
+var peer_to_archetype: Dictionary = {}
+var networked: bool = false
+var leaving: bool = false
 var _pending_kills: Dictionary = {}  # arena -> count of mobs dying this frame
 var _pending_kills_flush_queued: bool = false
-var _spectator_peer_ids: Array = []
+var spectator_peer_ids: Array = []
 var _spectator_camera: Camera2D = null
 
 # Stat counters (rendered by the scoreboard; written here on kills and by Economy on purchases)
-var _peer_kills: Dictionary = {}
-var _peer_money_earned: Dictionary = {}
-var _peer_mobs_sent: Dictionary = {}
-var _peer_debuffs_applied: Dictionary = {}
-var _peer_stats_cache: Dictionary = {}
-var _ghost_players: Array = []  # snapshots of disconnected peers kept for scoreboard display
+var peer_kills: Dictionary = {}
+var peer_money_earned: Dictionary = {}
+var peer_mobs_sent: Dictionary = {}
+var peer_debuffs_applied: Dictionary = {}
+var peer_stats_cache: Dictionary = {}
+var ghost_players: Array = []  # snapshots of disconnected peers kept for scoreboard display
 
 var _scoreboard_panel: Control = null
 var _scoreboard_col1: VBoxContainer = null
@@ -39,7 +39,7 @@ var _fps_timer: float = 0.0
 @onready var match_manager: Node = $MatchManager
 
 func _ready() -> void:
-	_networked = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
+	networked = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
 	match_manager.setup_skill_bar()
 	economy.setup_shop()
 	_setup_mob_bars()
@@ -47,52 +47,71 @@ func _ready() -> void:
 	_setup_scoreboard()
 	_fps_label = $HUD/FpsLabel
 
-	if not _networked:
+	if not networked:
 		PlayerPrefs.peer_names = {1: PlayerPrefs.player_name}
-		_peer_to_arena[1] = arena1
-		_peer_to_archetype[1] = PlayerPrefs.archetype
-		_spawn_player(1)
+		peer_to_arena[1] = arena1
+		peer_to_archetype[1] = PlayerPrefs.archetype
+		spawn_player(1)
 		var center := Vector2(Constants.WORLD_SIZE_X * 0.5, Constants.WORLD_SIZE_Y * 0.5)
 		arena1.spawn_mob(0, center)
 		for i in Constants.MOB_COUNT - 1:
 			arena1.spawn_mob()
-		_push_hud_update()
+		push_hud_update()
 		return
 
-	_spectator_peer_ids = PlayerPrefs.peer_spectators
+	spectator_peer_ids = PlayerPrefs.peer_spectators
 
 	# Populate arena assignments from the team layout decided in game_room
 	for peer_id in PlayerPrefs.peer_teams:
-		_peer_to_arena[peer_id] = arena1 if PlayerPrefs.peer_teams[peer_id] == 0 else arena2
+		peer_to_arena[peer_id] = arena1 if PlayerPrefs.peer_teams[peer_id] == 0 else arena2
 
 	var my_id_ready: int = multiplayer.get_unique_id()
-	if _spectator_peer_ids.has(my_id_ready):
+	if spectator_peer_ids.has(my_id_ready):
 		_setup_spectator_camera()
 
 	net_sync.begin()
 
-func _snapshot_disconnected_peer(id: int) -> void:
-	var arena: Node2D = _peer_to_arena.get(id)
+func snapshot_disconnected_peer(id: int) -> void:
+	var arena: Node2D = peer_to_arena.get(id)
 	if arena == null:
 		return
-	_ghost_players.append({
+	ghost_players.append({
 		"name":     PlayerPrefs.peer_names.get(id, "Player"),
-		"arch_id":  _peer_to_archetype.get(id, 0),
+		"arch_id":  peer_to_archetype.get(id, 0),
 		"arena":    arena,
 		"stats": {
-			"kills":     _peer_kills.get(id, 0),
-			"earned":    _peer_money_earned.get(id, 0),
-			"mobs_sent": _peer_mobs_sent.get(id, 0),
-			"debuffs":   _peer_debuffs_applied.get(id, 0),
+			"kills":     peer_kills.get(id, 0),
+			"earned":    peer_money_earned.get(id, 0),
+			"mobs_sent": peer_mobs_sent.get(id, 0),
+			"debuffs":   peer_debuffs_applied.get(id, 0),
 		},
 	})
 
-func _count_players_in_arena(arena: Node2D) -> int:
+func count_players_in_arena(arena: Node2D) -> int:
 	var count := 0
-	for pid in _peer_to_player:
-		if _peer_to_arena.get(pid) == arena:
+	for pid in peer_to_player:
+		if peer_to_arena.get(pid) == arena:
 			count += 1
 	return count
+
+# Interest set for an arena's mob-state sync (server-side). Maps each *remote*
+# peer that should receive this arena's mob updates to its view center (the
+# player's global position), or null for "send everything" — spectators, whose
+# free camera the server can't track. The local peer is excluded: it either
+# simulates these mobs authoritatively (host) or views the other arena.
+func get_arena_interest(arena: Node2D) -> Dictionary:
+	var result: Dictionary = {}
+	var local_id: int = multiplayer.get_unique_id()
+	for pid in peer_to_player:
+		if pid == local_id or peer_to_arena.get(pid) != arena:
+			continue
+		var player = peer_to_player[pid]
+		if is_instance_valid(player):
+			result[pid] = player.position
+	for pid in spectator_peer_ids:
+		if pid != local_id:
+			result[pid] = null
+	return result
 
 func _setup_spectator_camera() -> void:
 	var cam := Camera2D.new()
@@ -118,45 +137,45 @@ func _setup_spectator_camera() -> void:
 	hint.offset_top = -40.0
 	$HUD.add_child(hint)
 
-func _spawn_player(peer_id: int) -> void:
-	if _peer_to_player.has(peer_id):
+func spawn_player(peer_id: int) -> void:
+	if peer_to_player.has(peer_id):
 		return
-	if _spectator_peer_ids.has(peer_id):
+	if spectator_peer_ids.has(peer_id):
 		return
-	var arena: Node2D = _peer_to_arena[peer_id]
+	var arena: Node2D = peer_to_arena[peer_id]
 	var slot := 0
-	for existing_id in _peer_to_player:
-		if _peer_to_arena[existing_id] == arena:
+	for existing_id in peer_to_player:
+		if peer_to_arena[existing_id] == arena:
 			slot += 1
 	var center := Vector2(Constants.WORLD_SIZE_X * 0.5, Constants.WORLD_SIZE_Y * 0.5)
 	var offset := Vector2((slot * 200) - 100, 0)
 	var player := PLAYER_SCENE.instantiate()
 	player.name = "Player_%d" % peer_id
 	player.position = arena.position + center + offset
-	player.archetype = _peer_to_archetype.get(peer_id, 0)
+	player.archetype = peer_to_archetype.get(peer_id, 0)
 	player.player_name = PlayerPrefs.peer_names.get(peer_id, "")
 	$PlayerContainer.add_child(player, true)
 	player.set_multiplayer_authority(peer_id)
-	_peer_to_player[peer_id] = player
-	if multiplayer.is_server() or not _networked:
+	peer_to_player[peer_id] = player
+	if multiplayer.is_server() or not networked:
 		match_manager.init_unlock_state(peer_id)
 
 func notify_mob_killed(arena: Node2D, killer: Node = null) -> void:
-	if not multiplayer.is_server() or _leaving:
+	if not multiplayer.is_server() or leaving:
 		return
 	var opponent: Node2D = arena2 if arena == arena1 else arena1
 	opponent.spawn_mob()
 	opponent.spawn_mob()
 	var killer_id := -1
 	if killer and is_instance_valid(killer):
-		for pid in _peer_to_player:
-			if _peer_to_player[pid] == killer:
+		for pid in peer_to_player:
+			if peer_to_player[pid] == killer:
 				killer_id = pid
 				break
 	economy.award_kill(killer_id, arena)
 	if killer_id != -1:
-		_peer_kills[killer_id] = _peer_kills.get(killer_id, 0) + 1
-	_sync_stats()
+		peer_kills[killer_id] = peer_kills.get(killer_id, 0) + 1
+	sync_stats()
 	# Accumulate kills this frame — queue_free runs after deferred calls,
 	# so every mob that died this frame is still counted by get_mob_count().
 	_pending_kills[arena] = _pending_kills.get(arena, 0) + 1
@@ -172,7 +191,7 @@ func notify_mob_killed(arena: Node2D, killer: Node = null) -> void:
 		arena2.spawn_mob()
 		a2 = arena2.get_mob_count() - _pending_kills.get(arena2, 0)
 	_update_hud_local(a1, a2)
-	if _networked:
+	if networked:
 		_rpc_update_hud.rpc(a1, a2)
 	match_manager.check_win(a1, a2)
 	match_manager.check_skill_unlocks(a1, a2)
@@ -186,13 +205,13 @@ func _clear_pending_kills() -> void:
 
 # --- HUD ---
 
-func _push_hud_update() -> void:
+func push_hud_update() -> void:
 	var a1: int = arena1.get_mob_count()
 	var a2: int = arena2.get_mob_count()
 	_update_hud_local(a1, a2)
-	if _networked and multiplayer.is_server():
+	if networked and multiplayer.is_server():
 		_rpc_update_hud.rpc(a1, a2)
-	if multiplayer.is_server() or not _networked:
+	if multiplayer.is_server() or not networked:
 		match_manager.check_win(a1, a2)
 		match_manager.check_skill_unlocks(a1, a2)
 
@@ -219,12 +238,12 @@ func _setup_mob_bars() -> void:
 func _update_hud_local(a1: int, a2: int) -> void:
 	if _my_mob_bar == null:
 		return
-	var my_id: int = 1 if not _networked else multiplayer.get_unique_id()
-	if _spectator_peer_ids.has(my_id):
+	var my_id: int = 1 if not networked else multiplayer.get_unique_id()
+	if spectator_peer_ids.has(my_id):
 		_my_mob_bar.set_count(a1, PlayerPrefs.mob_win_count)
 		_enemy_mob_bar.set_count(a2, PlayerPrefs.mob_win_count)
 		return
-	var my_is_arena1: bool = _peer_to_arena.get(my_id) == arena1
+	var my_is_arena1: bool = peer_to_arena.get(my_id) == arena1
 	var my    := a1 if my_is_arena1 else a2
 	var enemy := a2 if my_is_arena1 else a1
 	_my_mob_bar.set_count(my, PlayerPrefs.mob_win_count)
@@ -236,25 +255,25 @@ func _rpc_update_hud(a1: int, a2: int) -> void:
 
 # --- Stats ---
 
-func _gather_stats() -> Dictionary:
+func gather_stats() -> Dictionary:
 	var result := {}
-	for pid in _peer_to_arena:
+	for pid in peer_to_arena:
 		result[pid] = {
-			"kills":     _peer_kills.get(pid, 0),
-			"earned":    _peer_money_earned.get(pid, 0),
-			"mobs_sent": _peer_mobs_sent.get(pid, 0),
-			"debuffs":   _peer_debuffs_applied.get(pid, 0),
+			"kills":     peer_kills.get(pid, 0),
+			"earned":    peer_money_earned.get(pid, 0),
+			"mobs_sent": peer_mobs_sent.get(pid, 0),
+			"debuffs":   peer_debuffs_applied.get(pid, 0),
 		}
 	return result
 
-func _sync_stats() -> void:
-	_peer_stats_cache = _gather_stats()
-	if _networked:
-		_rpc_update_stats.rpc(_peer_stats_cache)
+func sync_stats() -> void:
+	peer_stats_cache = gather_stats()
+	if networked:
+		_rpc_update_stats.rpc(peer_stats_cache)
 
 @rpc("authority", "reliable")
 func _rpc_update_stats(stats: Dictionary) -> void:
-	_peer_stats_cache = stats
+	peer_stats_cache = stats
 
 # --- Process loop ---
 
@@ -264,9 +283,9 @@ func _process(delta: float) -> void:
 		if _fps_timer <= 0.0:
 			_fps_timer = 0.25
 			_fps_label.text = "%d fps" % int(Engine.get_frames_per_second())
-	if _leaving:
+	if leaving:
 		return
-	if _networked:
+	if networked:
 		net_sync.update_host_liveness(delta)
 	if _scoreboard_panel != null and _spectator_camera == null:
 		var want_visible := Input.is_action_pressed("scoreboard")
@@ -274,15 +293,15 @@ func _process(delta: float) -> void:
 			_scoreboard_panel.visible = want_visible
 			if want_visible:
 				_refresh_scoreboard()
-	var my_id: int = 1 if not _networked else multiplayer.get_unique_id()
-	var player = _peer_to_player.get(my_id)
+	var my_id: int = 1 if not networked else multiplayer.get_unique_id()
+	var player = peer_to_player.get(my_id)
 	if player == null:
 		return
 	match_manager.update_skill_bar(player)
 	net_sync.tick_ping(delta)
 
 func _on_return_pressed() -> void:
-	_leaving = true
+	leaving = true
 	net_sync.leave_game()
 
 # --- Scoreboard overlay ---
@@ -347,7 +366,7 @@ func _setup_scoreboard() -> void:
 	_scoreboard_col1 = col1
 	_scoreboard_col2 = col2
 
-func _build_game_over_scoreboard(my_id: int) -> Control:
+func build_game_over_scoreboard(my_id: int) -> Control:
 	var container := VBoxContainer.new()
 	container.add_theme_constant_override("separation", 8)
 	container.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -360,7 +379,7 @@ func _build_game_over_scoreboard(my_id: int) -> Control:
 	cols_hbox.add_theme_constant_override("separation", 16)
 	container.add_child(cols_hbox)
 
-	var my_arena = _peer_to_arena.get(my_id)
+	var my_arena = peer_to_arena.get(my_id)
 
 	var col1 := VBoxContainer.new()
 	col1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -379,18 +398,18 @@ func _build_game_over_scoreboard(my_id: int) -> Control:
 	_add_scoreboard_column_header(col1, "YOUR ARENA", Color(0.3, 0.75, 1.0))
 	_add_scoreboard_column_header(col2, "ENEMY ARENA", Color(1.0, 0.42, 0.42))
 
-	for pid in _peer_to_arena:
-		var in_my_arena: bool = my_arena != null and _peer_to_arena.get(pid) == my_arena
+	for pid in peer_to_arena:
+		var in_my_arena: bool = my_arena != null and peer_to_arena.get(pid) == my_arena
 		var col := col1 if in_my_arena else col2
-		var stats: Dictionary = _peer_stats_cache.get(pid, {})
+		var stats: Dictionary = peer_stats_cache.get(pid, {})
 		var pname: String = PlayerPrefs.peer_names.get(pid, "Player")
 		if pname.is_empty():
 			pname = "Player"
-		var arch_id: int = _peer_to_archetype.get(pid, 0)
+		var arch_id: int = peer_to_archetype.get(pid, 0)
 		var arch_name: String = Constants.ARCHETYPE_NAMES[arch_id] \
 			if arch_id >= 0 and arch_id < Constants.ARCHETYPE_NAMES.size() else "?"
 		_add_scoreboard_player_row(col, pname, arch_name, stats, pid == my_id)
-	for ghost in _ghost_players:
+	for ghost in ghost_players:
 		var in_my_arena: bool = my_arena != null and ghost["arena"] == my_arena
 		var col := col1 if in_my_arena else col2
 		var pname: String = ghost["name"]
@@ -407,31 +426,31 @@ func _build_game_over_scoreboard(my_id: int) -> Control:
 	return container
 
 func _refresh_scoreboard() -> void:
-	if not _networked or multiplayer.is_server():
-		_peer_stats_cache = _gather_stats()
+	if not networked or multiplayer.is_server():
+		peer_stats_cache = gather_stats()
 	for child in _scoreboard_col1.get_children():
 		child.free()
 	for child in _scoreboard_col2.get_children():
 		child.free()
 
-	var my_id: int = 1 if not _networked else multiplayer.get_unique_id()
-	var my_arena = _peer_to_arena.get(my_id)
+	var my_id: int = 1 if not networked else multiplayer.get_unique_id()
+	var my_arena = peer_to_arena.get(my_id)
 
 	_add_scoreboard_column_header(_scoreboard_col1, "YOUR ARENA", Color(0.3, 0.75, 1.0))
 	_add_scoreboard_column_header(_scoreboard_col2, "ENEMY ARENA", Color(1.0, 0.42, 0.42))
 
-	for pid in _peer_to_arena:
-		var in_my_arena: bool = my_arena != null and _peer_to_arena.get(pid) == my_arena
+	for pid in peer_to_arena:
+		var in_my_arena: bool = my_arena != null and peer_to_arena.get(pid) == my_arena
 		var col := _scoreboard_col1 if in_my_arena else _scoreboard_col2
-		var stats: Dictionary = _peer_stats_cache.get(pid, {})
+		var stats: Dictionary = peer_stats_cache.get(pid, {})
 		var pname: String = PlayerPrefs.peer_names.get(pid, "Player")
 		if pname.is_empty():
 			pname = "Player"
-		var arch_id: int = _peer_to_archetype.get(pid, 0)
+		var arch_id: int = peer_to_archetype.get(pid, 0)
 		var arch_name: String = Constants.ARCHETYPE_NAMES[arch_id] \
 			if arch_id >= 0 and arch_id < Constants.ARCHETYPE_NAMES.size() else "?"
 		_add_scoreboard_player_row(col, pname, arch_name, stats, pid == my_id)
-	for ghost in _ghost_players:
+	for ghost in ghost_players:
 		var in_my_arena: bool = my_arena != null and ghost["arena"] == my_arena
 		var col := _scoreboard_col1 if in_my_arena else _scoreboard_col2
 		var pname: String = ghost["name"]

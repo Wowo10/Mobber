@@ -34,7 +34,7 @@ func _ready() -> void:
 func begin() -> void:
 	if multiplayer.is_server():
 		_expected_client_count = multiplayer.get_peers().size()
-		game._peer_to_archetype[1] = PlayerPrefs.archetype
+		game.peer_to_archetype[1] = PlayerPrefs.archetype
 		multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 	else:
 		multiplayer.server_disconnected.connect(_on_server_disconnected)
@@ -46,7 +46,7 @@ func _rpc_client_ready(arch: int) -> void:
 	if not multiplayer.is_server():
 		return
 	var id := multiplayer.get_remote_sender_id()
-	game._peer_to_archetype[id] = arch
+	game.peer_to_archetype[id] = arch
 	_clients_ready_count += 1
 	if _clients_ready_count < _expected_client_count:
 		return
@@ -55,18 +55,18 @@ func _rpc_client_ready(arch: int) -> void:
 		arena.spawn_mob(0, center)
 		for i in Constants.MOB_COUNT - 1:
 			arena.spawn_mob()
-	for peer_id in game._peer_to_arena:
-		game._spawn_player(peer_id)
-	_rpc_spawn_players.rpc(game._peer_to_archetype, PlayerPrefs.mob_win_count)
-	game._push_hud_update()
+	for peer_id in game.peer_to_arena:
+		game.spawn_player(peer_id)
+	_rpc_spawn_players.rpc(game.peer_to_archetype, PlayerPrefs.mob_win_count)
+	game.push_hud_update()
 
 @rpc("authority", "reliable")
 func _rpc_spawn_players(archetypes: Dictionary, win_count: int) -> void:
 	PlayerPrefs.mob_win_count = win_count
-	game._peer_to_archetype = archetypes
-	# _peer_to_arena already populated from PlayerPrefs.peer_teams in game._ready()
-	for peer_id in game._peer_to_arena:
-		game._spawn_player(peer_id)
+	game.peer_to_archetype = archetypes
+	# peer_to_arena already populated from PlayerPrefs.peer_teams in game._ready()
+	for peer_id in game.peer_to_arena:
+		game.spawn_player(peer_id)
 
 # --- Host liveness / heartbeat ---
 
@@ -99,7 +99,12 @@ func _on_server_disconnected() -> void:
 func _show_host_left() -> void:
 	if game.get_node("GameOverOverlay").visible:
 		return
-	game._leaving = true
+	game.leaving = true
+
+	# Capture our real peer id before tearing down the peer — once it's null,
+	# get_unique_id() falls back to 1 (the host's id) and the scoreboard would put
+	# every player on the wrong side of "your arena / enemy arena".
+	var my_id: int = multiplayer.get_unique_id()
 
 	# Scrub before dropping the peer so the MultiplayerSpawner's _stop() despawn
 	# doesn't trip the SceneCacheInterface dangling-callable errors.
@@ -108,8 +113,6 @@ func _show_host_left() -> void:
 
 	for child in game.get_node("PlayerContainer").get_children():
 		child.set_physics_process(false)
-
-	var my_id: int = multiplayer.get_unique_id()
 
 	var vbox := game.get_node("GameOverOverlay/VBox")
 	var title := vbox.get_node("TitleLabel")
@@ -125,7 +128,7 @@ func _show_host_left() -> void:
 	if existing:
 		existing.free()
 
-	var sb: Control = game._build_game_over_scoreboard(my_id)
+	var sb: Control = game.build_game_over_scoreboard(my_id)
 	sb.name = "GameOverScoreboard"
 	vbox.add_child(sb)
 	vbox.move_child(return_btn, vbox.get_child_count() - 1)
@@ -135,37 +138,39 @@ func _show_host_left() -> void:
 # --- Peer disconnect ---
 
 func _on_peer_disconnected(id: int) -> void:
-	if game._spectator_peer_ids.has(id):
-		game._spectator_peer_ids.erase(id)
+	game.arena1.clear_peer_interest(id)
+	game.arena2.clear_peer_interest(id)
+	if game.spectator_peer_ids.has(id):
+		game.spectator_peer_ids.erase(id)
 		_rpc_show_notice.rpc("A spectator disconnected.")
 		return
 
 	game.economy.spread_gold(id)
-	game._snapshot_disconnected_peer(id)
-	if game._networked:
-		var arena_idx := 1 if game._peer_to_arena.get(id) == game.arena1 else 2
+	game.snapshot_disconnected_peer(id)
+	if game.networked:
+		var arena_idx := 1 if game.peer_to_arena.get(id) == game.arena1 else 2
 		_rpc_notify_player_left.rpc(
 			id,
 			PlayerPrefs.peer_names.get(id, "Player"),
-			game._peer_to_archetype.get(id, 0),
+			game.peer_to_archetype.get(id, 0),
 			arena_idx,
 			{
-				"kills":     game._peer_kills.get(id, 0),
-				"earned":    game._peer_money_earned.get(id, 0),
-				"mobs_sent": game._peer_mobs_sent.get(id, 0),
-				"debuffs":   game._peer_debuffs_applied.get(id, 0),
+				"kills":     game.peer_kills.get(id, 0),
+				"earned":    game.peer_money_earned.get(id, 0),
+				"mobs_sent": game.peer_mobs_sent.get(id, 0),
+				"debuffs":   game.peer_debuffs_applied.get(id, 0),
 			}
 		)
-	if game._peer_to_player.has(id):
-		game._peer_to_player[id].queue_free()
-	game._peer_to_player.erase(id)
-	var arena: Node2D = game._peer_to_arena.get(id)
-	game._peer_to_arena.erase(id)
+	if game.peer_to_player.has(id):
+		game.peer_to_player[id].queue_free()
+	game.peer_to_player.erase(id)
+	var arena: Node2D = game.peer_to_arena.get(id)
+	game.peer_to_arena.erase(id)
 
-	if arena != null and game._count_players_in_arena(arena) == 0:
+	if arena != null and game.count_players_in_arena(arena) == 0:
 		var losing_arena_id := 1 if arena == game.arena1 else 2
-		game.match_manager._rpc_game_over(losing_arena_id)
-		game.match_manager._rpc_game_over.rpc(losing_arena_id)
+		game.match_manager.rpc_game_over(losing_arena_id)
+		game.match_manager.rpc_game_over.rpc(losing_arena_id)
 	else:
 		_rpc_show_notice.rpc("A player disconnected.")
 
@@ -185,17 +190,17 @@ func _rpc_show_notice(msg: String) -> void:
 
 @rpc("authority", "reliable")
 func _rpc_notify_player_left(peer_id: int, ghost_name: String, arch_id: int, arena_idx: int, stats: Dictionary) -> void:
-	if game._peer_to_player.has(peer_id):
-		game._peer_to_player[peer_id].queue_free()
-	game._peer_to_player.erase(peer_id)
+	if game.peer_to_player.has(peer_id):
+		game.peer_to_player[peer_id].queue_free()
+	game.peer_to_player.erase(peer_id)
 	var arena: Node2D = game.arena1 if arena_idx == 1 else game.arena2
-	game._ghost_players.append({
+	game.ghost_players.append({
 		"name":    ghost_name,
 		"arch_id": arch_id,
 		"arena":   arena,
 		"stats":   stats,
 	})
-	game._peer_to_arena.erase(peer_id)
+	game.peer_to_arena.erase(peer_id)
 
 # --- Ping ---
 
@@ -213,7 +218,7 @@ func _rpc_ping_response() -> void:
 	_ping_label.text = "%d ms" % ms
 
 func tick_ping(delta: float) -> void:
-	if not (game._networked and not multiplayer.is_server() and _ping_label != null):
+	if not (game.networked and not multiplayer.is_server() and _ping_label != null):
 		return
 	_ping_timer -= delta
 	if _ping_timer <= 0.0:
@@ -254,6 +259,6 @@ func _clear_signal(sig: Signal) -> void:
 
 func leave_game() -> void:
 	scrub_multiplayer_hooks()
-	if game._networked:
+	if game.networked:
 		multiplayer.multiplayer_peer = null
 	get_tree().change_scene_to_file("res://scenes/ui/lobby.tscn")

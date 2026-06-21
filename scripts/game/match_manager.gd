@@ -11,7 +11,7 @@ const SKILL_UNLOCK_THRESHOLDS := [0.10, 0.40, 0.70]
 var game: Node
 
 # State owned here
-var _player_skills_unlocked: Dictionary = {}   # peer_id -> [false, false, false]
+var player_skills_unlocked: Dictionary = {}   # peer_id -> [false, false, false]
 var _player_unlocks_pending: Dictionary = {}   # peer_id -> int
 var _player_unlock_milestone: Dictionary = {}  # peer_id -> int (0-3)
 
@@ -21,11 +21,11 @@ func _ready() -> void:
 	game = get_parent()
 
 func _my_id() -> int:
-	return 1 if not game._networked else multiplayer.get_unique_id()
+	return 1 if not game.networked else multiplayer.get_unique_id()
 
 # Initialise unlock state for a freshly spawned player (server / offline only).
 func init_unlock_state(peer_id: int) -> void:
-	_player_skills_unlocked[peer_id] = [false, false, false]
+	player_skills_unlocked[peer_id] = [false, false, false]
 	_player_unlocks_pending[peer_id] = 0
 	_player_unlock_milestone[peer_id] = 0
 
@@ -150,7 +150,7 @@ func _on_skill_unlock_requested(skill_index: int) -> void:
 	var bar := _skill_bar
 	for i in 3:
 		bar.get_node("Skill%dSlot" % (i + 1)).set_unlock_available(false)
-	if game._networked and not multiplayer.is_server():
+	if game.networked and not multiplayer.is_server():
 		_rpc_request_skill_unlock.rpc_id(1, skill_index)
 	else:
 		apply_skill_unlock(1, skill_index)
@@ -159,14 +159,14 @@ func _on_skill_unlock_requested(skill_index: int) -> void:
 
 func check_win(a1: int, a2: int) -> void:
 	if a1 >= PlayerPrefs.mob_win_count:
-		_rpc_game_over(1)
-		_rpc_game_over.rpc(1)
+		rpc_game_over(1)
+		rpc_game_over.rpc(1)
 	elif a2 >= PlayerPrefs.mob_win_count:
-		_rpc_game_over(2)
-		_rpc_game_over.rpc(2)
+		rpc_game_over(2)
+		rpc_game_over.rpc(2)
 
 @rpc("authority", "reliable")
-func _rpc_game_over(losing_arena_id: int) -> void:
+func rpc_game_over(losing_arena_id: int) -> void:
 	var overlay := game.get_node("GameOverOverlay")
 	if overlay.visible:
 		return
@@ -180,13 +180,13 @@ func _rpc_game_over(losing_arena_id: int) -> void:
 	var sub := vbox.get_node("SubLabel")
 	var return_btn := vbox.get_node("ReturnButton")
 
-	if game._spectator_peer_ids.has(my_id):
+	if game.spectator_peer_ids.has(my_id):
 		title.text = "GAME OVER"
 		title.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
 		sub.text = "Arena %d was overrun by mobs." % losing_arena_id
 		sub.add_theme_color_override("font_color", Color(0.8, 0.8, 0.5))
 	else:
-		var my_is_arena1: bool = game._peer_to_arena.get(my_id) == game.arena1
+		var my_is_arena1: bool = game.peer_to_arena.get(my_id) == game.arena1
 		var i_lost: bool = (losing_arena_id == 1 and my_is_arena1) \
 			or (losing_arena_id == 2 and not my_is_arena1)
 		if i_lost:
@@ -204,10 +204,10 @@ func _rpc_game_over(losing_arena_id: int) -> void:
 	if existing:
 		existing.free()
 
-	if not game._networked or multiplayer.is_server():
-		game._peer_stats_cache = game._gather_stats()
+	if not game.networked or multiplayer.is_server():
+		game.peer_stats_cache = game.gather_stats()
 
-	var sb: Control = game._build_game_over_scoreboard(my_id)
+	var sb: Control = game.build_game_over_scoreboard(my_id)
 	sb.name = "GameOverScoreboard"
 	vbox.add_child(sb)
 	vbox.move_child(return_btn, vbox.get_child_count() - 1)
@@ -220,8 +220,8 @@ func check_skill_unlocks(a1: int, a2: int) -> void:
 	var win_count := PlayerPrefs.mob_win_count
 	if win_count <= 0:
 		return
-	for peer_id in game._peer_to_arena:
-		var arena: Node2D = game._peer_to_arena[peer_id]
+	for peer_id in game.peer_to_arena:
+		var arena: Node2D = game.peer_to_arena[peer_id]
 		var count := a1 if arena == game.arena1 else a2
 		var milestone: int = _player_unlock_milestone.get(peer_id, 0)
 		while milestone < SKILL_UNLOCK_THRESHOLDS.size():
@@ -229,7 +229,7 @@ func check_skill_unlocks(a1: int, a2: int) -> void:
 				milestone += 1
 				_player_unlock_milestone[peer_id] = milestone
 				_player_unlocks_pending[peer_id] = _player_unlocks_pending.get(peer_id, 0) + 1
-				if not game._networked or peer_id == 1:
+				if not game.networked or peer_id == 1:
 					_rpc_notify_skill_unlock_available()
 				else:
 					_rpc_notify_skill_unlock_available.rpc_id(peer_id)
@@ -240,24 +240,24 @@ func apply_skill_unlock(peer_id: int, skill_index: int) -> void:
 	var pending: int = _player_unlocks_pending.get(peer_id, 0)
 	if pending <= 0 or skill_index < 0 or skill_index >= 3:
 		return
-	if not _player_skills_unlocked.has(peer_id):
-		_player_skills_unlocked[peer_id] = [false, false, false]
-	var unlocked: Array = _player_skills_unlocked[peer_id]
+	if not player_skills_unlocked.has(peer_id):
+		player_skills_unlocked[peer_id] = [false, false, false]
+	var unlocked: Array = player_skills_unlocked[peer_id]
 	if unlocked[skill_index]:
 		return
 	unlocked[skill_index] = true
 	_player_unlocks_pending[peer_id] = pending - 1
-	var player = game._peer_to_player.get(peer_id)
+	var player = game.peer_to_player.get(peer_id)
 	if player and is_instance_valid(player):
 		player.skills_unlocked = unlocked
-		if game._networked and peer_id != 1:
+		if game.networked and peer_id != 1:
 			player.net_sync.rpc_sync_skills_unlocked.rpc_id(peer_id, unlocked)
-	if not game._networked or peer_id == 1:
+	if not game.networked or peer_id == 1:
 		_rpc_sync_skill_unlocks(unlocked)
 	else:
 		_rpc_sync_skill_unlocks.rpc_id(peer_id, unlocked)
 	if _player_unlocks_pending[peer_id] > 0:
-		if not game._networked or peer_id == 1:
+		if not game.networked or peer_id == 1:
 			_rpc_notify_skill_unlock_available()
 		else:
 			_rpc_notify_skill_unlock_available.rpc_id(peer_id)
@@ -265,7 +265,7 @@ func apply_skill_unlock(peer_id: int, skill_index: int) -> void:
 @rpc("authority", "reliable")
 func _rpc_notify_skill_unlock_available() -> void:
 	var my_id: int = _my_id()
-	var unlocked: Array = _player_skills_unlocked.get(my_id, [false, false, false])
+	var unlocked: Array = player_skills_unlocked.get(my_id, [false, false, false])
 	var bar := _skill_bar
 	for i in 3:
 		if not unlocked[i]:
@@ -280,7 +280,7 @@ func _rpc_request_skill_unlock(skill_index: int) -> void:
 @rpc("authority", "reliable")
 func _rpc_sync_skill_unlocks(unlocked: Array) -> void:
 	var my_id: int = _my_id()
-	_player_skills_unlocked[my_id] = unlocked
+	player_skills_unlocked[my_id] = unlocked
 	var bar := _skill_bar
 	for i in 3:
 		var slot = bar.get_node("Skill%dSlot" % (i + 1))

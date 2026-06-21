@@ -32,7 +32,7 @@ func _ready() -> void:
 	game = get_parent()
 
 func _my_id() -> int:
-	return 1 if not game._networked else multiplayer.get_unique_id()
+	return 1 if not game.networked else multiplayer.get_unique_id()
 
 # --- Shop / arena-master zone wiring ---
 
@@ -44,7 +44,7 @@ func connect_zone_signals() -> void:
 		arena.player_exited_arena_master.connect(_on_player_exited_arena_master)
 
 func _on_player_entered_shop() -> void:
-	if game._leaving:
+	if game.leaving:
 		return
 	_in_shop_zone = true
 	_shop_panel.visible = true
@@ -55,7 +55,7 @@ func _on_player_exited_shop() -> void:
 	_shop_panel.visible = false
 
 func _on_player_entered_arena_master() -> void:
-	if game._leaving:
+	if game.leaving:
 		return
 	_in_arena_master_zone = true
 	_am_panel.visible = true
@@ -107,9 +107,9 @@ func update_shop_ui() -> void:
 	_refresh_upgrade_btn(vbox.get_node("AttackSpeedBtn"), "Attack Speed",
 		_player_attack_speed_levels.get(my_id, 0), max_lvl, money,
 		Constants.SHOP_COST_ATTACK_SPEED_BASE, Constants.SHOP_COST_ATTACK_SPEED_INC)
-	var player = game._peer_to_player.get(my_id)
+	var player = game.peer_to_player.get(my_id)
 	var skill_level_dicts := [_player_skill1_levels, _player_skill2_levels, _player_skill3_levels]
-	var unlocked_arr: Array = game.match_manager._player_skills_unlocked.get(my_id, [false, false, false])
+	var unlocked_arr: Array = game.match_manager.player_skills_unlocked.get(my_id, [false, false, false])
 	for i in range(1, 4):
 		var skill_label: String = player.get_skill_name(i) if player else ("Skill %d" % i)
 
@@ -158,7 +158,7 @@ func _rpc_update_money(peer_money: Dictionary) -> void:
 
 func _broadcast_money() -> void:
 	update_money(_peer_money)
-	if game._networked:
+	if game.networked:
 		_rpc_update_money.rpc(_peer_money)
 
 # Reward gold for a mob kill. killer_id == -1 falls back to crediting everyone in
@@ -166,12 +166,12 @@ func _broadcast_money() -> void:
 func award_kill(killer_id: int, arena: Node2D) -> void:
 	if killer_id != -1:
 		_peer_money[killer_id] = _peer_money.get(killer_id, 0) + Constants.KILL_REWARD
-		game._peer_money_earned[killer_id] = game._peer_money_earned.get(killer_id, 0) + Constants.KILL_REWARD
+		game.peer_money_earned[killer_id] = game.peer_money_earned.get(killer_id, 0) + Constants.KILL_REWARD
 	else:
-		for pid in game._peer_to_arena:
-			if game._peer_to_arena[pid] == arena:
+		for pid in game.peer_to_arena:
+			if game.peer_to_arena[pid] == arena:
 				_peer_money[pid] = _peer_money.get(pid, 0) + Constants.KILL_REWARD
-				game._peer_money_earned[pid] = game._peer_money_earned.get(pid, 0) + Constants.KILL_REWARD
+				game.peer_money_earned[pid] = game.peer_money_earned.get(pid, 0) + Constants.KILL_REWARD
 	_broadcast_money()
 
 # Spread a leaving peer's gold among their arena teammates (host migration / leave).
@@ -179,12 +179,12 @@ func spread_gold(leaving_id: int) -> void:
 	var gold: int = _peer_money.get(leaving_id, 0)
 	if gold <= 0:
 		return
-	var leaving_arena: Node2D = game._peer_to_arena.get(leaving_id)
+	var leaving_arena: Node2D = game.peer_to_arena.get(leaving_id)
 	if leaving_arena == null:
 		return
 	var teammates: Array = []
-	for pid in game._peer_to_arena:
-		if pid != leaving_id and game._peer_to_arena[pid] == leaving_arena:
+	for pid in game.peer_to_arena:
+		if pid != leaving_id and game.peer_to_arena[pid] == leaving_arena:
 			teammates.append(pid)
 	if teammates.is_empty():
 		return
@@ -197,7 +197,7 @@ func spread_gold(leaving_id: int) -> void:
 # --- Purchases ---
 
 func buy(item_id: int) -> void:
-	if game._networked and not multiplayer.is_server():
+	if game.networked and not multiplayer.is_server():
 		_rpc_request_purchase.rpc_id(1, item_id)
 	else:
 		apply_purchase(_my_id(), item_id)
@@ -209,9 +209,9 @@ func _rpc_request_purchase(item_id: int) -> void:
 	apply_purchase(multiplayer.get_remote_sender_id(), item_id)
 
 func apply_purchase(peer_id: int, item_id: int) -> void:
-	if game._leaving:
+	if game.leaving:
 		return
-	var is_a1: bool = game._peer_to_arena.get(peer_id) == game.arena1
+	var is_a1: bool = game.peer_to_arena.get(peer_id) == game.arena1
 	var money: int = _peer_money.get(peer_id, 0)
 	var opponent_arena: Node2D = game.arena2 if is_a1 else game.arena1
 
@@ -221,26 +221,26 @@ func apply_purchase(peer_id: int, item_id: int) -> void:
 				return
 			money -= Constants.SHOP_COST_SEND_MOB
 			opponent_arena.spawn_mob()
-			game._peer_mobs_sent[peer_id] = game._peer_mobs_sent.get(peer_id, 0) + 1
+			game.peer_mobs_sent[peer_id] = game.peer_mobs_sent.get(peer_id, 0) + 1
 		1:
 			if money < Constants.SHOP_COST_SEND_3_MOBS:
 				return
 			money -= Constants.SHOP_COST_SEND_3_MOBS
 			for i in 3:
 				opponent_arena.spawn_mob()
-			game._peer_mobs_sent[peer_id] = game._peer_mobs_sent.get(peer_id, 0) + 3
+			game.peer_mobs_sent[peer_id] = game.peer_mobs_sent.get(peer_id, 0) + 3
 		2:
 			if money < Constants.SHOP_COST_SEND_FLEEING:
 				return
 			money -= Constants.SHOP_COST_SEND_FLEEING
 			opponent_arena.spawn_mob(1)
-			game._peer_mobs_sent[peer_id] = game._peer_mobs_sent.get(peer_id, 0) + 1
+			game.peer_mobs_sent[peer_id] = game.peer_mobs_sent.get(peer_id, 0) + 1
 		7:
 			if money < Constants.SHOP_COST_SEND_BOSS:
 				return
 			money -= Constants.SHOP_COST_SEND_BOSS
 			opponent_arena.spawn_mob(2)
-			game._peer_mobs_sent[peer_id] = game._peer_mobs_sent.get(peer_id, 0) + 1
+			game.peer_mobs_sent[peer_id] = game.peer_mobs_sent.get(peer_id, 0) + 1
 		15:
 			if money < Constants.SHOP_COST_UPGRADE_MOBS:
 				return
@@ -256,12 +256,12 @@ func apply_purchase(peer_id: int, item_id: int) -> void:
 			money -= cost
 			var new_level: int = cur_level + 1
 			_player_speed_levels[peer_id] = new_level
-			var player = game._peer_to_player.get(peer_id)
+			var player = game.peer_to_player.get(peer_id)
 			if player and is_instance_valid(player):
 				player.speed_level = new_level
-				if game._networked and peer_id != 1:
+				if game.networked and peer_id != 1:
 					player.net_sync.rpc_apply_speed_level.rpc_id(peer_id, new_level)
-			if game._networked and peer_id != 1:
+			if game.networked and peer_id != 1:
 				_rpc_sync_speed_level.rpc_id(peer_id, new_level)
 		4:
 			var cur_level: int = _player_damage_levels.get(peer_id, 0)
@@ -271,11 +271,11 @@ func apply_purchase(peer_id: int, item_id: int) -> void:
 			money -= cost
 			var new_level: int = cur_level + 1
 			_player_damage_levels[peer_id] = new_level
-			var player = game._peer_to_player.get(peer_id)
+			var player = game.peer_to_player.get(peer_id)
 			if player and is_instance_valid(player):
 				player.damage_level = new_level
 				player.apply_upgrades_to_sword()
-				if game._networked and peer_id != 1:
+				if game.networked and peer_id != 1:
 					player.net_sync.rpc_apply_damage_level.rpc_id(peer_id, new_level)
 		5:
 			var cur_level: int = _player_sword_size_levels.get(peer_id, 0)
@@ -287,11 +287,11 @@ func apply_purchase(peer_id: int, item_id: int) -> void:
 			money -= cost
 			var new_level: int = cur_level + 1
 			_player_sword_size_levels[peer_id] = new_level
-			var player = game._peer_to_player.get(peer_id)
+			var player = game.peer_to_player.get(peer_id)
 			if player and is_instance_valid(player):
 				player.sword_size_level = new_level
 				player.apply_upgrades_to_sword()
-				if game._networked and peer_id != 1:
+				if game.networked and peer_id != 1:
 					player.net_sync.rpc_apply_sword_size_level.rpc_id(peer_id, new_level)
 		6:
 			var cur_level: int = _player_attack_speed_levels.get(peer_id, 0)
@@ -303,14 +303,14 @@ func apply_purchase(peer_id: int, item_id: int) -> void:
 			money -= cost
 			var new_level: int = cur_level + 1
 			_player_attack_speed_levels[peer_id] = new_level
-			var player = game._peer_to_player.get(peer_id)
+			var player = game.peer_to_player.get(peer_id)
 			if player and is_instance_valid(player):
 				player.attack_speed_level = new_level
 				player.apply_upgrades_to_sword()
-				if game._networked and peer_id != 1:
+				if game.networked and peer_id != 1:
 					player.net_sync.rpc_apply_attack_speed_level.rpc_id(peer_id, new_level)
 		12:
-			if not game.match_manager._player_skills_unlocked.get(peer_id, [false, false, false])[0]:
+			if not game.match_manager.player_skills_unlocked.get(peer_id, [false, false, false])[0]:
 				return
 			var cur_level: int = _player_skill1_levels.get(peer_id, 0)
 			var cost := _upgrade_cost(Constants.SHOP_COST_SKILL_BASE, Constants.SHOP_COST_SKILL_INC, cur_level)
@@ -319,16 +319,16 @@ func apply_purchase(peer_id: int, item_id: int) -> void:
 			money -= cost
 			var new_level: int = cur_level + 1
 			_player_skill1_levels[peer_id] = new_level
-			var player = game._peer_to_player.get(peer_id)
+			var player = game.peer_to_player.get(peer_id)
 			if player and is_instance_valid(player):
 				player.skill1_level = new_level
 				player.apply_skill_upgrades()
-				if game._networked and peer_id != 1:
+				if game.networked and peer_id != 1:
 					player.net_sync.rpc_apply_skill1_level.rpc_id(peer_id, new_level)
-			if game._networked and peer_id != 1:
+			if game.networked and peer_id != 1:
 				_rpc_sync_skill1_level.rpc_id(peer_id, new_level)
 		13:
-			if not game.match_manager._player_skills_unlocked.get(peer_id, [false, false, false])[1]:
+			if not game.match_manager.player_skills_unlocked.get(peer_id, [false, false, false])[1]:
 				return
 			var cur_level: int = _player_skill2_levels.get(peer_id, 0)
 			var cost := _upgrade_cost(Constants.SHOP_COST_SKILL_BASE, Constants.SHOP_COST_SKILL_INC, cur_level)
@@ -337,16 +337,16 @@ func apply_purchase(peer_id: int, item_id: int) -> void:
 			money -= cost
 			var new_level: int = cur_level + 1
 			_player_skill2_levels[peer_id] = new_level
-			var player = game._peer_to_player.get(peer_id)
+			var player = game.peer_to_player.get(peer_id)
 			if player and is_instance_valid(player):
 				player.skill2_level = new_level
 				player.apply_skill_upgrades()
-				if game._networked and peer_id != 1:
+				if game.networked and peer_id != 1:
 					player.net_sync.rpc_apply_skill2_level.rpc_id(peer_id, new_level)
-			if game._networked and peer_id != 1:
+			if game.networked and peer_id != 1:
 				_rpc_sync_skill2_level.rpc_id(peer_id, new_level)
 		14:
-			if not game.match_manager._player_skills_unlocked.get(peer_id, [false, false, false])[2]:
+			if not game.match_manager.player_skills_unlocked.get(peer_id, [false, false, false])[2]:
 				return
 			var cur_level: int = _player_skill3_levels.get(peer_id, 0)
 			var cost := _upgrade_cost(Constants.SHOP_COST_SKILL_BASE, Constants.SHOP_COST_SKILL_INC, cur_level)
@@ -355,13 +355,13 @@ func apply_purchase(peer_id: int, item_id: int) -> void:
 			money -= cost
 			var new_level: int = cur_level + 1
 			_player_skill3_levels[peer_id] = new_level
-			var player = game._peer_to_player.get(peer_id)
+			var player = game.peer_to_player.get(peer_id)
 			if player and is_instance_valid(player):
 				player.skill3_level = new_level
 				player.apply_skill_upgrades()
-				if game._networked and peer_id != 1:
+				if game.networked and peer_id != 1:
 					player.net_sync.rpc_apply_skill3_level.rpc_id(peer_id, new_level)
-			if game._networked and peer_id != 1:
+			if game.networked and peer_id != 1:
 				_rpc_sync_skill3_level.rpc_id(peer_id, new_level)
 		Constants.DEBUFF_NO_DASH, Constants.DEBUFF_SILENCE, Constants.DEBUFF_INVERT:
 			var cost_map := {
@@ -380,22 +380,22 @@ func apply_purchase(peer_id: int, item_id: int) -> void:
 			money -= cost
 			var dur: float = dur_map[item_id]
 			_apply_debuff_to_opponents(peer_id, item_id, dur)
-			game._peer_debuffs_applied[peer_id] = game._peer_debuffs_applied.get(peer_id, 0) + 1
+			game.peer_debuffs_applied[peer_id] = game.peer_debuffs_applied.get(peer_id, 0) + 1
 		Constants.DEBUFF_FRENZY:
 			if money < Constants.DEBUFF_COST_FRENZY:
 				return
 			money -= Constants.DEBUFF_COST_FRENZY
 			opponent_arena.mob_speed_multiplier = Constants.DEBUFF_FRENZY_SPEED_MULT
 			opponent_arena.mob_frenzy_timer = Constants.DEBUFF_DUR_FRENZY
-			if game._networked:
+			if game.networked:
 				opponent_arena.rpc_set_frenzy.rpc(Constants.DEBUFF_FRENZY_SPEED_MULT, Constants.DEBUFF_DUR_FRENZY)
 			_notify_opponents_debuff_icon(peer_id, Constants.DEBUFF_FRENZY, Constants.DEBUFF_DUR_FRENZY)
-			game._peer_debuffs_applied[peer_id] = game._peer_debuffs_applied.get(peer_id, 0) + 1
+			game.peer_debuffs_applied[peer_id] = game.peer_debuffs_applied.get(peer_id, 0) + 1
 
 	_peer_money[peer_id] = money
 	_broadcast_money()
-	game._push_hud_update()
-	game._sync_stats()
+	game.push_hud_update()
+	game.sync_stats()
 
 @rpc("authority", "reliable")
 func _rpc_sync_speed_level(level: int) -> void:
@@ -424,26 +424,26 @@ func _rpc_sync_skill3_level(level: int) -> void:
 # --- Debuffs ---
 
 func _apply_debuff_to_opponents(buyer_id: int, item_id: int, dur: float) -> void:
-	var my_arena = game._peer_to_arena.get(buyer_id)
-	for opp_id in game._peer_to_player:
-		if game._peer_to_arena.get(opp_id) == my_arena:
+	var my_arena = game.peer_to_arena.get(buyer_id)
+	for opp_id in game.peer_to_player:
+		if game.peer_to_arena.get(opp_id) == my_arena:
 			continue
-		var opp_player = game._peer_to_player.get(opp_id)
+		var opp_player = game.peer_to_player.get(opp_id)
 		if not opp_player or not is_instance_valid(opp_player):
 			continue
 		opp_player.net_sync.rpc_apply_debuff(item_id, dur)
-		if game._networked and opp_id != 1:
+		if game.networked and opp_id != 1:
 			opp_player.net_sync.rpc_apply_debuff.rpc_id(opp_id, item_id, dur)
 		_notify_debuff_icon(opp_id, item_id, dur)
 
 func _notify_opponents_debuff_icon(buyer_id: int, item_id: int, dur: float) -> void:
-	var my_arena = game._peer_to_arena.get(buyer_id)
-	for opp_id in game._peer_to_player:
-		if game._peer_to_arena.get(opp_id) != my_arena:
+	var my_arena = game.peer_to_arena.get(buyer_id)
+	for opp_id in game.peer_to_player:
+		if game.peer_to_arena.get(opp_id) != my_arena:
 			_notify_debuff_icon(opp_id, item_id, dur)
 
 func _notify_debuff_icon(target_id: int, item_id: int, dur: float) -> void:
-	if not game._networked or target_id == 1:
+	if not game.networked or target_id == 1:
 		_add_debuff_icon(item_id, dur)
 	else:
 		_rpc_show_debuff_received.rpc_id(target_id, item_id, dur)

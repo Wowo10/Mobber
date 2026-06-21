@@ -2,7 +2,7 @@ extends Area2D
 
 const RADIUS = 200.0
 const DURATION = 5.0
-const DAMAGE = 3.0
+const DAMAGE = 13.0
 const TICK_RATE = 0.5
 
 var player_ref: Node = null

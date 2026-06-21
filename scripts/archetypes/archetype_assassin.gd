@@ -11,7 +11,7 @@ const FAN_SPREAD_DEG = 60.0  # total cone width
 const DASH_CONE_HALF_DEG = 50.0
 const DASH_TARGET_RANGE = 450.0
 
-const SHADOWSTEP_DAMAGE = 15.0
+const SHADOWSTEP_DAMAGE = 25.0
 const SHADOWSTEP_RANGE = 350.0
 const MAX_TRAPS = 15
 

@@ -9,7 +9,7 @@ var _player: Node = null
 func _ready() -> void:
 	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
 	_setup_skill_bar()
-	_spawn_player()
+	spawn_player()
 	_player.skills_unlocked = [true, true, true]
 	_sync_skill_bar_unlocks()
 	var center := Vector2(Constants.WORLD_SIZE_X * 0.5, Constants.WORLD_SIZE_Y * 0.5)
@@ -94,7 +94,7 @@ func _sync_skill_bar_unlocks() -> void:
 	for i in 3:
 		bar.get_node("Skill%dSlot" % (i + 1)).set_locked(false)
 
-func _spawn_player() -> void:
+func spawn_player() -> void:
 	var center := Vector2(Constants.WORLD_SIZE_X * 0.5, Constants.WORLD_SIZE_Y * 0.5)
 	var player := PLAYER_SCENE.instantiate()
 	player.name = "Player_1"
