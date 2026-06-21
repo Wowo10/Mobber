@@ -11,6 +11,10 @@ var peer_to_player: Dictionary = {}
 var peer_to_archetype: Dictionary = {}
 var networked: bool = false
 var leaving: bool = false
+# Captured once at startup while the connection is healthy. After the host drops,
+# multiplayer.get_unique_id() falls back to 1/0, which would mislabel arenas on the
+# game-over scoreboard — use this instead in any post-disconnect code path.
+var my_peer_id: int = 1
 var _pending_kills: Dictionary = {}  # arena -> count of mobs dying this frame
 var _pending_kills_flush_queued: bool = false
 var spectator_peer_ids: Array = []
@@ -40,6 +44,7 @@ var _fps_timer: float = 0.0
 
 func _ready() -> void:
 	networked = not (multiplayer.multiplayer_peer is OfflineMultiplayerPeer)
+	my_peer_id = 1 if not networked else multiplayer.get_unique_id()
 	match_manager.setup_skill_bar()
 	economy.setup_shop()
 	_setup_mob_bars()

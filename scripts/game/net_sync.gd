@@ -101,10 +101,10 @@ func _show_host_left() -> void:
 		return
 	game.leaving = true
 
-	# Capture our real peer id before tearing down the peer — once it's null,
-	# get_unique_id() falls back to 1 (the host's id) and the scoreboard would put
-	# every player on the wrong side of "your arena / enemy arena".
-	var my_id: int = multiplayer.get_unique_id()
+	# Use the id captured at startup: the host disconnect already corrupts
+	# get_unique_id() (it falls back to 1/0), which would put every player on the
+	# wrong side of "your arena / enemy arena" — see game.my_peer_id.
+	var my_id: int = game.my_peer_id
 
 	# Scrub before dropping the peer so the MultiplayerSpawner's _stop() despawn
 	# doesn't trip the SceneCacheInterface dangling-callable errors.
