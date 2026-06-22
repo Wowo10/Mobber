@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <defs>
+    <!-- team colors -->
+    <radialGradient id="bgGrad" cx="50%" cy="38%" r="75%">
+      <stop offset="0%" stop-color="#2b3350"/>
+      <stop offset="100%" stop-color="#161a2b"/>
+    </radialGradient>
+    <linearGradient id="warmBlob" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ff8a5c"/>
+      <stop offset="100%" stop-color="#ef5a3c"/>
+    </linearGradient>
+    <linearGradient id="coolBlob" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#5cc8ff"/>
+      <stop offset="100%" stop-color="#3c7aef"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+    <!-- a single droplet/blob shape, point-up -->
+    <g id="droplet">
+      <path d="M0,-78
+               C 44,-78 70,-40 70,-2
+               C 70,42 38,72 0,72
+               C -38,72 -70,42 -70,-2
+               C -70,-40 -44,-78 0,-78 Z"/>
+    </g>
+  </defs>
+
+  <!-- backdrop -->
+  <rect width="1280" height="720" rx="48" fill="url(#bgGrad)"/>
+
+  <!-- center arena seam -->
+  <line x1="640" y1="120" x2="640" y2="600" stroke="#ffffff" stroke-opacity="0.10" stroke-width="6" stroke-dasharray="2 26" stroke-linecap="round"/>
+
+  <!-- ===== the mechanic: one big mob struck -> two small mobs on the other side ===== -->
+  <!-- big warm mob (left), mid-strike, with an impact spark -->
+  <g transform="translate(430,250) scale(1.15)" filter="url(#soft)">
+    <use href="#droplet" fill="url(#warmBlob)"/>
+  </g>
+  <!-- two small cool mobs spawning on the right -->
+  <g transform="translate(770,205) scale(0.62)" filter="url(#soft)">
+    <use href="#droplet" fill="url(#coolBlob)"/>
+  </g>
+  <g transform="translate(900,300) scale(0.62)" filter="url(#soft)">
+    <use href="#droplet" fill="url(#coolBlob)"/>
+  </g>
+  <!-- ===== wordmark ===== -->
+  <text x="640" y="590" font-family="Arial Black, Arial, sans-serif" font-size="150" font-weight="900"
+        fill="#ffffff" text-anchor="middle" letter-spacing="2">SPAWN <tspan fill="#ffd84d">WARS</tspan></text>
+</svg>
